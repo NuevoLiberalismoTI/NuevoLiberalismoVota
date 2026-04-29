@@ -20,14 +20,14 @@ export default function HomePage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* Header */}
-      <header className="w-full bg-red-600 py-5 px-4 flex flex-col items-center shadow-md">
+      <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
         <span className="text-white text-xs font-bold uppercase tracking-widest mb-1">
           Partido
         </span>
         <h1 className="text-white text-2xl sm:text-3xl font-extrabold tracking-tight">
           Nuevo Liberalismo
         </h1>
-        <span className="text-red-200 text-xs mt-1">Plataforma oficial de participación</span>
+        <span className="text-brand-200 text-xs mt-1">Plataforma oficial de participación</span>
       </header>
 
       {/* Contenido */}
@@ -53,7 +53,7 @@ export default function HomePage() {
                 value={form.usuario}
                 onChange={handleChange}
                 placeholder="Ingresa tu usuario"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
             </div>
 
@@ -71,7 +71,7 @@ export default function HomePage() {
                   value={form.contrasena}
                   onChange={handleChange}
                   placeholder="Ingresa tu contraseña"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
                 />
                 <button
                   type="button"
@@ -82,7 +82,7 @@ export default function HomePage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <a href="#" className="text-xs text-red-600 hover:underline self-end mt-1">
+              <a href="#" className="text-xs text-brand hover:underline self-end mt-1">
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
@@ -90,7 +90,7 @@ export default function HomePage() {
             {/* Botón iniciar sesión */}
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors mt-1"
+              className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3 rounded-xl transition-colors mt-1"
             >
               <LogIn size={18} />
               Iniciar sesión
@@ -109,7 +109,7 @@ export default function HomePage() {
         <div className="w-full max-w-sm flex flex-col gap-3">
           <a
             href="/registro-militante"
-            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 active:bg-red-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm"
+            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 active:bg-brand-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm"
           >
             <UserPlus size={18} />
             Registrarme como militante

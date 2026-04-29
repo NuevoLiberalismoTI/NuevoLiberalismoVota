@@ -78,13 +78,13 @@ export default function RegistroMilitantePage() {
   if (enviado) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="w-full bg-red-600 py-5 px-4 flex flex-col items-center shadow-md">
+        <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
           <h1 className="text-white text-2xl font-extrabold">Nuevo Liberalismo</h1>
-          <span className="text-red-200 text-xs mt-1">Registro de militante</span>
+          <span className="text-brand-200 text-xs mt-1">Registro de militante</span>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-10">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
-            <CheckCircle size={64} className="text-red-600 mx-auto mb-4" />
+            <CheckCircle size={64} className="text-brand mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Registro exitoso!</h2>
             <p className="text-gray-500 text-sm mb-2">
               Bienvenido(a), <span className="font-semibold text-gray-800">{form.nombres}</span>.
@@ -94,7 +94,7 @@ export default function RegistroMilitantePage() {
             </p>
             <button
               onClick={() => router.push('/')}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors"
+              className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors"
             >
               Ir a iniciar sesión
             </button>
@@ -108,14 +108,14 @@ export default function RegistroMilitantePage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* Header */}
-      <header className="w-full bg-red-600 py-5 px-4 shadow-md">
+      <header className="w-full bg-brand py-5 px-4 shadow-md">
         <div className="max-w-sm mx-auto flex items-center gap-3">
           <button onClick={() => step === 1 ? router.push('/') : setStep(1)} className="text-white">
             <ArrowLeft size={22} />
           </button>
           <div>
             <h1 className="text-white text-lg font-extrabold leading-none">Nuevo Liberalismo</h1>
-            <span className="text-red-200 text-xs">Registro de militante</span>
+            <span className="text-brand-200 text-xs">Registro de militante</span>
           </div>
         </div>
       </header>
@@ -123,8 +123,8 @@ export default function RegistroMilitantePage() {
       {/* Indicador de pasos */}
       <div className="w-full max-w-sm mx-auto px-4 pt-6">
         <div className="flex items-center gap-2 mb-6">
-          <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-red-600' : 'bg-gray-200'}`} />
-          <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-red-600' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 1 ? 'bg-brand' : 'bg-gray-200'}`} />
+          <div className={`flex-1 h-2 rounded-full ${step >= 2 ? 'bg-brand' : 'bg-gray-200'}`} />
         </div>
         <p className="text-xs text-gray-400 text-right mb-2">Paso {step} de 2</p>
       </div>
@@ -154,10 +154,10 @@ export default function RegistroMilitantePage() {
                   <option>No binario</option>
                   <option>Prefiero no decir</option>
                 </select>
-                {errores.genero && <span className="text-xs text-red-500">{errores.genero}</span>}
+                {errores.genero && <span className="text-xs text-brand">{errores.genero}</span>}
               </div>
 
-              <button onClick={handleSiguiente} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors mt-2">
+              <button onClick={handleSiguiente} className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors mt-2">
                 Siguiente
               </button>
             </div>
@@ -177,7 +177,7 @@ export default function RegistroMilitantePage() {
                   <option value="">Selecciona...</option>
                   {DEPARTAMENTOS.map((d) => <option key={d}>{d}</option>)}
                 </select>
-                {errores.departamento && <span className="text-xs text-red-500">{errores.departamento}</span>}
+                {errores.departamento && <span className="text-xs text-brand">{errores.departamento}</span>}
               </div>
 
               <Field label="Municipio" name="municipio" placeholder="Ej: Medellín" value={form.municipio} onChange={handleChange} error={errores.municipio} />
@@ -194,7 +194,7 @@ export default function RegistroMilitantePage() {
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
-                {errores.contrasena && <span className="text-xs text-red-500">{errores.contrasena}</span>}
+                {errores.contrasena && <span className="text-xs text-brand">{errores.contrasena}</span>}
               </div>
 
               {/* Confirmar contraseña */}
@@ -207,22 +207,22 @@ export default function RegistroMilitantePage() {
                     {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
                 </div>
-                {errores.confirmarContrasena && <span className="text-xs text-red-500">{errores.confirmarContrasena}</span>}
+                {errores.confirmarContrasena && <span className="text-xs text-brand">{errores.confirmarContrasena}</span>}
               </div>
 
               {/* Términos */}
               <div className="flex flex-col gap-1">
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" name="terminos" checked={form.terminos} onChange={handleChange} className="mt-0.5 accent-red-600 w-4 h-4 flex-shrink-0" />
+                  <input type="checkbox" name="terminos" checked={form.terminos} onChange={handleChange} className="mt-0.5 accent-brand w-4 h-4 flex-shrink-0" />
                   <span className="text-sm text-gray-600">
-                    Acepto los <a href="#" className="text-red-600 underline">términos y condiciones</a> y la{' '}
-                    <a href="#" className="text-red-600 underline">política de privacidad</a>
+                    Acepto los <a href="#" className="text-brand underline">términos y condiciones</a> y la{' '}
+                    <a href="#" className="text-brand underline">política de privacidad</a>
                   </span>
                 </label>
-                {errores.terminos && <span className="text-xs text-red-500">{errores.terminos}</span>}
+                {errores.terminos && <span className="text-xs text-brand">{errores.terminos}</span>}
               </div>
 
-              <button type="submit" className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors mt-1">
+              <button type="submit" className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors mt-1">
                 <UserPlus size={18} />
                 Registrarme como militante
               </button>
@@ -240,11 +240,11 @@ export default function RegistroMilitantePage() {
 }
 
 function inputClass(error) {
-  return `w-full border ${error ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition`;
+  return `w-full border ${error ? 'border-brand-200' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`;
 }
 
 function selectClass(error) {
-  return `w-full border ${error ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition`;
+  return `w-full border ${error ? 'border-brand-200' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`;
 }
 
 function Field({ label, name, type = 'text', placeholder, value, onChange, error }) {
@@ -252,7 +252,7 @@ function Field({ label, name, type = 'text', placeholder, value, onChange, error
     <div className="flex flex-col gap-1">
       <label className="text-sm font-semibold text-gray-700" htmlFor={name}>{label}</label>
       <input id={name} name={name} type={type} placeholder={placeholder} value={value} onChange={onChange} className={inputClass(error)} />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && <span className="text-xs text-brand">{error}</span>}
     </div>
   );
 }

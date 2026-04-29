@@ -82,18 +82,18 @@ export default function RegistroAsambleaPage() {
   if (enviado) {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col">
-        <header className="w-full bg-red-600 py-5 px-4 flex flex-col items-center shadow-md">
+        <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
           <h1 className="text-white text-2xl font-extrabold">Nuevo Liberalismo</h1>
-          <span className="text-red-200 text-xs mt-1">Registro a asamblea</span>
+          <span className="text-brand-200 text-xs mt-1">Registro a asamblea</span>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-10">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
-            <CheckCircle size={64} className="text-red-600 mx-auto mb-4" />
+            <CheckCircle size={64} className="text-brand mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Registro exitoso!</h2>
             <p className="text-gray-500 text-sm mb-4">
               Quedaste registrado(a) en:
             </p>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-left">
+            <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 mb-6 text-left">
               <p className="font-bold text-gray-900 text-sm mb-2">{asamblea?.nombre}</p>
               <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                 <Calendar size={13} /> {asamblea?.fecha} — {asamblea?.hora}
@@ -108,7 +108,7 @@ export default function RegistroAsambleaPage() {
             </p>
             <button
               onClick={() => router.push('/')}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors"
+              className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors"
             >
               Volver al inicio
             </button>
@@ -122,14 +122,14 @@ export default function RegistroAsambleaPage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* Header */}
-      <header className="w-full bg-red-600 py-5 px-4 shadow-md">
+      <header className="w-full bg-brand py-5 px-4 shadow-md">
         <div className="max-w-sm mx-auto flex items-center gap-3">
           <button onClick={() => router.push('/')} className="text-white">
             <ArrowLeft size={22} />
           </button>
           <div>
             <h1 className="text-white text-lg font-extrabold leading-none">Nuevo Liberalismo</h1>
-            <span className="text-red-200 text-xs">Registro a una asamblea</span>
+            <span className="text-brand-200 text-xs">Registro a una asamblea</span>
           </div>
         </div>
       </header>
@@ -140,7 +140,7 @@ export default function RegistroAsambleaPage() {
         <div className="w-full max-w-sm">
           <h2 className="text-base font-bold text-gray-900 mb-1">Selecciona una asamblea</h2>
           <p className="text-xs text-gray-500 mb-3">Elige el evento al que deseas asistir</p>
-          {errores.asamblea && <p className="text-xs text-red-500 mb-2">{errores.asamblea}</p>}
+          {errores.asamblea && <p className="text-xs text-brand mb-2">{errores.asamblea}</p>}
 
           <div className="flex flex-col gap-3">
             {ASAMBLEAS.map((a) => (
@@ -150,14 +150,14 @@ export default function RegistroAsambleaPage() {
                 onClick={() => { setAsambleaSeleccionada(a.id); setErrores({ ...errores, asamblea: '' }); }}
                 className={`w-full text-left border-2 rounded-xl p-4 transition-all ${
                   asambleaSeleccionada === a.id
-                    ? 'border-red-600 bg-red-50 shadow-sm'
-                    : 'border-gray-200 bg-white hover:border-red-300'
+                    ? 'border-brand bg-brand-50 shadow-sm'
+                    : 'border-gray-200 bg-white hover:border-brand-200'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-bold text-gray-900 text-sm leading-snug">{a.nombre}</p>
                   {asambleaSeleccionada === a.id && (
-                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-red-600 mt-0.5" />
+                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-brand mt-0.5" />
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-2">
@@ -193,14 +193,14 @@ export default function RegistroAsambleaPage() {
             <div className="flex flex-col gap-1">
               <label className="text-sm font-semibold text-gray-700">Condición de asistencia</label>
               <select name="condicion" value={form.condicion} onChange={handleChange}
-                className={`w-full border ${errores.condicion ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 transition`}>
+                className={`w-full border ${errores.condicion ? 'border-brand-200' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand transition`}>
                 <option value="">Selecciona...</option>
                 <option>Militante activo</option>
                 <option>Invitado</option>
                 <option>Delegado regional</option>
                 <option>Prensa</option>
               </select>
-              {errores.condicion && <span className="text-xs text-red-500">{errores.condicion}</span>}
+              {errores.condicion && <span className="text-xs text-brand">{errores.condicion}</span>}
             </div>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function RegistroAsambleaPage() {
         <div className="w-full max-w-sm">
           <button
             type="submit"
-            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-4 rounded-xl transition-colors shadow-lg"
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-4 rounded-xl transition-colors shadow-lg"
           >
             <Calendar size={18} />
             Confirmar inscripción
@@ -230,8 +230,8 @@ function Field({ label, name, type = 'text', placeholder, value, onChange, error
     <div className="flex flex-col gap-1">
       <label className="text-sm font-semibold text-gray-700" htmlFor={name}>{label}</label>
       <input id={name} name={name} type={type} placeholder={placeholder} value={value} onChange={onChange}
-        className={`w-full border ${error ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition`} />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+        className={`w-full border ${error ? 'border-brand-200' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`} />
+      {error && <span className="text-xs text-brand">{error}</span>}
     </div>
   );
 }

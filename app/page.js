@@ -111,6 +111,13 @@ export default function HomePage() {
         {/* Botones de registro */}
         <div className="w-full max-w-sm flex flex-col gap-3">
           <a
+            href="/crear-usuario"
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3.5 rounded-xl transition-colors shadow-sm"
+          >
+            <UserPlus size={18} />
+            Crear usuario
+          </a>
+          <a
             href="/registro-militante"
             className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 active:bg-brand-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm"
           >

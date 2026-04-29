@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ArrowLeft, Calendar, CheckCircle, MapPin, Clock } from 'lucide-react';
 
 const ASAMBLEAS = [
@@ -83,8 +84,8 @@ export default function RegistroAsambleaPage() {
     return (
       <main className="min-h-screen bg-gray-50 flex flex-col">
         <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
-          <h1 className="text-white text-2xl font-extrabold">Nuevo Liberalismo</h1>
-          <span className="text-brand-200 text-xs mt-1">Registro a asamblea</span>
+          <Image src="https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png" alt="Nuevo Liberalismo" width={160} height={54} className="object-contain" priority />
+          <span className="text-brand-200 text-xs mt-2">Registro a asamblea</span>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-10">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
@@ -122,15 +123,12 @@ export default function RegistroAsambleaPage() {
     <main className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* Header */}
-      <header className="w-full bg-brand py-5 px-4 shadow-md">
+      <header className="w-full bg-brand py-4 px-4 shadow-md">
         <div className="max-w-sm mx-auto flex items-center gap-3">
           <button onClick={() => router.push('/')} className="text-white">
             <ArrowLeft size={22} />
           </button>
-          <div>
-            <h1 className="text-white text-lg font-extrabold leading-none">Nuevo Liberalismo</h1>
-            <span className="text-brand-200 text-xs">Registro a una asamblea</span>
-          </div>
+          <Image src="https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png" alt="Nuevo Liberalismo" width={140} height={46} className="object-contain" priority />
         </div>
       </header>
 

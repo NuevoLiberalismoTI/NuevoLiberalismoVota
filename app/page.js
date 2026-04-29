@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Eye, EyeOff, LogIn, UserPlus, Calendar } from 'lucide-react';
 
 export default function HomePage() {
@@ -21,13 +22,15 @@ export default function HomePage() {
 
       {/* Header */}
       <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
-        <span className="text-white text-xs font-bold uppercase tracking-widest mb-1">
-          Partido
-        </span>
-        <h1 className="text-white text-2xl sm:text-3xl font-extrabold tracking-tight">
-          Nuevo Liberalismo
-        </h1>
-        <span className="text-brand-200 text-xs mt-1">Plataforma oficial de participación</span>
+        <Image
+          src="https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png"
+          alt="Nuevo Liberalismo"
+          width={180}
+          height={60}
+          className="object-contain"
+          priority
+        />
+        <span className="text-brand-200 text-xs mt-2">Plataforma oficial de participación</span>
       </header>
 
       {/* Contenido */}

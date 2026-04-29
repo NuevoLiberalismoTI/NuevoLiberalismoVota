@@ -3,28 +3,47 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, LogIn, UserPlus, Calendar } from 'lucide-react';
-import { USERS } from './lib/data';
+import { Eye, EyeOff, LogIn, UserPlus, Calendar, Loader2 } from 'lucide-react';
+import { supabase } from './lib/supabase';
 
 export default function HomePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ usuario: '', contrasena: '' });
-  const [error, setError] = useState('');
+  const [form, setForm]     = useState({ usuario: '', contrasena: '' });
+  const [error, setError]   = useState('');
+  const [cargando, setCargando] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setError('');
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const user = USERS.find(
-      (u) => u.cedula === form.usuario.trim() && u.password === form.contrasena
-    );
-    if (!user) { setError('Usuario o contraseña incorrectos'); return; }
-    sessionStorage.setItem('usuario', JSON.stringify(user));
-    router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
+    if (!form.usuario.trim() || !form.contrasena) {
+      setError('Completa todos los campos');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      const { data, error: err } = await supabase.rpc('verificar_login', {
+        p_cedula:   form.usuario.trim(),
+        p_password: form.contrasena,
+      });
+      if (err) throw err;
+      if (!data || data.length === 0) {
+        setError('Usuario o contraseña incorrectos');
+        return;
+      }
+      const user = data[0];
+      sessionStorage.setItem('usuario', JSON.stringify(user));
+      router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
+    } catch {
+      setError('Error al conectar. Intenta de nuevo.');
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -34,16 +53,11 @@ export default function HomePage() {
       <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
         <Image
           src="https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png"
-          alt="Nuevo Liberalismo"
-          width={180}
-          height={60}
-          className="object-contain"
-          priority
+          alt="Nuevo Liberalismo" width={180} height={60} className="object-contain" priority
         />
         <span className="text-brand-200 text-xs mt-2">Plataforma oficial de participación</span>
       </header>
 
-      {/* Contenido */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-10 gap-6">
 
         {/* Card Login */}
@@ -53,107 +67,69 @@ export default function HomePage() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
 
-            {/* Usuario */}
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700" htmlFor="usuario">
-                Usuario
-              </label>
+              <label className="text-sm font-semibold text-gray-700" htmlFor="usuario">Usuario (cédula)</label>
               <input
-                id="usuario"
-                name="usuario"
-                type="text"
-                autoComplete="username"
-                value={form.usuario}
-                onChange={handleChange}
-                placeholder="Ingresa tu usuario"
+                id="usuario" name="usuario" type="text" autoComplete="username"
+                value={form.usuario} onChange={handleChange} placeholder="Ingresa tu número de cédula"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
             </div>
 
-            {/* Contraseña */}
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700" htmlFor="contrasena">
-                Contraseña
-              </label>
+              <label className="text-sm font-semibold text-gray-700" htmlFor="contrasena">Contraseña</label>
               <div className="relative">
                 <input
-                  id="contrasena"
-                  name="contrasena"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={form.contrasena}
-                  onChange={handleChange}
-                  placeholder="Ingresa tu contraseña"
+                  id="contrasena" name="contrasena"
+                  type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+                  value={form.contrasena} onChange={handleChange} placeholder="Ingresa tu contraseña"
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  aria-label={showPassword ? 'Ocultar' : 'Mostrar'}>
+                  {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
                 </button>
               </div>
-              <a href="#" className="text-xs text-brand hover:underline self-end mt-1">
-                ¿Olvidaste tu contraseña?
-              </a>
+              <a href="#" className="text-xs text-brand hover:underline self-end mt-1">¿Olvidaste tu contraseña?</a>
             </div>
 
-            {error && (
-              <p className="text-xs text-red-500 text-center -mt-1">{error}</p>
-            )}
+            {error && <p className="text-xs text-red-500 text-center -mt-1">{error}</p>}
 
-            {/* Botón iniciar sesión */}
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3 rounded-xl transition-colors mt-1"
-            >
-              <LogIn size={18} />
-              Iniciar sesión
+            <button type="submit" disabled={cargando}
+              className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors mt-1">
+              {cargando ? <Loader2 size={18} className="animate-spin"/> : <LogIn size={18}/>}
+              {cargando ? 'Verificando...' : 'Iniciar sesión'}
             </button>
           </form>
         </div>
 
-        {/* Divisor */}
         <div className="w-full max-w-sm flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-300" />
+          <div className="flex-1 h-px bg-gray-300"/>
           <span className="text-xs text-gray-400 font-medium">¿No tienes cuenta?</span>
-          <div className="flex-1 h-px bg-gray-300" />
+          <div className="flex-1 h-px bg-gray-300"/>
         </div>
 
-        {/* Botones de registro */}
         <div className="w-full max-w-sm flex flex-col gap-3">
-          <a
-            href="/crear-usuario"
-            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3.5 rounded-xl transition-colors shadow-sm"
-          >
-            <UserPlus size={18} />
-            Crear usuario
+          <a href="/crear-usuario"
+            className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3.5 rounded-xl transition-colors shadow-sm">
+            <UserPlus size={18}/> Crear usuario
           </a>
-          <a
-            href="/registro-militante"
-            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 active:bg-brand-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm"
-          >
-            <UserPlus size={18} />
-            Registrarme como militante
+          <a href="/registro-militante"
+            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 active:bg-brand-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm">
+            <UserPlus size={18}/> Registrarme como militante
           </a>
-          <a
-            href="/registro-asamblea"
-            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm"
-          >
-            <Calendar size={18} />
-            Registrarme a una asamblea
+          <a href="/registro-asamblea"
+            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm">
+            <Calendar size={18}/> Registrarme a una asamblea
           </a>
         </div>
 
       </div>
 
-      {/* Footer */}
       <footer className="text-center text-xs text-gray-400 py-4 px-4 border-t border-gray-200">
         © {new Date().getFullYear()} Nuevo Liberalismo · Todos los derechos reservados
       </footer>
-
     </main>
   );
 }

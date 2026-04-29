@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Eye, EyeOff, ArrowLeft, UserPlus, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, UserPlus, CheckCircle, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const DEPARTAMENTOS = [
   'Amazonas','Antioquia','Arauca','Atlántico','Bolívar','Boyacá','Caldas',
@@ -19,6 +20,8 @@ export default function RegistroMilitantePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [errServidor, setErrServidor] = useState('');
   const [form, setForm] = useState({
     nombres: '',
     apellidos: '',
@@ -71,9 +74,35 @@ export default function RegistroMilitantePage() {
     if (validarPaso1()) setStep(2);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (validarPaso2()) setEnviado(true);
+    if (!validarPaso2()) return;
+    setCargando(true);
+    setErrServidor('');
+    try {
+      const { error } = await supabase.from('militantes').insert([{
+        cedula:           form.cedula,
+        nombres:          form.nombres,
+        apellidos:        form.apellidos,
+        fecha_nacimiento: form.fechaNacimiento || null,
+        genero:           form.genero,
+        departamento:     form.departamento,
+        municipio:        form.municipio,
+        email:            form.email,
+        celular:          form.celular,
+        estado:           'pendiente',
+      }]);
+      if (error) {
+        if (error.code === '23505') setErrServidor('Ya existe un militante registrado con esa cédula o correo.');
+        else throw error;
+        return;
+      }
+      setEnviado(true);
+    } catch {
+      setErrServidor('Error al guardar. Verifica tu conexión e intenta de nuevo.');
+    } finally {
+      setCargando(false);
+    }
   };
 
   if (enviado) {
@@ -220,9 +249,11 @@ export default function RegistroMilitantePage() {
                 {errores.terminos && <span className="text-xs text-brand">{errores.terminos}</span>}
               </div>
 
-              <button type="submit" className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors mt-1">
-                <UserPlus size={18} />
-                Registrarme como militante
+              {errServidor && <p className="text-xs text-red-500 text-center">{errServidor}</p>}
+
+              <button type="submit" disabled={cargando} className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors mt-1">
+                {cargando ? <Loader2 size={18} className="animate-spin"/> : <UserPlus size={18}/>}
+                {cargando ? 'Guardando...' : 'Registrarme como militante'}
               </button>
             </form>
           )}

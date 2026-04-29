@@ -2,19 +2,29 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, UserPlus, Calendar } from 'lucide-react';
+import { USERS } from './lib/data';
 
 export default function HomePage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ usuario: '', contrasena: '' });
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError('');
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // lógica de login próximamente
+    const user = USERS.find(
+      (u) => u.cedula === form.usuario.trim() && u.password === form.contrasena
+    );
+    if (!user) { setError('Usuario o contraseña incorrectos'); return; }
+    sessionStorage.setItem('usuario', JSON.stringify(user));
+    router.push('/dashboard');
   };
 
   return (
@@ -89,6 +99,10 @@ export default function HomePage() {
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
+
+            {error && (
+              <p className="text-xs text-red-500 text-center -mt-1">{error}</p>
+            )}
 
             {/* Botón iniciar sesión */}
             <button

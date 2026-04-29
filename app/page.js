@@ -24,7 +24,7 @@ export default function HomePage() {
     );
     if (!user) { setError('Usuario o contraseña incorrectos'); return; }
     sessionStorage.setItem('usuario', JSON.stringify(user));
-    router.push('/dashboard');
+    router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
   };
 
   return (

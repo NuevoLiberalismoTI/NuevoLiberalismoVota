@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { LogOut, Calendar, Clock, CheckCircle, PlayCircle, Lock } from 'lucide-react';
-import { SESIONES } from '../lib/data';
+import { getSesiones, EVENTO_UPDATE } from '../lib/storage';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -16,12 +16,22 @@ const ESTADO_CONFIG = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [usuario, setUsuario] = useState(null);
+  const [usuario, setUsuario]   = useState(null);
+  const [sesiones, setSesiones] = useState([]);
+
+  const cargar = () => setSesiones(getSesiones());
 
   useEffect(() => {
     const stored = sessionStorage.getItem('usuario');
     if (!stored) { router.replace('/'); return; }
     setUsuario(JSON.parse(stored));
+    cargar();
+    window.addEventListener(EVENTO_UPDATE, cargar);
+    window.addEventListener('storage', cargar);
+    return () => {
+      window.removeEventListener(EVENTO_UPDATE, cargar);
+      window.removeEventListener('storage', cargar);
+    };
   }, [router]);
 
   const handleLogout = () => {
@@ -56,7 +66,7 @@ export default function DashboardPage() {
       <div className="w-full max-w-lg mx-auto px-4 py-4 flex flex-col gap-4 flex-1">
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Tus asambleas</h2>
 
-        {SESIONES.map((sesion) => {
+        {sesiones.map((sesion) => {
           const cfg = ESTADO_CONFIG[sesion.estado];
           const Icon = cfg.icon;
           const activa = sesion.estado === 'en_curso';

@@ -37,7 +37,31 @@ export function agregarPregunta(sesionId, pregunta) {
   const idx = sesiones.findIndex((s) => s.id === sesionId);
   if (idx === -1) return;
   const maxId = sesiones[idx].preguntas.reduce((m, p) => Math.max(m, p.id), 0);
-  sesiones[idx].preguntas.push({ ...pregunta, id: maxId + 1, enVivo: true });
+  sesiones[idx].preguntas.push({ ...pregunta, id: maxId + 1, estado: 'pendiente', enVivo: !!pregunta.enVivo });
+  saveSesiones(sesiones);
+}
+
+export function publicarPregunta(sesionId, preguntaId) {
+  const sesiones = getSesiones();
+  const idx = sesiones.findIndex((s) => s.id === sesionId);
+  if (idx === -1) return;
+  sesiones[idx].preguntas = sesiones[idx].preguntas.map((p) => ({
+    ...p,
+    estado: p.id === preguntaId ? 'activa' : p.estado === 'activa' ? 'cerrada' : p.estado,
+  }));
+  sesiones[idx].preguntaActivaId = preguntaId;
+  saveSesiones(sesiones);
+}
+
+export function cerrarPreguntaActiva(sesionId) {
+  const sesiones = getSesiones();
+  const idx = sesiones.findIndex((s) => s.id === sesionId);
+  if (idx === -1) return;
+  sesiones[idx].preguntas = sesiones[idx].preguntas.map((p) => ({
+    ...p,
+    estado: p.estado === 'activa' ? 'cerrada' : p.estado,
+  }));
+  sesiones[idx].preguntaActivaId = null;
   saveSesiones(sesiones);
 }
 

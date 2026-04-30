@@ -150,14 +150,17 @@ export default function AdminSesionPage() {
     if (!stored || JSON.parse(stored).rol !== 'admin') { router.replace('/'); return; }
     cargar();
 
-    const ch = supabase.channel(`admin-sesion-${sesionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas',          filter: `id=eq.${sesionId}` }, cargar)
+    const ch = supabase
+      .channel(`admin-sesion-${sesionId}`, { config: { broadcast: { self: true } } })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas',          filter: `id=eq.${sesionId}` },          cargar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'asamblea_preguntas', filter: `asamblea_id=eq.${sesionId}` }, cargar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inscripciones',      filter: `asamblea_id=eq.${sesionId}` }, cargar)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'asistencia',         filter: `asamblea_id=eq.${sesionId}` }, cargar)
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('[Realtime] Admin sesión conectada');
+      });
 
-    return () => supabase.removeChannel(ch);
+    return () => { supabase.removeChannel(ch); };
   }, [sesionId, router, cargar]);
 
   if (!sesion) return (

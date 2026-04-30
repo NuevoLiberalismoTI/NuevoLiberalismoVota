@@ -46,15 +46,22 @@ export default function SesionPage() {
     setUsuario(u);
     cargarEstado(u.cedula);
 
-    // Realtime: detectar cambios en la asamblea (nueva pregunta activa, estado, etc.)
-    const ch = supabase.channel(`sesion-${sesionId}`)
+    // Realtime: detectar cambios en la asamblea y sus preguntas
+    const ch = supabase
+      .channel(`sesion-usuario-${sesionId}`, { config: { broadcast: { self: true } } })
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'asambleas',
         filter: `id=eq.${sesionId}`,
       }, () => cargarEstado(u.cedula))
-      .subscribe();
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'asamblea_preguntas',
+        filter: `asamblea_id=eq.${sesionId}`,
+      }, () => cargarEstado(u.cedula))
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('[Realtime] Sesión conectada');
+      });
 
-    return () => supabase.removeChannel(ch);
+    return () => { supabase.removeChannel(ch); };
   }, [sesionId, router, cargarEstado]);
 
   // Cuando cambia el estado, reaccionar a la pregunta activa

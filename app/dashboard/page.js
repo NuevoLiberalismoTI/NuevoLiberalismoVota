@@ -34,12 +34,15 @@ export default function DashboardPage() {
     setUsuario(u);
     cargar(u.cedula);
 
-    const ch = supabase.channel('dashboard-changes')
+    const ch = supabase
+      .channel('dashboard-changes', { config: { broadcast: { self: true } } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas' },     () => cargar(u.cedula))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'inscripciones' }, () => cargar(u.cedula))
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('[Realtime] Dashboard conectado');
+      });
 
-    return () => supabase.removeChannel(ch);
+    return () => { supabase.removeChannel(ch); };
   }, [router]);
 
   const handleInscribirse = async (id) => {

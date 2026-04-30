@@ -5,14 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft, UserPlus, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
-const DEPARTAMENTOS = [
-  'Amazonas','Antioquia','Arauca','Atlántico','Bolívar','Boyacá','Caldas',
-  'Caquetá','Casanare','Cauca','Cesar','Chocó','Córdoba','Cundinamarca',
-  'Guainía','Guaviare','Huila','La Guajira','Magdalena','Meta','Nariño',
-  'Norte de Santander','Putumayo','Quindío','Risaralda','San Andrés y Providencia',
-  'Santander','Sucre','Tolima','Valle del Cauca','Vaupés','Vichada',
-];
+import { DEPARTAMENTOS, BOGOTA } from '../lib/data';
 
 export default function RegistroMilitantePage() {
   const router = useRouter();
@@ -40,7 +33,12 @@ export default function RegistroMilitantePage() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+    const newForm = { ...form, [name]: type === 'checkbox' ? checked : value };
+    // Bogotá D.C. es departamento y municipio al mismo tiempo
+    if (name === 'departamento' && value === BOGOTA) {
+      newForm.municipio = BOGOTA;
+    }
+    setForm(newForm);
     setErrores({ ...errores, [name]: '' });
   };
 
@@ -207,7 +205,21 @@ export default function RegistroMilitantePage() {
                 {errores.departamento && <span className="text-xs text-brand">{errores.departamento}</span>}
               </div>
 
-              <Field label="Municipio" name="municipio" placeholder="Ej: Medellín" value={form.municipio} onChange={handleChange} error={errores.municipio} />
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-gray-700">Municipio</label>
+                <input
+                  name="municipio"
+                  value={form.municipio}
+                  onChange={handleChange}
+                  placeholder="Ej: Medellín"
+                  disabled={form.departamento === BOGOTA}
+                  className={inputClass(errores.municipio) + (form.departamento === BOGOTA ? ' bg-gray-50 text-gray-500' : '')}
+                />
+                {form.departamento === BOGOTA && (
+                  <span className="text-xs text-gray-400">Bogotá D.C. es departamento y municipio</span>
+                )}
+                {errores.municipio && <span className="text-xs text-red-500">{errores.municipio}</span>}
+              </div>
               <Field label="Correo electrónico" name="email" type="email" placeholder="correo@ejemplo.com" value={form.email} onChange={handleChange} error={errores.email} />
               <Field label="Celular" name="celular" type="tel" placeholder="Ej: 3001234567" value={form.celular} onChange={handleChange} error={errores.celular} />
 

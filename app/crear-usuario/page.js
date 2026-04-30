@@ -8,10 +8,6 @@ import { supabase } from '../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
-function generarCodigo() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 function enmascararEmail(email) {
   if (!email) return '***@***.com';
   const [local, domain] = email.split('@');
@@ -32,7 +28,6 @@ export default function CrearUsuarioPage() {
   const [confirmar, setConfirmar]   = useState('');
   const [errPass, setErrPass]       = useState({});
 
-  const [codigoEnviado, setCodigoEnviado]     = useState('');
   const [codigoIngresado, setCodigoIngresado] = useState('');
   const [errCodigo, setErrCodigo]             = useState('');
   const [reenviando, setReenviando]           = useState(false);
@@ -78,8 +73,8 @@ export default function CrearUsuarioPage() {
     }
   };
 
-  // ── PASO 2: Validar contraseña y enviar código ───────────────────────────
-  const handleAsignarPassword = () => {
+  // ── PASO 2: Validar contraseña y generar código en Supabase ─────────────
+  const handleAsignarPassword = async () => {
     const e = {};
     if (!password) e.password = 'Campo requerido';
     else if (password.length < 8) e.password = 'Mínimo 8 caracteres';
@@ -87,45 +82,59 @@ export default function CrearUsuarioPage() {
     setErrPass(e);
     if (Object.keys(e).length > 0) return;
 
-    const codigo = generarCodigo();
-    setCodigoEnviado(codigo);
-    // En producción: llamar API de correo aquí
-    console.log(`[DEMO] Código para ${militante.email}: ${codigo}`);
-    setStep(3);
-  };
-
-  // ── PASO 3: Verificar código y crear usuario en Supabase ─────────────────
-  const handleVerificarYCrear = async () => {
-    if (!codigoIngresado.trim()) { setErrCodigo('Ingresa el código'); return; }
-    if (codigoIngresado.trim() !== codigoEnviado) { setErrCodigo('Código incorrecto'); return; }
-
     setCargando(true);
-    setErrCodigo('');
     try {
-      const { data, error } = await supabase.rpc('crear_usuario', {
-        p_cedula:   cedula.trim(),
-        p_password: password,
+      const { data, error } = await supabase.rpc('generar_codigo_creacion', {
+        p_cedula: cedula.trim(),
       });
       if (error) throw error;
-      if (!data?.ok) {
-        setErrCodigo(data?.error || 'Error al crear el usuario'); return;
-      }
-      setStep(4);
-    } catch {
-      setErrCodigo('Error al crear el usuario. Intenta de nuevo.');
+      if (!data?.ok) throw new Error(data?.error || 'Error al generar código');
+      // data.codigo es el código que llega al correo (en demo lo mostramos)
+      setCodigoIngresado('');
+      setStep(3);
+    } catch (err) {
+      setErrPass({ ...errPass, password: err.message || 'Error al enviar código. Intenta de nuevo.' });
     } finally {
       setCargando(false);
     }
   };
 
-  const handleReenviar = () => {
-    setReenviando(true);
-    const codigo = generarCodigo();
-    setCodigoEnviado(codigo);
-    setCodigoIngresado('');
+  // ── PASO 3: Verificar código en Supabase y crear usuario ─────────────────
+  const handleVerificarYCrear = async () => {
+    if (!codigoIngresado.trim()) { setErrCodigo('Ingresa el código'); return; }
+    setCargando(true);
     setErrCodigo('');
-    console.log(`[DEMO] Nuevo código: ${codigo}`);
-    setTimeout(() => setReenviando(false), 2000);
+    try {
+      const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {
+        p_cedula:   cedula.trim(),
+        p_codigo:   codigoIngresado.trim(),
+        p_password: password,
+      });
+      if (error) throw error;
+      if (!data?.ok) { setErrCodigo(data?.error || 'Código incorrecto o expirado'); return; }
+      setStep(4);
+    } catch {
+      setErrCodigo('Error al verificar. Intenta de nuevo.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleReenviar = async () => {
+    setReenviando(true);
+    setErrCodigo('');
+    try {
+      const { data, error } = await supabase.rpc('generar_codigo_creacion', {
+        p_cedula: cedula.trim(),
+      });
+      if (error) throw error;
+      if (!data?.ok) setErrCodigo(data?.error || 'Error al reenviar');
+      setCodigoIngresado('');
+    } catch {
+      setErrCodigo('Error al reenviar el código.');
+    } finally {
+      setTimeout(() => setReenviando(false), 2000);
+    }
   };
 
   const Header = ({ subtitulo }) => (
@@ -287,10 +296,8 @@ export default function CrearUsuarioPage() {
           <p className="text-sm text-gray-500 mb-1 text-center">Enviamos un código de 6 dígitos a:</p>
           <p className="text-sm font-bold text-gray-800 mb-5 text-center">{enmascararEmail(militante?.email)}</p>
 
-          {/* Demo: mostrar código */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-5 text-center">
-            <p className="text-xs text-yellow-700 font-medium">Modo demo — código generado:</p>
-            <p className="text-2xl font-bold text-yellow-800 tracking-widest mt-1">{codigoEnviado}</p>
+          <div className="bg-brand-50 border border-brand-200 rounded-xl p-3 mb-5 text-center">
+            <p className="text-xs text-brand font-medium">El código tiene vigencia de 15 minutos</p>
           </div>
 
           <div className="flex flex-col gap-1 mb-4">

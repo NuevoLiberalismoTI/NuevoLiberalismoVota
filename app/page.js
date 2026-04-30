@@ -91,7 +91,7 @@ export default function HomePage() {
                   {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
                 </button>
               </div>
-              <a href="#" className="text-xs text-brand hover:underline self-end mt-1">¿Olvidaste tu contraseña?</a>
+              <a href="/recuperar-password" className="text-xs text-brand hover:underline self-end mt-1">¿Olvidaste tu contraseña?</a>
             </div>
 
             {error && <p className="text-xs text-red-500 text-center -mt-1">{error}</p>}

@@ -39,11 +39,9 @@ export default function AdminPage() {
     setUsuario(u);
     cargar();
 
-    const ch = supabase.channel('admin-asambleas')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas' }, cargar)
-      .subscribe();
-
-    return () => supabase.removeChannel(ch);
+    // Polling cada 5 segundos para reflejar cambios de estado
+    const interval = setInterval(cargar, 5000);
+    return () => clearInterval(interval);
   }, [router]);
 
   if (!usuario) return null;

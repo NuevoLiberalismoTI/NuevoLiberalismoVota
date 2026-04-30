@@ -34,15 +34,9 @@ export default function DashboardPage() {
     setUsuario(u);
     cargar(u.cedula);
 
-    const ch = supabase
-      .channel('dashboard-changes', { config: { broadcast: { self: true } } })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas' },     () => cargar(u.cedula))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inscripciones' }, () => cargar(u.cedula))
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') console.log('[Realtime] Dashboard conectado');
-      });
-
-    return () => { supabase.removeChannel(ch); };
+    // Polling cada 5 segundos para detectar cambios de estado en asambleas
+    const interval = setInterval(() => cargar(u.cedula), 5000);
+    return () => clearInterval(interval);
   }, [router]);
 
   const handleInscribirse = async (id) => {

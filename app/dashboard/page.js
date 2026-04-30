@@ -3,115 +3,171 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LogOut, Calendar, Clock, CheckCircle, PlayCircle, Lock } from 'lucide-react';
-import { getSesiones, EVENTO_UPDATE } from '../lib/storage';
+import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
-const ESTADO_CONFIG = {
-  en_curso: { label: 'En curso', color: 'bg-green-100 text-green-700', dot: 'bg-green-500', icon: PlayCircle },
-  proxima:  { label: 'Próxima',  color: 'bg-blue-100 text-blue-700',   dot: 'bg-blue-400',  icon: Clock },
-  finalizada:{ label: 'Finalizada',color:'bg-gray-100 text-gray-500',  dot: 'bg-gray-400',  icon: CheckCircle },
+const ESTADO_CFG = {
+  en_curso:   { label: 'En curso',   color: 'bg-green-100 text-green-700', dot: 'bg-green-500',  Icon: PlayCircle  },
+  proxima:    { label: 'Próxima',    color: 'bg-blue-100 text-blue-700',   dot: 'bg-blue-400',   Icon: Clock       },
+  finalizada: { label: 'Finalizada', color: 'bg-gray-100 text-gray-500',   dot: 'bg-gray-400',   Icon: CheckCircle },
 };
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [usuario, setUsuario]   = useState(null);
-  const [sesiones, setSesiones] = useState([]);
+  const [usuario, setUsuario]       = useState(null);
+  const [sesiones, setSesiones]     = useState([]);
+  const [cargando, setCargando]     = useState(true);
+  const [accionId, setAccionId]     = useState(null);
 
-  const cargar = () => setSesiones(getSesiones());
+  const cargar = async (cedula) => {
+    const { data, error } = await supabase.rpc('get_asambleas_usuario', { p_cedula: cedula });
+    if (!error && data) setSesiones(data);
+    setCargando(false);
+  };
 
   useEffect(() => {
     const stored = sessionStorage.getItem('usuario');
     if (!stored) { router.replace('/'); return; }
-    setUsuario(JSON.parse(stored));
-    cargar();
-    window.addEventListener(EVENTO_UPDATE, cargar);
-    window.addEventListener('storage', cargar);
-    return () => {
-      window.removeEventListener(EVENTO_UPDATE, cargar);
-      window.removeEventListener('storage', cargar);
-    };
+    const u = JSON.parse(stored);
+    setUsuario(u);
+    cargar(u.cedula);
+
+    const ch = supabase.channel('dashboard-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asambleas' },     () => cargar(u.cedula))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inscripciones' }, () => cargar(u.cedula))
+      .subscribe();
+
+    return () => supabase.removeChannel(ch);
   }, [router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('usuario');
-    router.push('/');
+  const handleInscribirse = async (id) => {
+    setAccionId(id);
+    const { data } = await supabase.rpc('inscribir_usuario', { p_asamblea_id: id, p_cedula: usuario.cedula });
+    if (!data?.ok) alert(data?.error || 'Error al inscribirse');
+    await cargar(usuario.cedula);
+    setAccionId(null);
+  };
+
+  const handleCancelar = async (id) => {
+    setAccionId(id);
+    const { data } = await supabase.rpc('cancelar_inscripcion', { p_asamblea_id: id, p_cedula: usuario.cedula });
+    if (!data?.ok) alert(data?.error || 'Error al cancelar');
+    await cargar(usuario.cedula);
+    setAccionId(null);
   };
 
   if (!usuario) return null;
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
-
-      {/* Header */}
-      <header className="w-full bg-brand shadow-md">
+      <header className="w-full bg-brand shadow-md sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <Image src={LOGO} alt="Nuevo Liberalismo" width={140} height={46} className="object-contain" priority />
-          <button onClick={handleLogout} className="flex items-center gap-1.5 text-white text-xs font-semibold hover:text-brand-200 transition-colors">
-            <LogOut size={16} />
-            Salir
+          <button onClick={() => { sessionStorage.removeItem('usuario'); router.push('/'); }}
+            className="flex items-center gap-1.5 text-white text-xs font-semibold hover:text-brand-200 transition-colors">
+            <LogOut size={16} /> Salir
           </button>
         </div>
       </header>
 
-      {/* Bienvenida */}
-      <div className="w-full max-w-lg mx-auto px-4 pt-6 pb-2">
-        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Bienvenido(a)</p>
-        <h1 className="text-xl font-bold text-gray-900">{usuario.nombre}</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Cédula: {usuario.cedula}</p>
-      </div>
+      <div className="max-w-lg mx-auto w-full px-4 py-5 flex flex-col gap-4 flex-1">
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Bienvenido(a)</p>
+          <h1 className="text-xl font-bold text-gray-900">{usuario.nombre}</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Cédula: {usuario.cedula}</p>
+        </div>
 
-      {/* Sesiones */}
-      <div className="w-full max-w-lg mx-auto px-4 py-4 flex flex-col gap-4 flex-1">
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Tus asambleas</h2>
 
-        {sesiones.map((sesion) => {
-          const cfg = ESTADO_CONFIG[sesion.estado];
-          const Icon = cfg.icon;
-          const activa = sesion.estado === 'en_curso';
+        {cargando && (
+          <div className="flex justify-center py-12">
+            <Loader2 size={30} className="text-brand animate-spin" />
+          </div>
+        )}
+
+        {!cargando && sesiones.length === 0 && (
+          <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+            <p className="text-gray-400 text-sm">No hay asambleas disponibles para tu departamento</p>
+          </div>
+        )}
+
+        {sesiones.map((s) => {
+          const cfg    = ESTADO_CFG[s.estado] || ESTADO_CFG.proxima;
+          const activa = s.estado === 'en_curso';
+          const busy   = accionId === s.id;
+          const cuposAgotados = s.cupo_maximo && s.total_inscritos >= s.cupo_maximo;
 
           return (
-            <div
-              key={sesion.id}
-              className={`bg-white rounded-2xl shadow-sm border-2 p-5 transition-all ${activa ? 'border-brand' : 'border-gray-100'}`}
-            >
-              {/* Badge estado */}
-              <div className="flex items-center justify-between mb-3">
-                <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full ${cfg.color}`}>
+            <div key={s.id} className={`bg-white rounded-2xl shadow-sm border-2 p-5 transition-all ${activa && s.esta_inscrito ? 'border-brand' : 'border-gray-100'}`}>
+
+              {/* Cabecera */}
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 text-sm leading-snug">{s.nombre}</p>
+                  <p className="text-xs font-mono text-gray-400 mt-0.5">{s.id}</p>
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold flex-shrink-0 ${cfg.color}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                   {cfg.label}
                 </span>
-                <Icon size={18} className={activa ? 'text-brand' : 'text-gray-300'} />
               </div>
 
-              <h3 className="font-bold text-gray-900 mb-1 leading-snug">{sesion.nombre}</h3>
-
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-0.5">
-                <Calendar size={12} /> {sesion.fecha} · {sesion.hora}
+              {/* Detalles */}
+              <div className="flex flex-col gap-1 mb-4">
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Calendar size={11} /> {s.fecha} · {s.hora}
+                </span>
+                {s.lugar && (
+                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <MapPin size={11} /> {s.lugar}
+                  </span>
+                )}
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.tipo_nombre}</span>
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.colectivo_nombre}</span>
+                  {s.cupo_maximo && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cuposAgotados ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
+                      {s.total_inscritos}/{s.cupo_maximo} cupos
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
-                <Clock size={12} /> {sesion.lugar}
-              </div>
 
-              {activa ? (
-                <button
-                  onClick={() => router.push(`/sesion/${sesion.id}`)}
-                  className="w-full bg-brand hover:bg-brand-hover active:bg-brand-active text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-                >
-                  <PlayCircle size={18} />
-                  Ingresar a la sesión
-                </button>
-              ) : sesion.estado === 'proxima' ? (
-                <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl text-sm cursor-not-allowed">
-                  <Lock size={15} />
-                  Aún no disponible
+              {/* Acciones */}
+              {s.estado === 'finalizada' ? (
+                <div className="w-full flex items-center justify-center gap-2 bg-gray-50 text-gray-400 font-semibold py-2.5 rounded-xl text-sm">
+                  <CheckCircle size={14} /> Sesión finalizada
+                </div>
+              ) : s.esta_inscrito ? (
+                <div className="flex flex-col gap-2">
+                  {activa ? (
+                    <button onClick={() => router.push(`/sesion/${encodeURIComponent(s.id)}`)}
+                      className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors">
+                      <PlayCircle size={18} /> Ingresar a la sesión
+                    </button>
+                  ) : (
+                    <div className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 font-semibold py-2.5 rounded-xl text-sm border border-blue-200">
+                      <CheckCircle size={14} /> Inscrito — sesión próximamente
+                    </div>
+                  )}
+                  <button onClick={() => handleCancelar(s.id)} disabled={busy}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-red-500 py-1.5 transition-colors disabled:opacity-50">
+                    {busy ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={12} />}
+                    Cancelar inscripción
+                  </button>
+                </div>
+              ) : cuposAgotados ? (
+                <div className="w-full flex items-center justify-center gap-2 bg-red-50 text-red-500 font-semibold py-2.5 rounded-xl text-sm border border-red-200">
+                  Sin cupos disponibles
                 </div>
               ) : (
-                <div className="w-full flex items-center justify-center gap-2 bg-gray-50 text-gray-400 font-semibold py-3 rounded-xl text-sm">
-                  <CheckCircle size={15} />
-                  Sesión finalizada
-                </div>
+                <button onClick={() => handleInscribirse(s.id)} disabled={busy}
+                  className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 font-bold py-3 rounded-xl transition-colors disabled:opacity-60">
+                  {busy ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
+                  {busy ? 'Inscribiendo...' : 'Inscribirme'}
+                </button>
               )}
             </div>
           );

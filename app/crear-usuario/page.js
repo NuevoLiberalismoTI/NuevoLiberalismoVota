@@ -84,12 +84,11 @@ export default function CrearUsuarioPage() {
 
     setCargando(true);
     try {
-      const { data, error } = await supabase.rpc('generar_codigo_creacion', {
-        p_cedula: cedula.trim(),
+      const { data, error } = await supabase.functions.invoke('enviar-codigo', {
+        body: { cedula: cedula.trim(), tipo: 'creacion' },
       });
       if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || 'Error al generar código');
-      // data.codigo es el código que llega al correo (en demo lo mostramos)
+      if (!data?.ok) throw new Error(data?.error || 'Error al enviar código');
       setCodigoIngresado('');
       setStep(3);
     } catch (err) {
@@ -124,8 +123,8 @@ export default function CrearUsuarioPage() {
     setReenviando(true);
     setErrCodigo('');
     try {
-      const { data, error } = await supabase.rpc('generar_codigo_creacion', {
-        p_cedula: cedula.trim(),
+      const { data, error } = await supabase.functions.invoke('enviar-codigo', {
+        body: { cedula: cedula.trim(), tipo: 'creacion' },
       });
       if (error) throw error;
       if (!data?.ok) setErrCodigo(data?.error || 'Error al reenviar');

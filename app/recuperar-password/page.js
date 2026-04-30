@@ -33,8 +33,8 @@ export default function RecuperarPasswordPage() {
     if (!cedula.trim()) { setError('Ingresa tu número de cédula'); return; }
     setCargando(true); setError('');
     try {
-      const { data, error: err } = await supabase.rpc('solicitar_cambio_password', {
-        p_cedula: cedula.trim(),
+      const { data, error: err } = await supabase.functions.invoke('enviar-codigo', {
+        body: { cedula: cedula.trim(), tipo: 'cambio_password' },
       });
       if (err) throw err;
       if (!data?.ok) { setError(data?.error || 'Cédula no encontrada'); return; }
@@ -57,7 +57,9 @@ export default function RecuperarPasswordPage() {
   const handleReenviar = async () => {
     setReenviando(true); setError('');
     try {
-      const { data, error: err } = await supabase.rpc('solicitar_cambio_password', { p_cedula: cedula.trim() });
+      const { data, error: err } = await supabase.functions.invoke('enviar-codigo', {
+        body: { cedula: cedula.trim(), tipo: 'cambio_password' },
+      });
       if (err) throw err;
       if (!data?.ok) setError(data?.error || 'Error al reenviar');
       setCodigo('');

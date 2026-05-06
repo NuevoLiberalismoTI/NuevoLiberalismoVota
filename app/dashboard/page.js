@@ -164,8 +164,25 @@ export default function DashboardPage() {
 
               {/* Acciones */}
               {s.estado === 'finalizada' ? (
-                <div className="w-full flex items-center justify-center gap-2 bg-gray-50 text-gray-400 font-semibold py-2.5 rounded-xl text-sm">
-                  <CheckCircle size={14} /> Sesión finalizada
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <div className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border ${
+                      s.esta_inscrito
+                        ? 'bg-green-50 border-green-200 text-green-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-400'
+                    }`}>
+                      {s.esta_inscrito ? <CheckCircle size={13} /> : <UserMinus size={13} />}
+                      {s.esta_inscrito ? 'Inscrito' : 'No inscrito'}
+                    </div>
+                    <div className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold border ${
+                      s.ya_asistio
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-400'
+                    }`}>
+                      {s.ya_asistio ? <CheckCircle size={13} /> : <UserMinus size={13} />}
+                      {s.ya_asistio ? 'Asistió' : 'No asistió'}
+                    </div>
+                  </div>
                 </div>
               ) : s.esta_inscrito ? (
                 <div className="flex flex-col gap-2">

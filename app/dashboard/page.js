@@ -183,6 +183,12 @@ export default function DashboardPage() {
                       {s.ya_asistio ? 'Asistió' : 'No asistió'}
                     </div>
                   </div>
+                  {s.ya_asistio && (
+                    <button onClick={() => router.push(`/sesion/${encodeURIComponent(s.id)}`)}
+                      className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-2.5 rounded-xl text-xs transition-colors">
+                      <CheckCircle size={13} /> Ver resumen de votación
+                    </button>
+                  )}
                 </div>
               ) : s.esta_inscrito ? (
                 <div className="flex flex-col gap-2">

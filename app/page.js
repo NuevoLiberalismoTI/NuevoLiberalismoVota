@@ -118,10 +118,7 @@ export default function HomePage() {
             className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 active:bg-brand-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm">
             <UserPlus size={18}/> Registrarme como militante
           </a>
-          <a href="/registro-asamblea"
-            className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 font-bold py-3.5 rounded-xl transition-colors shadow-sm">
-            <Calendar size={18}/> Registrarme a una asamblea
-          </a>
+       
         </div>
 
       </div>

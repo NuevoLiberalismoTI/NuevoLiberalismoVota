@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar } from 'lucide-react';
+import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar, Radio } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [sesiones, setSesiones]     = useState([]);
   const [cargando, setCargando]     = useState(true);
   const [accionId, setAccionId]     = useState(null);
+  const [tab, setTab]               = useState('activas');
 
   const cargar = async (cedula) => {
     const { data, error } = await supabase.rpc('get_asambleas_usuario', { p_cedula: cedula });
@@ -76,7 +77,30 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 mt-0.5">Cédula: {usuario.cedula}</p>
         </div>
 
-        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Tus asambleas</h2>
+        {/* Tabs */}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          {[
+            { key: 'activas',     label: 'En curso / Próximas', Icon: Radio        },
+            { key: 'finalizadas', label: 'Finalizadas',          Icon: CheckCircle  },
+          ].map(({ key, label, Icon }) => {
+            const count = key === 'activas'
+              ? sesiones.filter((s) => s.estado !== 'finalizada').length
+              : sesiones.filter((s) => s.estado === 'finalizada').length;
+            return (
+              <button key={key} onClick={() => setTab(key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                  tab === key ? 'bg-white text-brand shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}>
+                <Icon size={12} />{label}
+                {count > 0 && (
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                    tab === key ? 'bg-brand text-white' : 'bg-gray-300 text-gray-600'
+                  }`}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
         {cargando && (
           <div className="flex justify-center py-12">
@@ -84,13 +108,19 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {!cargando && sesiones.length === 0 && (
+        {!cargando && sesiones.filter((s) =>
+          tab === 'activas' ? s.estado !== 'finalizada' : s.estado === 'finalizada'
+        ).length === 0 && (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-            <p className="text-gray-400 text-sm">No hay asambleas disponibles para tu departamento</p>
+            <p className="text-gray-400 text-sm">
+              {tab === 'activas' ? 'No hay asambleas activas o próximas' : 'No hay asambleas finalizadas'}
+            </p>
           </div>
         )}
 
-        {sesiones.map((s) => {
+        {sesiones.filter((s) =>
+          tab === 'activas' ? s.estado !== 'finalizada' : s.estado === 'finalizada'
+        ).map((s) => {
           const cfg    = ESTADO_CFG[s.estado] || ESTADO_CFG.proxima;
           const activa = s.estado === 'en_curso';
           const busy   = accionId === s.id;

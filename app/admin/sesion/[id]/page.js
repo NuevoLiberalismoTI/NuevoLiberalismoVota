@@ -282,25 +282,15 @@ export default function AdminSesionPage() {
           )}
 
           {cfg.next ? (
-            cfg.next === 'en_curso' && !quorumAlcanzado ? (
-              <div className="w-full flex flex-col items-center gap-1 bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl text-sm text-center">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={15} className="text-orange-400" />
-                  No se puede iniciar sin quorum
-                </div>
-                <span className="text-xs font-normal">Faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''} para alcanzarlo</span>
-              </div>
-            ) : (
-              <button onClick={handleCambiarEstado} disabled={cargando}
-                className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-colors disabled:opacity-60 ${
-                  cfg.next==='en_curso'   ?'bg-green-500 hover:bg-green-600':
-                  cfg.next==='finalizada'?'bg-gray-500 hover:bg-gray-600':'bg-blue-500 hover:bg-blue-600'}`}>
-                {cfg.next==='en_curso'    && <PlayCircle size={16}/>}
-                {cfg.next==='finalizada'  && <Square size={16}/>}
-                {cfg.next==='proxima'     && <CheckCircle size={16}/>}
-                {cfg.nextLabel}
-              </button>
-            )
+            <button onClick={handleCambiarEstado} disabled={cargando}
+              className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-colors disabled:opacity-60 ${
+                cfg.next==='en_curso'   ?'bg-green-500 hover:bg-green-600':
+                cfg.next==='finalizada'?'bg-gray-500 hover:bg-gray-600':'bg-blue-500 hover:bg-blue-600'}`}>
+              {cfg.next==='en_curso'    && <PlayCircle size={16}/>}
+              {cfg.next==='finalizada'  && <Square size={16}/>}
+              {cfg.next==='proxima'     && <CheckCircle size={16}/>}
+              {cfg.nextLabel}
+            </button>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-500 font-semibold py-3 rounded-xl text-sm">
               <CheckCircle size={14}/> Sesión finalizada
@@ -422,7 +412,9 @@ export default function AdminSesionPage() {
             <div className="flex gap-2">
               {enCurso && (
                 <button onClick={() => { setMostrarVivo(!mostrarVivo); setMostrarForm(false); }}
-                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-2 rounded-lg">
+                  disabled={!quorumAlcanzado}
+                  title={!quorumAlcanzado ? `Sin quorum — faltan ${faltanParaQuorum} asistentes` : ''}
+                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
                   <Zap size={12}/> En vivo
                 </button>
               )}
@@ -486,10 +478,16 @@ export default function AdminSesionPage() {
                   {enCurso && (
                     <div className="mt-2">
                       {p.estado === 'pendiente' && (
-                        <button onClick={() => handlePublicar(p.id)} disabled={hayActiva || cargando}
-                          className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                          <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar esta pregunta'}
-                        </button>
+                        !quorumAlcanzado ? (
+                          <div className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-200 text-orange-500 font-semibold py-2.5 rounded-xl text-xs">
+                            <AlertTriangle size={13}/> Sin quorum — faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''}
+                          </div>
+                        ) : (
+                          <button onClick={() => handlePublicar(p.id)} disabled={hayActiva || cargando}
+                            className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                            <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar esta pregunta'}
+                          </button>
+                        )
                       )}
                       {p.estado === 'activa' && (
                         <button onClick={handleCerrar} disabled={cargando}

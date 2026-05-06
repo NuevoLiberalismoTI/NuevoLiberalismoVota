@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2 } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_SESION = {
@@ -112,13 +112,15 @@ export default function AdminSesionPage() {
   const { id }   = useParams();
   const sesionId = decodeURIComponent(id);
 
-  const [sesion, setSesion]             = useState(null);
-  const [preguntas, setPreguntas]       = useState([]);
+  const [sesion, setSesion]               = useState(null);
+  const [preguntas, setPreguntas]         = useState([]);
   const [preguntasBase, setPreguntasBase] = useState([]);
-  const [stats, setStats]               = useState(null);
-  const [mostrarForm, setMostrarForm]   = useState(false);
-  const [mostrarVivo, setMostrarVivo]   = useState(false);
-  const [cargando, setCargando]         = useState(false);
+  const [stats, setStats]                 = useState(null);
+  const [resultados, setResultados]       = useState([]);
+  const [tab, setTab]                     = useState('preguntas'); // 'preguntas' | 'resultados'
+  const [mostrarForm, setMostrarForm]     = useState(false);
+  const [mostrarVivo, setMostrarVivo]     = useState(false);
+  const [cargando, setCargando]           = useState(false);
 
   const cargar = useCallback(async () => {
     const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`);
@@ -129,6 +131,7 @@ export default function AdminSesionPage() {
     setPreguntas(json.preguntas);
     setPreguntasBase(json.preguntasBase);
     setStats(json.stats);
+    setResultados(json.resultados || []);
   }, [sesionId]);
 
   useEffect(() => {
@@ -269,8 +272,92 @@ export default function AdminSesionPage() {
           ) : null;
         })()}
 
-        {/* Preguntas */}
-        <div>
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-gray-200">
+          {[
+            { key: 'preguntas',  label: 'Preguntas',  Icon: Radio     },
+            { key: 'resultados', label: 'Resultados', Icon: BarChart2 },
+          ].map(({ key, label, Icon }) => (
+            <button key={key} onClick={() => setTab(key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors -mb-px ${
+                tab === key
+                  ? 'border-brand text-brand'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              <Icon size={13}/>{label}
+              {key === 'resultados' && resultados.length > 0 && (
+                <span className="ml-1 bg-brand text-white rounded-full px-1.5 py-0.5 text-[10px] leading-none">
+                  {resultados.filter((r) => r.total_votos > 0).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Resultados */}
+        {tab === 'resultados' && (
+          <div className="flex flex-col gap-4">
+            {resultados.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-8">No hay preguntas en esta sesión todavía</p>
+            )}
+            {resultados.map((preg) => {
+              const total = Number(preg.total_votos) || 0;
+              const maxVotos = preg.opciones?.length
+                ? Math.max(...preg.opciones.map((o) => Number(o.total)))
+                : 0;
+              return (
+                <div key={preg.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <p className="text-sm font-semibold text-gray-900 leading-snug flex-1">{preg.texto}</p>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                      preg.estado === 'activa'  ? 'bg-green-100 text-green-700' :
+                      preg.estado === 'cerrada' ? 'bg-slate-100 text-slate-600' :
+                                                  'bg-gray-100 text-gray-400'
+                    }`}>{preg.estado}</span>
+                  </div>
+
+                  <p className="text-xs text-gray-400 mb-3">
+                    {total} {total === 1 ? 'voto' : 'votos'}
+                    {stats?.asistentes > 0 && (
+                      <span className="ml-1 text-gray-300">
+                        · {Math.round((total / stats.asistentes) * 100)}% participación
+                      </span>
+                    )}
+                  </p>
+
+                  {total === 0 ? (
+                    <p className="text-xs text-gray-300 italic">Sin votos aún</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {(preg.opciones || []).map((op) => {
+                        const pct = maxVotos > 0 ? Math.round((Number(op.total) / maxVotos) * 100) : 0;
+                        const pctTotal = total > 0 ? Math.round((Number(op.total) / total) * 100) : 0;
+                        const esSI  = op.respuesta === 'SI';
+                        const esNO  = op.respuesta === 'NO';
+                        const barColor = esSI ? 'bg-green-500' : esNO ? 'bg-red-400' : 'bg-brand';
+                        return (
+                          <div key={op.respuesta}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-gray-700">{op.respuesta}</span>
+                              <span className="text-xs text-gray-500">{op.total} ({pctTotal}%)</span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                              <div className={`${barColor} h-2.5 rounded-full transition-all duration-500`}
+                                style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Tab: Preguntas */}
+        {tab === 'preguntas' && <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
               Preguntas ({preguntas.length})
@@ -364,7 +451,8 @@ export default function AdminSesionPage() {
               );
             })}
           </div>
-        </div>
+        </div>}
+
       </div>
     </main>
   );

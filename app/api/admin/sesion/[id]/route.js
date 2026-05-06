@@ -15,12 +15,14 @@ export async function GET(request, { params }) {
     { data: pb },
     { count: inscritos },
     { count: asistentes },
+    { data: resultados },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden)').eq('asamblea_id', sesionId).order('created_at'),
     supabase.from('preguntas_base').select('*').eq('activa', true),
     supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
+    supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
@@ -31,6 +33,7 @@ export async function GET(request, { params }) {
     preguntas: (pregs || []).map((p) => ({ ...p, candidatos: p.candidatos?.sort((a, b) => a.orden - b.orden) || [] })),
     preguntasBase: pb || [],
     stats: { inscritos: inscritos || 0, asistentes: asistentes || 0 },
+    resultados: resultados?.preguntas || [],
   });
 }
 

@@ -31,7 +31,8 @@ export default function NuevaSesionPage() {
 
   useEffect(() => {
     const { tipo, colectivo, departamento, zona, fecha } = form;
-    if (tipo && colectivo && departamento && zona && fecha) {
+    const deptoOk = tipo === 'NACIONAL' || !!departamento;
+    if (tipo && colectivo && deptoOk && zona && fecha) {
       setConsecutivo(generarConsecutivo({ tipo, colectivo, departamento, zona, fecha }));
     } else {
       setConsecutivo('');

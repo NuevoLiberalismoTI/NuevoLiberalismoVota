@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, AlertTriangle } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_SESION = {
@@ -155,6 +155,13 @@ export default function AdminSesionPage() {
   const activaId = sesion.pregunta_activa_id;
   const hayActiva= !!activaId;
 
+  const quorumRequerido  = stats ? Math.floor(stats.inscritos / 2) + 1 : 0;
+  const quorumAlcanzado  = stats ? stats.asistentes >= quorumRequerido : false;
+  const faltanParaQuorum = stats ? Math.max(0, quorumRequerido - stats.asistentes) : 0;
+  const pctAsistencia    = stats?.inscritos > 0
+    ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100))
+    : 0;
+
   const handleGuardar = async ({ tipo, texto, opciones, enVivo, pregunta_base_id }) => {
     setCargando(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preguntas`, {
@@ -228,22 +235,72 @@ export default function AdminSesionPage() {
           </div>
 
           {stats && (
-            <div className="flex gap-4 text-xs text-gray-500 mb-4">
-              <span>👥 <strong>{stats.inscritos}</strong> inscritos</span>
-              <span>✅ <strong>{stats.asistentes}</strong> asistentes</span>
+            <div className="flex flex-col gap-3 mb-4">
+              {/* Contadores */}
+              <div className="flex gap-4 text-xs text-gray-500">
+                <span><Users size={11} className="inline mr-1" /><strong>{stats.inscritos}</strong> inscritos</span>
+                <span>✅ <strong>{stats.asistentes}</strong> asistentes</span>
+                <span className="text-gray-400">Quorum: <strong>{quorumRequerido}</strong></span>
+              </div>
+
+              {/* Barra de progreso */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-semibold text-gray-500">Asistencia</span>
+                  <span className="text-xs font-bold text-gray-700">{pctAsistencia}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2.5 relative">
+                  <div
+                    className={`h-2.5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
+                    style={{ width: `${pctAsistencia}%` }}
+                  />
+                  {/* Marcador de quorum */}
+                  {stats.inscritos > 0 && (
+                    <div
+                      className="absolute top-0 h-2.5 w-0.5 bg-brand"
+                      style={{ left: `${Math.min(100, Math.round((quorumRequerido / stats.inscritos) * 100))}%` }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Indicador quorum */}
+              {quorumAlcanzado ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                  <CheckCircle size={15} className="text-green-600 flex-shrink-0" />
+                  <span className="text-xs font-bold text-green-700">Hay quorum — la asamblea puede iniciar</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                  <AlertTriangle size={15} className="text-orange-500 flex-shrink-0" />
+                  <span className="text-xs font-bold text-orange-600">
+                    Sin quorum — faltan <strong>{faltanParaQuorum}</strong> asistente{faltanParaQuorum !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
           {cfg.next ? (
-            <button onClick={handleCambiarEstado} disabled={cargando}
-              className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-colors disabled:opacity-60 ${
-                cfg.next==='en_curso'   ?'bg-green-500 hover:bg-green-600':
-                cfg.next==='finalizada'?'bg-gray-500 hover:bg-gray-600':'bg-blue-500 hover:bg-blue-600'}`}>
-              {cfg.next==='en_curso'    && <PlayCircle size={16}/>}
-              {cfg.next==='finalizada'  && <Square size={16}/>}
-              {cfg.next==='proxima'     && <CheckCircle size={16}/>}
-              {cfg.nextLabel}
-            </button>
+            cfg.next === 'en_curso' && !quorumAlcanzado ? (
+              <div className="w-full flex flex-col items-center gap-1 bg-gray-100 text-gray-400 font-semibold py-3 rounded-xl text-sm text-center">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={15} className="text-orange-400" />
+                  No se puede iniciar sin quorum
+                </div>
+                <span className="text-xs font-normal">Faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''} para alcanzarlo</span>
+              </div>
+            ) : (
+              <button onClick={handleCambiarEstado} disabled={cargando}
+                className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-colors disabled:opacity-60 ${
+                  cfg.next==='en_curso'   ?'bg-green-500 hover:bg-green-600':
+                  cfg.next==='finalizada'?'bg-gray-500 hover:bg-gray-600':'bg-blue-500 hover:bg-blue-600'}`}>
+                {cfg.next==='en_curso'    && <PlayCircle size={16}/>}
+                {cfg.next==='finalizada'  && <Square size={16}/>}
+                {cfg.next==='proxima'     && <CheckCircle size={16}/>}
+                {cfg.nextLabel}
+              </button>
+            )
           ) : (
             <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-500 font-semibold py-3 rounded-xl text-sm">
               <CheckCircle size={14}/> Sesión finalizada

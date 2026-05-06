@@ -367,26 +367,27 @@ export default function AdminSesionPage() {
               <p className="text-sm text-gray-400 text-center py-8">No hay preguntas en esta sesión todavía</p>
             )}
             {resultados.map((preg) => {
-              const total   = Number(preg.total_votos) || 0;
-              const umbral  = Number(preg.umbral) || 0;
-              const maxVotos = preg.opciones?.length
+              const total      = Number(preg.total_votos) || 0;
+              const umbral     = Number(preg.umbral) || 0;
+              const baseUmbral = Number(preg.base_umbral) || 0;
+              const esValida   = preg.es_valida;
+              const ganador    = preg.ganador;
+              const esCerrada  = preg.estado === 'cerrada';
+              const maxVotos   = preg.opciones?.length
                 ? Math.max(...preg.opciones.map((o) => Number(o.total)))
                 : 0;
-              const esValida = preg.es_valida;
-              const ganador  = preg.ganador;
-              const esCerrada = preg.estado === 'cerrada';
 
-              const baseLabel = preg.tipo_mayoria === 'absoluta'
-                ? `${stats?.inscritos ?? '?'} inscritos`
-                : `${total} votos emitidos`;
+              const pctParticipacion = baseUmbral > 0 ? Math.min(100, Math.round((total / baseUmbral) * 100)) : 0;
+              const pctUmbral        = baseUmbral > 0 ? Math.min(100, Math.round((umbral / baseUmbral) * 100)) : 50;
+              const baseLabel        = preg.tipo_mayoria === 'absoluta' ? 'inscritos' : 'asistentes';
 
               return (
-                <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 ${
-                  esCerrada && esValida  ? 'border-green-200' :
-                  esCerrada && esValida === false ? 'border-red-200' : 'border-gray-100'
+                <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 transition-colors ${
+                  esCerrada && esValida         ? 'border-green-200' :
+                  esCerrada && esValida === false ? 'border-red-200'   : 'border-gray-100'
                 }`}>
                   {/* Cabecera */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2 mb-3">
                     <p className="text-sm font-semibold text-gray-900 leading-snug flex-1">{preg.texto}</p>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -399,67 +400,87 @@ export default function AdminSesionPage() {
                     </div>
                   </div>
 
-                  {/* Validez (solo cuando está cerrada) */}
+                  {/* Barra de participación vs umbral */}
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-semibold text-gray-500">Participación</span>
+                      <span className="text-xs text-gray-500">
+                        <strong className={total >= umbral ? 'text-green-600' : 'text-orange-500'}>{total}</strong>
+                        {' / '}{umbral} requeridos ({baseUmbral} {baseLabel})
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-3 relative">
+                      <div
+                        className={`h-3 rounded-full transition-all duration-700 ${total >= umbral ? 'bg-green-500' : 'bg-orange-400'}`}
+                        style={{ width: `${pctParticipacion}%` }}
+                      />
+                      <div
+                        className="absolute top-0 h-3 w-0.5 bg-brand"
+                        style={{ left: `${pctUmbral}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-300 text-right mt-0.5">│ = umbral 50%+1</p>
+                  </div>
+
+                  {/* Validez al cerrar */}
                   {esCerrada && (
-                    <div className={`flex items-center gap-2 rounded-xl px-3 py-2 mb-3 ${
+                    <div className={`flex items-start gap-2 rounded-xl px-3 py-2 mb-3 ${
                       esValida ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>
                       {esValida ? (
                         <>
-                          <CheckCircle size={14} className="text-green-600 flex-shrink-0" />
-                          <span className="text-xs font-bold text-green-700">
-                            {ganador === 'SI' ? 'APROBADA' : ganador === 'NO' ? 'RECHAZADA' : `ELEGIDO: ${ganador}`}
-                            {' — '}alcanzó mayoría {preg.tipo_mayoria}
-                          </span>
+                          <CheckCircle size={14} className="text-green-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-green-700">VOTACIÓN VÁLIDA</p>
+                            <p className="text-xs text-green-600">
+                              {total} votos superaron el umbral de {umbral} ({baseLabel}).
+                              {ganador && <span className="font-bold"> Resultado: {ganador}</span>}
+                            </p>
+                          </div>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
-                          <span className="text-xs font-bold text-red-600">
-                            SIN MAYORÍA — se requerían {umbral} votos ({baseLabel})
-                          </span>
+                          <AlertTriangle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-red-600">VOTACIÓN INVÁLIDA</p>
+                            <p className="text-xs text-red-500">
+                              Solo {total} votos de los {umbral} requeridos (50%+1 de {baseUmbral} {baseLabel}).
+                              {ganador && <span> Opción más votada: {ganador}</span>}
+                            </p>
+                          </div>
                         </>
                       )}
                     </div>
                   )}
 
-                  {/* Conteo y umbral */}
-                  <p className="text-xs text-gray-400 mb-3">
-                    <strong className="text-gray-600">{total}</strong> {total === 1 ? 'voto' : 'votos'}
-                    <span className="mx-1">·</span>
-                    Umbral: <strong className="text-gray-600">{umbral}</strong> ({preg.tipo_mayoria === 'absoluta' ? '50%+1 inscritos' : '50%+1 votos'})
-                  </p>
-
+                  {/* Distribución de votos por opción */}
                   {total === 0 ? (
                     <p className="text-xs text-gray-300 italic">Sin votos aún</p>
                   ) : (
                     <div className="flex flex-col gap-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Distribución</p>
                       {(preg.opciones || []).map((op) => {
                         const opTotal  = Number(op.total);
                         const pctBarra = maxVotos > 0 ? Math.round((opTotal / maxVotos) * 100) : 0;
-                        const pctTotal = total > 0 ? Math.round((opTotal / total) * 100) : 0;
-                        const esGanador = esCerrada && op.respuesta === ganador && esValida;
+                        const pctTotal = total  > 0 ? Math.round((opTotal / total)   * 100) : 0;
+                        const esGanador = esCerrada && op.respuesta === ganador;
                         const barColor  = op.respuesta === 'SI' ? 'bg-green-500'
                                         : op.respuesta === 'NO' ? 'bg-red-400' : 'bg-brand';
-                        const umbralPct = maxVotos > 0 ? Math.min(100, Math.round((umbral / maxVotos) * 100)) : 0;
                         return (
                           <div key={op.respuesta}>
                             <div className="flex items-center justify-between mb-1">
-                              <span className={`text-xs font-semibold ${esGanador ? 'text-green-700' : 'text-gray-700'}`}>
-                                {esGanador ? '✓ ' : ''}{op.respuesta}
+                              <span className={`text-xs font-semibold ${esGanador && esValida ? 'text-green-700' : 'text-gray-700'}`}>
+                                {esGanador && esValida ? '✓ ' : ''}{op.respuesta}
                               </span>
-                              <span className="text-xs text-gray-500">{opTotal} ({pctTotal}%)</span>
+                              <span className="text-xs text-gray-500">{opTotal} votos ({pctTotal}%)</span>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2.5 relative">
-                              <div className={`${barColor} h-2.5 rounded-full transition-all duration-500`}
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div className={`${barColor} h-2 rounded-full transition-all duration-500`}
                                 style={{ width: `${pctBarra}%` }} />
-                              <div className="absolute top-0 h-2.5 w-0.5 bg-gray-500 opacity-50"
-                                style={{ left: `${umbralPct}%` }} />
                             </div>
                           </div>
                         );
                       })}
-                      <p className="text-[10px] text-gray-300 text-right">│ = umbral requerido</p>
                     </div>
                   )}
                 </div>

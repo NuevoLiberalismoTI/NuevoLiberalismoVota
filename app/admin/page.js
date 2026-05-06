@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { LogOut, Plus, PlayCircle, Clock, CheckCircle, Settings, BarChart2, FileEdit, Loader2 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_CFG = {
@@ -23,11 +21,11 @@ export default function AdminPage() {
   const [filtro, setFiltro]     = useState('todas');
 
   const cargar = async () => {
-    const { data, error } = await supabase
-      .from('asambleas')
-      .select(`*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)`)
-      .order('created_at', { ascending: false });
-    if (!error && data) setSesiones(data);
+    const res = await fetch('/api/admin/sesiones');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok) setSesiones(json.data);
+    }
     setCargando(false);
   };
 
@@ -61,7 +59,11 @@ export default function AdminPage() {
           <Image src={LOGO} alt="Nuevo Liberalismo" width={130} height={44} className="object-contain" priority />
           <div className="flex items-center gap-3">
             <span className="hidden sm:block text-brand-200 text-xs font-semibold">Panel Admin</span>
-            <button onClick={() => { sessionStorage.removeItem('usuario'); router.push('/'); }}
+            <button onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                sessionStorage.removeItem('usuario');
+                router.push('/');
+              }}
               className="flex items-center gap-1.5 text-white text-xs font-semibold hover:text-brand-200 transition-colors">
               <LogOut size={16} /> Salir
             </button>

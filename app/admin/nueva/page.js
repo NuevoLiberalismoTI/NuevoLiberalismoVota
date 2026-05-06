@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
 import { DEPARTAMENTOS_CON_CODIGO, generarConsecutivo } from '../../lib/data';
-import { supabase } from '../../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', hora: '', lugar: '' };
@@ -24,13 +23,9 @@ export default function NuevaSesionPage() {
     const stored = sessionStorage.getItem('usuario');
     if (!stored || JSON.parse(stored).rol !== 'admin') { router.replace('/'); return; }
 
-    // Cargar paramétricas desde Supabase
-    Promise.all([
-      supabase.from('tipos_asamblea').select('*').eq('activo', true).order('orden'),
-      supabase.from('colectivos').select('*').eq('activo', true).order('orden'),
-    ]).then(([{ data: t }, { data: c }]) => {
-      if (t) setTipos(t);
-      if (c) setColectivos(c);
+    // Cargar paramétricas desde el servidor
+    fetch('/api/admin/parametricas').then((r) => r.json()).then((json) => {
+      if (json.ok) { setTipos(json.tipos); setColectivos(json.colectivos); }
     });
   }, [router]);
 
@@ -51,7 +46,10 @@ export default function NuevaSesionPage() {
 
   const validar = () => {
     const e = {};
-    ['tipo','colectivo','departamento','zona','fecha','hora','lugar'].forEach((k) => {
+    const camposRequeridos = form.tipo === 'NACIONAL'
+      ? ['tipo','colectivo','zona','fecha','hora','lugar']
+      : ['tipo','colectivo','departamento','zona','fecha','hora','lugar'];
+    camposRequeridos.forEach((k) => {
       if (!form[k].trim()) e[k] = 'Campo requerido';
     });
     setErrores(e);
@@ -65,23 +63,28 @@ export default function NuevaSesionPage() {
     const tipoObj      = tipos.find((t) => t.nombre === form.tipo);
     const colectivoObj = colectivos.find((c) => c.nombre === form.colectivo);
 
-    const { error } = await supabase.from('asambleas').insert([{
-      id:               consecutivo,
-      nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento} ${form.zona}`,
-      tipo_asamblea_id: tipoObj?.id,
-      colectivo_id:     colectivoObj?.id,
-      departamento:     form.tipo === 'NACIONAL' ? null : form.departamento,
-      zona:             form.zona,
-      fecha:            form.fecha,
-      hora:             form.hora,
-      lugar:            form.lugar,
-      estado:           'borrador',
-      codigo_asistencia: consecutivo.replace(/-/g,'').slice(0,8).toUpperCase(),
-    }]);
+    const res = await fetch('/api/admin/sesiones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id:               consecutivo,
+        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento} ${form.zona}`,
+        tipo_asamblea_id: tipoObj?.id,
+        colectivo_id:     colectivoObj?.id,
+        departamento:     form.tipo === 'NACIONAL' ? null : form.departamento,
+        zona:             form.zona,
+        fecha:            form.fecha,
+        hora:             form.hora,
+        lugar:            form.lugar,
+        estado:           'borrador',
+        codigo_asistencia: consecutivo.replace(/-/g,'').slice(0,8).toUpperCase(),
+      }),
+    });
+    const json = await res.json();
 
-    if (error) {
-      if (error.code === '23505') setErrServidor('Ya existe una sesión con ese consecutivo. Cambia la zona o fecha.');
-      else setErrServidor('Error al crear la sesión: ' + error.message);
+    if (!json.ok) {
+      if (json.code === '23505') setErrServidor('Ya existe una sesión con ese consecutivo. Cambia la zona o fecha.');
+      else setErrServidor('Error al crear la sesión: ' + json.error);
       setGuardando(false); return;
     }
 

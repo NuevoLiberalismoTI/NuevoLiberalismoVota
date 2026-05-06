@@ -4,8 +4,6 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, UserPlus, Calendar, Loader2 } from 'lucide-react';
-import { supabase } from './lib/supabase';
-
 export default function HomePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -27,16 +25,17 @@ export default function HomePage() {
     setCargando(true);
     setError('');
     try {
-      const { data, error: err } = await supabase.rpc('verificar_login', {
-        p_cedula:   form.usuario.trim(),
-        p_password: form.contrasena,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cedula: form.usuario.trim(), contrasena: form.contrasena }),
       });
-      if (err) throw err;
-      if (!data || data.length === 0) {
-        setError('Usuario o contraseña incorrectos');
+      const json = await res.json();
+      if (!json.ok) {
+        setError(json.error || 'Usuario o contraseña incorrectos');
         return;
       }
-      const user = data[0];
+      const user = json.user;
       sessionStorage.setItem('usuario', JSON.stringify(user));
       router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
     } catch {

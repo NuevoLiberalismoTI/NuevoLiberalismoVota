@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2 } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_SESION = {
@@ -123,26 +121,14 @@ export default function AdminSesionPage() {
   const [cargando, setCargando]         = useState(false);
 
   const cargar = useCallback(async () => {
-    const [{ data: asm }, { data: pregs }, { data: pb }] = await Promise.all([
-      supabase.from('asambleas')
-        .select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)')
-        .eq('id', sesionId).single(),
-      supabase.from('asamblea_preguntas')
-        .select('*, candidatos(id,nombre,orden)')
-        .eq('asamblea_id', sesionId)
-        .order('created_at'),
-      supabase.from('preguntas_base').select('*').eq('activa', true),
-    ]);
-    if (asm) setSesion(asm);
-    if (pregs) setPreguntas(pregs.map((p) => ({ ...p, candidatos: p.candidatos?.sort((a,b)=>a.orden-b.orden) || [] })));
-    if (pb)  setPreguntasBase(pb);
-
-    // Estadísticas básicas
-    const [{ count: inscritos }, { count: asistentes }] = await Promise.all([
-      supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
-      supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
-    ]);
-    setStats({ inscritos: inscritos || 0, asistentes: asistentes || 0 });
+    const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.ok) return;
+    setSesion(json.sesion);
+    setPreguntas(json.preguntas);
+    setPreguntasBase(json.preguntasBase);
+    setStats(json.stats);
   }, [sesionId]);
 
   useEffect(() => {
@@ -168,42 +154,45 @@ export default function AdminSesionPage() {
 
   const handleGuardar = async ({ tipo, texto, opciones, enVivo, pregunta_base_id }) => {
     setCargando(true);
-    const { data: preg, error } = await supabase
-      .from('asamblea_preguntas')
-      .insert([{ asamblea_id: sesionId, texto, tipo, en_vivo: enVivo, estado: 'pendiente', pregunta_base_id }])
-      .select().single();
-
-    if (!error && tipo === 'candidatos' && opciones.length) {
-      await supabase.from('candidatos').insert(
-        opciones.map((nombre, i) => ({ pregunta_id: preg.id, nombre, orden: i }))
-      );
-    }
+    await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preguntas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo, texto, opciones, enVivo, pregunta_base_id }),
+    });
     setMostrarForm(false); setMostrarVivo(false);
     await cargar(); setCargando(false);
   };
 
   const handleEliminar = async (pId) => {
     if (!confirm('¿Eliminar esta pregunta?')) return;
-    await supabase.from('asamblea_preguntas').delete().eq('id', pId);
+    await fetch(`/api/admin/pregunta/${pId}`, { method: 'DELETE' });
     await cargar();
   };
 
   const handlePublicar = async (pId) => {
     setCargando(true);
-    await supabase.rpc('publicar_pregunta', { p_asamblea_id: sesionId, p_pregunta_id: pId });
+    await fetch(`/api/admin/pregunta/${pId}/publicar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sesionId }),
+    });
     await cargar(); setCargando(false);
   };
 
   const handleCerrar = async () => {
     setCargando(true);
-    await supabase.rpc('cerrar_pregunta_activa', { p_asamblea_id: sesionId });
+    await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar`, { method: 'POST' });
     await cargar(); setCargando(false);
   };
 
   const handleCambiarEstado = async () => {
     if (!cfg.next) return;
     setCargando(true);
-    await supabase.from('asambleas').update({ estado: cfg.next }).eq('id', sesionId);
+    await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: cfg.next }),
+    });
     await cargar(); setCargando(false);
   };
 

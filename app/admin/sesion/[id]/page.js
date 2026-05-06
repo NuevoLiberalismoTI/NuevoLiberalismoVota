@@ -20,11 +20,12 @@ const ESTADO_PREG = {
 };
 
 function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = false }) {
-  const [tipo, setTipo]        = useState('sino');
-  const [texto, setTexto]      = useState('');
-  const [opciones, setOpciones]= useState(['', '']);
-  const [baseId, setBaseId]    = useState('');
-  const [err, setErr]          = useState('');
+  const [tipo, setTipo]               = useState('sino');
+  const [tipoMayoria, setTipoMayoria] = useState('simple');
+  const [texto, setTexto]             = useState('');
+  const [opciones, setOpciones]       = useState(['', '']);
+  const [baseId, setBaseId]           = useState('');
+  const [err, setErr]                 = useState('');
 
   const selBase = (id) => {
     const pb = preguntasBase.find((p) => p.id === id);
@@ -35,7 +36,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
   const guardar = () => {
     if (!texto.trim()) { setErr('Escribe el texto de la pregunta'); return; }
     if (tipo === 'candidatos' && opciones.some((o) => !o.trim())) { setErr('Completa todos los candidatos'); return; }
-    onGuardar({ tipo, texto: texto.trim(), opciones: tipo === 'candidatos' ? opciones.map((o) => o.trim()) : [], enVivo, pregunta_base_id: baseId || null });
+    onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones: tipo === 'candidatos' ? opciones.map((o) => o.trim()) : [], enVivo, pregunta_base_id: baseId || null });
   };
 
   return (
@@ -66,6 +67,24 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
             {t === 'sino' ? '👍 Sí / No' : '👤 Candidatos'}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <p className="text-xs font-semibold text-gray-500">Tipo de mayoría requerida</p>
+        <div className="flex gap-2">
+          {[
+            { key: 'simple',   label: 'Simple',   desc: '50%+1 de asistentes' },
+            { key: 'absoluta', label: 'Absoluta', desc: '50%+1 de inscritos'  },
+          ].map(({ key, label, desc }) => (
+            <button key={key} onClick={() => setTipoMayoria(key)}
+              className={`flex-1 py-2 px-2 rounded-lg text-xs border-2 transition-all flex flex-col items-center gap-0.5 ${
+                tipoMayoria === key ? 'border-brand bg-brand text-white' : 'border-gray-200 bg-white text-gray-600'
+              }`}>
+              <span className="font-bold">{label}</span>
+              <span className={`text-[10px] leading-tight ${tipoMayoria === key ? 'text-white opacity-80' : 'text-gray-400'}`}>{desc}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <textarea value={texto} onChange={(e) => { setTexto(e.target.value); setErr(''); }}
@@ -162,12 +181,12 @@ export default function AdminSesionPage() {
     ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100))
     : 0;
 
-  const handleGuardar = async ({ tipo, texto, opciones, enVivo, pregunta_base_id }) => {
+  const handleGuardar = async ({ tipo, tipoMayoria, texto, opciones, enVivo, pregunta_base_id }) => {
     setCargando(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preguntas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo, texto, opciones, enVivo, pregunta_base_id }),
+      body: JSON.stringify({ tipo, tipo_mayoria: tipoMayoria, texto, opciones, enVivo, pregunta_base_id }),
     });
     setMostrarForm(false); setMostrarVivo(false);
     await cargar(); setCargando(false);
@@ -348,28 +367,67 @@ export default function AdminSesionPage() {
               <p className="text-sm text-gray-400 text-center py-8">No hay preguntas en esta sesión todavía</p>
             )}
             {resultados.map((preg) => {
-              const total = Number(preg.total_votos) || 0;
+              const total   = Number(preg.total_votos) || 0;
+              const umbral  = Number(preg.umbral) || 0;
               const maxVotos = preg.opciones?.length
                 ? Math.max(...preg.opciones.map((o) => Number(o.total)))
                 : 0;
+              const esValida = preg.es_valida;
+              const ganador  = preg.ganador;
+              const esCerrada = preg.estado === 'cerrada';
+
+              const baseLabel = preg.tipo_mayoria === 'absoluta'
+                ? `${stats?.inscritos ?? '?'} inscritos`
+                : `${total} votos emitidos`;
+
               return (
-                <div key={preg.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-                  <div className="flex items-start justify-between gap-2 mb-3">
+                <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 ${
+                  esCerrada && esValida  ? 'border-green-200' :
+                  esCerrada && esValida === false ? 'border-red-200' : 'border-gray-100'
+                }`}>
+                  {/* Cabecera */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
                     <p className="text-sm font-semibold text-gray-900 leading-snug flex-1">{preg.texto}</p>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                      preg.estado === 'activa'  ? 'bg-green-100 text-green-700' :
-                      preg.estado === 'cerrada' ? 'bg-slate-100 text-slate-600' :
-                                                  'bg-gray-100 text-gray-400'
-                    }`}>{preg.estado}</span>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        preg.estado === 'activa'  ? 'bg-green-100 text-green-700' :
+                        preg.estado === 'cerrada' ? 'bg-slate-100 text-slate-600' : 'bg-gray-100 text-gray-400'
+                      }`}>{preg.estado}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        preg.tipo_mayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'
+                      }`}>{preg.tipo_mayoria === 'absoluta' ? 'M. Absoluta' : 'M. Simple'}</span>
+                    </div>
                   </div>
 
+                  {/* Validez (solo cuando está cerrada) */}
+                  {esCerrada && (
+                    <div className={`flex items-center gap-2 rounded-xl px-3 py-2 mb-3 ${
+                      esValida ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                    }`}>
+                      {esValida ? (
+                        <>
+                          <CheckCircle size={14} className="text-green-600 flex-shrink-0" />
+                          <span className="text-xs font-bold text-green-700">
+                            {ganador === 'SI' ? 'APROBADA' : ganador === 'NO' ? 'RECHAZADA' : `ELEGIDO: ${ganador}`}
+                            {' — '}alcanzó mayoría {preg.tipo_mayoria}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle size={14} className="text-red-500 flex-shrink-0" />
+                          <span className="text-xs font-bold text-red-600">
+                            SIN MAYORÍA — se requerían {umbral} votos ({baseLabel})
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Conteo y umbral */}
                   <p className="text-xs text-gray-400 mb-3">
-                    {total} {total === 1 ? 'voto' : 'votos'}
-                    {stats?.asistentes > 0 && (
-                      <span className="ml-1 text-gray-300">
-                        · {Math.round((total / stats.asistentes) * 100)}% participación
-                      </span>
-                    )}
+                    <strong className="text-gray-600">{total}</strong> {total === 1 ? 'voto' : 'votos'}
+                    <span className="mx-1">·</span>
+                    Umbral: <strong className="text-gray-600">{umbral}</strong> ({preg.tipo_mayoria === 'absoluta' ? '50%+1 inscritos' : '50%+1 votos'})
                   </p>
 
                   {total === 0 ? (
@@ -377,24 +435,31 @@ export default function AdminSesionPage() {
                   ) : (
                     <div className="flex flex-col gap-2">
                       {(preg.opciones || []).map((op) => {
-                        const pct = maxVotos > 0 ? Math.round((Number(op.total) / maxVotos) * 100) : 0;
-                        const pctTotal = total > 0 ? Math.round((Number(op.total) / total) * 100) : 0;
-                        const esSI  = op.respuesta === 'SI';
-                        const esNO  = op.respuesta === 'NO';
-                        const barColor = esSI ? 'bg-green-500' : esNO ? 'bg-red-400' : 'bg-brand';
+                        const opTotal  = Number(op.total);
+                        const pctBarra = maxVotos > 0 ? Math.round((opTotal / maxVotos) * 100) : 0;
+                        const pctTotal = total > 0 ? Math.round((opTotal / total) * 100) : 0;
+                        const esGanador = esCerrada && op.respuesta === ganador && esValida;
+                        const barColor  = op.respuesta === 'SI' ? 'bg-green-500'
+                                        : op.respuesta === 'NO' ? 'bg-red-400' : 'bg-brand';
+                        const umbralPct = maxVotos > 0 ? Math.min(100, Math.round((umbral / maxVotos) * 100)) : 0;
                         return (
                           <div key={op.respuesta}>
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-semibold text-gray-700">{op.respuesta}</span>
-                              <span className="text-xs text-gray-500">{op.total} ({pctTotal}%)</span>
+                              <span className={`text-xs font-semibold ${esGanador ? 'text-green-700' : 'text-gray-700'}`}>
+                                {esGanador ? '✓ ' : ''}{op.respuesta}
+                              </span>
+                              <span className="text-xs text-gray-500">{opTotal} ({pctTotal}%)</span>
                             </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                            <div className="w-full bg-gray-100 rounded-full h-2.5 relative">
                               <div className={`${barColor} h-2.5 rounded-full transition-all duration-500`}
-                                style={{ width: `${pct}%` }} />
+                                style={{ width: `${pctBarra}%` }} />
+                              <div className="absolute top-0 h-2.5 w-0.5 bg-gray-500 opacity-50"
+                                style={{ left: `${umbralPct}%` }} />
                             </div>
                           </div>
                         );
                       })}
+                      <p className="text-[10px] text-gray-300 text-right">│ = umbral requerido</p>
                     </div>
                   )}
                 </div>
@@ -455,6 +520,9 @@ export default function AdminSesionPage() {
                       </span>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo==='sino'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}`}>
                         {p.tipo==='sino'?'👍 Sí/No':'👤 Candidatos'}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo_mayoria==='absoluta'?'bg-purple-100 text-purple-700':'bg-teal-100 text-teal-700'}`}>
+                        {p.tipo_mayoria==='absoluta'?'M. Absoluta':'M. Simple'}
                       </span>
                       {p.en_vivo && <span className="text-xs font-bold text-orange-500 flex items-center gap-0.5"><Zap size={10}/>En vivo</span>}
                     </div>

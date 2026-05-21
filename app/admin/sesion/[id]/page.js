@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_SESION = {
@@ -19,11 +19,14 @@ const ESTADO_PREG = {
   cerrada:   { label: 'Cerrada',   bg: 'bg-slate-100',  text: 'text-slate-500',  dot: 'bg-slate-400'  },
 };
 
+const OPCION_VACIA_INDIVIDUAL = () => ({ tipo: 'individual', nombre: '' });
+const OPCION_VACIA_PLANCHA    = () => ({ tipo: 'plancha',    nombre: '', miembros: [{ nombre: '', cargo: '' }] });
+
 function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = false }) {
   const [tipo, setTipo]               = useState('sino');
   const [tipoMayoria, setTipoMayoria] = useState('simple');
   const [texto, setTexto]             = useState('');
-  const [opciones, setOpciones]       = useState(['', '']);
+  const [opciones, setOpciones]       = useState([OPCION_VACIA_INDIVIDUAL(), OPCION_VACIA_INDIVIDUAL()]);
   const [baseId, setBaseId]           = useState('');
   const [err, setErr]                 = useState('');
 
@@ -33,10 +36,33 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
     setBaseId(id);
   };
 
+  const setOpcion = (i, patch) =>
+    setOpciones((prev) => prev.map((o, j) => j === i ? { ...o, ...patch } : o));
+
+  const setMiembro = (i, j, patch) =>
+    setOpciones((prev) => prev.map((o, oi) => oi !== i ? o : {
+      ...o, miembros: o.miembros.map((m, mi) => mi === j ? { ...m, ...patch } : m),
+    }));
+
+  const addMiembro = (i) =>
+    setOpciones((prev) => prev.map((o, oi) => oi !== i ? o : {
+      ...o, miembros: [...o.miembros, { nombre: '', cargo: '' }],
+    }));
+
+  const removeMiembro = (i, j) =>
+    setOpciones((prev) => prev.map((o, oi) => oi !== i ? o : {
+      ...o, miembros: o.miembros.filter((_, mi) => mi !== j),
+    }));
+
   const guardar = () => {
     if (!texto.trim()) { setErr('Escribe el texto de la pregunta'); return; }
-    if (tipo === 'candidatos' && opciones.some((o) => !o.trim())) { setErr('Completa todos los candidatos'); return; }
-    onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones: tipo === 'candidatos' ? opciones.map((o) => o.trim()) : [], enVivo, pregunta_base_id: baseId || null });
+    if (tipo === 'candidatos') {
+      if (opciones.some((o) => !o.nombre.trim())) { setErr('Completa el nombre de cada opción'); return; }
+      if (opciones.some((o) => o.tipo === 'plancha' && o.miembros.some((m) => !m.nombre.trim()))) {
+        setErr('Completa los nombres de todos los integrantes'); return;
+      }
+    }
+    onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones, enVivo, pregunta_base_id: baseId || null });
   };
 
   return (
@@ -48,7 +74,6 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
         </div>
       )}
 
-      {/* Seleccionar desde base */}
       {preguntasBase.length > 0 && (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-semibold text-gray-500">Usar pregunta predefinida (opcional)</label>
@@ -61,10 +86,10 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
       )}
 
       <div className="flex gap-2">
-        {['sino','candidatos'].map((t) => (
+        {['sino', 'candidatos'].map((t) => (
           <button key={t} onClick={() => setTipo(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-bold border-2 transition-all ${tipo === t ? 'border-brand bg-brand text-white' : 'border-gray-200 bg-white text-gray-600'}`}>
-            {t === 'sino' ? '👍 Sí / No' : '👤 Candidatos'}
+            {t === 'sino' ? '👍 Sí / No' : '👤 Candidatos / Planchas'}
           </button>
         ))}
       </div>
@@ -92,23 +117,89 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
 
       {tipo === 'candidatos' && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-gray-600">Candidatos:</p>
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold text-gray-600">Opciones de votación:</p>
+
           {opciones.map((op, i) => (
-            <div key={i} className="flex gap-2">
-              <input value={op} onChange={(e) => { const o=[...opciones]; o[i]=e.target.value; setOpciones(o); setErr(''); }}
-                placeholder={`Candidato ${i+1}`}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-              {opciones.length > 2 && (
-                <button onClick={() => setOpciones(opciones.filter((_,j)=>j!==i))} className="text-red-400 hover:text-red-600 p-2">
-                  <Trash2 size={14} />
-                </button>
+            <div key={i} className="border-2 border-gray-200 rounded-xl p-3 flex flex-col gap-2 bg-white">
+              {/* Tipo individual / plancha */}
+              <div className="flex gap-2">
+                {[
+                  { key: 'individual', label: 'Persona',  Icon: User  },
+                  { key: 'plancha',    label: 'Plancha',  Icon: Users },
+                ].map(({ key, label, Icon }) => (
+                  <button key={key}
+                    onClick={() => setOpcion(i, key === 'plancha'
+                      ? { tipo: 'plancha',    miembros: op.miembros?.length ? op.miembros : [{ nombre: '', cargo: '' }] }
+                      : { tipo: 'individual', miembros: undefined }
+                    )}
+                    className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold border-2 transition-all ${
+                      op.tipo === key ? 'border-brand bg-brand text-white' : 'border-gray-200 text-gray-500'
+                    }`}>
+                    <Icon size={12} />{label}
+                  </button>
+                ))}
+                {opciones.length > 2 && (
+                  <button onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}
+                    className="text-red-400 hover:text-red-600 p-1">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Nombre */}
+              <input
+                value={op.nombre}
+                onChange={(e) => { setOpcion(i, { nombre: e.target.value }); setErr(''); }}
+                placeholder={op.tipo === 'plancha' ? `Nombre de la plancha ${i + 1}` : `Nombre del candidato ${i + 1}`}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              />
+
+              {/* Integrantes de plancha */}
+              {op.tipo === 'plancha' && (
+                <div className="flex flex-col gap-2 pl-3 border-l-2 border-brand-200 ml-1">
+                  <p className="text-xs font-semibold text-gray-500">Integrantes:</p>
+                  {(op.miembros || []).map((m, j) => (
+                    <div key={j} className="flex gap-2">
+                      <input
+                        value={m.nombre}
+                        onChange={(e) => { setMiembro(i, j, { nombre: e.target.value }); setErr(''); }}
+                        placeholder={`Nombre integrante ${j + 1}`}
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                      />
+                      <input
+                        value={m.cargo}
+                        onChange={(e) => setMiembro(i, j, { cargo: e.target.value })}
+                        placeholder="Cargo (opcional)"
+                        className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                      />
+                      {(op.miembros || []).length > 1 && (
+                        <button onClick={() => removeMiembro(i, j)} className="text-red-400 hover:text-red-600 p-1">
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button onClick={() => addMiembro(i)}
+                    className="text-xs text-brand font-bold hover:underline self-start">
+                    + Agregar integrante
+                  </button>
+                </div>
               )}
             </div>
           ))}
-          <button onClick={() => setOpciones([...opciones,''])} className="text-xs text-brand font-bold hover:underline self-start">
-            + Agregar candidato
-          </button>
+
+          {/* Botones agregar */}
+          <div className="flex gap-2">
+            <button onClick={() => setOpciones([...opciones, OPCION_VACIA_INDIVIDUAL()])}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold border-2 border-dashed border-gray-300 text-gray-500 hover:border-brand hover:text-brand transition-colors">
+              <User size={12} /> + Persona
+            </button>
+            <button onClick={() => setOpciones([...opciones, OPCION_VACIA_PLANCHA()])}
+              className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold border-2 border-dashed border-gray-300 text-gray-500 hover:border-brand hover:text-brand transition-colors">
+              <Users size={12} /> + Plancha
+            </button>
+          </div>
         </div>
       )}
 
@@ -559,7 +650,11 @@ export default function AdminSesionPage() {
                   {p.tipo === 'candidatos' && p.candidatos?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-3">
                       {p.candidatos.map((c) => (
-                        <span key={c.id} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c.nombre}</span>
+                        <span key={c.id} className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${c.es_plancha ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {c.es_plancha ? <Users size={10}/> : <User size={10}/>}
+                          {c.nombre}
+                          {c.es_plancha && c.miembros?.length > 0 && <span className="text-[10px] opacity-70">({c.miembros.length})</span>}
+                        </span>
                       ))}
                     </div>
                   )}

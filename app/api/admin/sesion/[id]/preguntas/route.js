@@ -19,9 +19,28 @@ export async function POST(request, { params }) {
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
 
   if (tipo === 'candidatos' && opciones?.length) {
-    await supabase.from('candidatos').insert(
-      opciones.map((nombre, i) => ({ pregunta_id: preg.id, nombre, orden: i }))
-    );
+    for (let i = 0; i < opciones.length; i++) {
+      const op = opciones[i];
+      const esPlancha = op.tipo === 'plancha';
+      const nombre = typeof op === 'string' ? op : op.nombre;
+
+      const { data: cand, error: candErr } = await supabase
+        .from('candidatos')
+        .insert({ pregunta_id: preg.id, nombre: nombre.trim(), orden: i, es_plancha: esPlancha })
+        .select()
+        .single();
+
+      if (candErr) continue;
+
+      if (esPlancha && op.miembros?.length && cand) {
+        const miembros = op.miembros
+          .filter((m) => m.nombre?.trim())
+          .map((m, j) => ({ candidato_id: cand.id, nombre: m.nombre.trim(), cargo: m.cargo?.trim() || null, orden: j }));
+        if (miembros.length) {
+          await supabase.from('miembros_plancha').insert(miembros);
+        }
+      }
+    }
   }
 
   return Response.json({ ok: true });

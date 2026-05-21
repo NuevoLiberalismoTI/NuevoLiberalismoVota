@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, CheckCircle, Clock, UserX, Loader2, Zap } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -250,22 +250,46 @@ export default function SesionPage() {
 
               {pa.tipo === 'candidatos' && (
                 <div className="flex flex-col gap-3">
-                  {pa.candidatos?.map((c) => (
-                    <button key={c.id} onClick={() => setSeleccion({ respuesta: c.nombre, candidato_id: c.id })}
-                      className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl border-2 text-left transition-all ${
-                        seleccion?.candidato_id === c.id
-                          ? 'border-brand bg-brand-50 scale-[1.01] shadow-sm'
-                          : 'border-gray-200 bg-white hover:border-brand-200'
-                      }`}>
-                      <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${seleccion?.candidato_id === c.id ? 'border-brand bg-brand' : 'border-gray-300'}`}>
-                        {seleccion?.candidato_id === c.id && <div className="w-2 h-2 rounded-full bg-white" />}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User size={15} className={seleccion?.candidato_id === c.id ? 'text-brand' : 'text-gray-400'} />
-                        <span className={`text-sm font-semibold ${seleccion?.candidato_id === c.id ? 'text-brand' : 'text-gray-700'}`}>{c.nombre}</span>
-                      </div>
-                    </button>
-                  ))}
+                  {pa.candidatos?.map((c) => {
+                    const seleccionado = seleccion?.candidato_id === c.id;
+                    return (
+                      <button key={c.id} onClick={() => setSeleccion({ respuesta: c.nombre, candidato_id: c.id })}
+                        className={`w-full flex items-start gap-3 px-4 py-4 rounded-xl border-2 text-left transition-all ${
+                          seleccionado ? 'border-brand bg-brand-50 scale-[1.01] shadow-sm' : 'border-gray-200 bg-white hover:border-brand-200'
+                        }`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center mt-0.5 ${seleccionado ? 'border-brand bg-brand' : 'border-gray-300'}`}>
+                          {seleccionado && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {c.es_plancha
+                              ? <Users size={15} className={seleccionado ? 'text-brand' : 'text-gray-400'} />
+                              : <User  size={15} className={seleccionado ? 'text-brand' : 'text-gray-400'} />
+                            }
+                            <span className={`text-sm font-semibold ${seleccionado ? 'text-brand' : 'text-gray-700'}`}>{c.nombre}</span>
+                            {c.es_plancha && (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${seleccionado ? 'bg-brand text-white' : 'bg-blue-100 text-blue-600'}`}>
+                                Plancha
+                              </span>
+                            )}
+                          </div>
+                          {c.es_plancha && c.miembros?.length > 0 && (
+                            <div className="mt-2 flex flex-col gap-1 pl-1">
+                              {c.miembros.map((m, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-500">
+                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${seleccionado ? 'bg-brand' : 'bg-gray-400'}`} />
+                                  {m.cargo
+                                    ? <><span className="font-semibold text-gray-600">{m.cargo}:</span> {m.nombre}</>
+                                    : m.nombre
+                                  }
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

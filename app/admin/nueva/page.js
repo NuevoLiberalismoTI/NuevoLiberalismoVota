@@ -11,13 +11,15 @@ const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', 
 
 export default function NuevaSesionPage() {
   const router = useRouter();
-  const [form, setForm]               = useState(INIT);
-  const [errores, setErrores]         = useState({});
-  const [consecutivo, setConsecutivo] = useState('');
-  const [tipos, setTipos]             = useState([]);
-  const [colectivos, setColectivos]   = useState([]);
-  const [guardando, setGuardando]     = useState(false);
-  const [errServidor, setErrServidor] = useState('');
+  const [form, setForm]                     = useState(INIT);
+  const [errores, setErrores]               = useState({});
+  const [consecutivoBase, setConsecutivoBase] = useState('');
+  const [consecutivo, setConsecutivo]       = useState('');
+  const [cargandoSeq, setCargandoSeq]       = useState(false);
+  const [tipos, setTipos]                   = useState([]);
+  const [colectivos, setColectivos]         = useState([]);
+  const [guardando, setGuardando]           = useState(false);
+  const [errServidor, setErrServidor]       = useState('');
 
   useEffect(() => {
     const stored = sessionStorage.getItem('usuario');
@@ -29,15 +31,28 @@ export default function NuevaSesionPage() {
     });
   }, [router]);
 
+  // Genera la base del consecutivo (sin secuencial) cuando el formulario está completo
   useEffect(() => {
     const { tipo, colectivo, departamento, zona, fecha } = form;
     const deptoOk = tipo === 'NACIONAL' || !!departamento;
     if (tipo && colectivo && deptoOk && zona && fecha) {
-      setConsecutivo(generarConsecutivo({ tipo, colectivo, departamento, zona, fecha }));
+      setConsecutivoBase(generarConsecutivo({ tipo, colectivo, departamento, zona, fecha }));
     } else {
+      setConsecutivoBase('');
       setConsecutivo('');
     }
   }, [form]);
+
+  // Consulta al servidor el secuencial disponible cuando cambia la base
+  useEffect(() => {
+    if (!consecutivoBase) return;
+    setCargandoSeq(true);
+    setConsecutivo('');
+    fetch(`/api/admin/sesiones/consecutivo?base=${encodeURIComponent(consecutivoBase)}`)
+      .then((r) => r.json())
+      .then((json) => { if (json.ok) setConsecutivo(json.consecutivo); })
+      .finally(() => setCargandoSeq(false));
+  }, [consecutivoBase]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -68,7 +83,7 @@ export default function NuevaSesionPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id:               consecutivo,
+        base_id:          consecutivoBase,
         nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento} ${form.zona}`,
         tipo_asamblea_id: tipoObj?.id,
         colectivo_id:     colectivoObj?.id,
@@ -84,12 +99,11 @@ export default function NuevaSesionPage() {
     const json = await res.json();
 
     if (!json.ok) {
-      if (json.code === '23505') setErrServidor('Ya existe una sesión con ese consecutivo. Cambia la zona o fecha.');
-      else setErrServidor('Error al crear la sesión: ' + json.error);
+      setErrServidor('Error al crear la sesión: ' + json.error);
       setGuardando(false); return;
     }
 
-    router.push(`/admin/sesion/${encodeURIComponent(consecutivo)}`);
+    router.push(`/admin/sesion/${encodeURIComponent(json.id)}`);
   };
 
   const sel = (err) =>
@@ -112,15 +126,19 @@ export default function NuevaSesionPage() {
           <p className="text-sm text-gray-500">Completa los datos para generar el consecutivo automáticamente</p>
         </div>
 
-        {consecutivo && (
+        {consecutivoBase && (
           <div className="bg-brand-50 border-2 border-brand rounded-xl p-4 flex items-center gap-3">
             <Sparkles size={20} className="text-brand flex-shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-brand font-semibold uppercase tracking-wide">Consecutivo generado</p>
-              <p className="text-xl font-extrabold text-brand tracking-widest font-mono">{consecutivo}</p>
-              <p className="text-xs text-brand-hover mt-0.5">
-                Código asistencia: <span className="font-bold">{consecutivo.replace(/-/g,'').slice(0,8).toUpperCase()}</span>
-              </p>
+              {cargandoSeq ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Loader2 size={16} className="text-brand animate-spin" />
+                  <span className="text-sm text-brand font-mono">{consecutivoBase}-...</span>
+                </div>
+              ) : (
+                <p className="text-xl font-extrabold text-brand tracking-widest font-mono">{consecutivo}</p>
+              )}
             </div>
           </div>
         )}

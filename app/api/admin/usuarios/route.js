@@ -20,9 +20,9 @@ export async function POST(request) {
   const session = await requireAdmin();
   if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
-  const { cedula, nombre, password } = await request.json();
+  const { cedula, nombre, email, password } = await request.json();
 
-  if (!cedula?.trim() || !nombre?.trim() || !password) {
+  if (!cedula?.trim() || !nombre?.trim() || !email?.trim() || !password) {
     return Response.json({ ok: false, error: 'Todos los campos son requeridos' }, { status: 400 });
   }
   if (password.length < 8) {
@@ -33,6 +33,7 @@ export async function POST(request) {
   const { data, error } = await supabase.rpc('crear_usuario_admin', {
     p_cedula:   cedula.trim(),
     p_nombre:   nombre.trim(),
+    p_email:    email.trim(),
     p_password: password,
   });
 

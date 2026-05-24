@@ -15,6 +15,7 @@ export default function AdminUsuariosPage() {
 
   const [cedula, setCedula]       = useState('');
   const [nombre, setNombre]       = useState('');
+  const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [showPass, setShowPass]   = useState(false);
@@ -47,6 +48,7 @@ export default function AdminUsuariosPage() {
     const e = {};
     if (!cedula.trim()) e.cedula = 'Campo requerido';
     if (!nombre.trim()) e.nombre = 'Campo requerido';
+    if (!email.trim()) e.email = 'Campo requerido';
     if (!password) e.password = 'Campo requerido';
     else if (password.length < 8) e.password = 'Mínimo 8 caracteres';
     if (password !== confirmar) e.confirmar = 'Las contraseñas no coinciden';
@@ -64,7 +66,7 @@ export default function AdminUsuariosPage() {
       const res = await fetch('/api/admin/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cedula: cedula.trim(), nombre: nombre.trim(), password }),
+        body: JSON.stringify({ cedula: cedula.trim(), nombre: nombre.trim(), email: email.trim(), password }),
       });
       const json = await res.json();
       if (!json.ok) {
@@ -74,6 +76,7 @@ export default function AdminUsuariosPage() {
       setExito(true);
       setCedula('');
       setNombre('');
+      setEmail('');
       setPassword('');
       setConfirmar('');
       setErrores({});
@@ -158,6 +161,17 @@ export default function AdminUsuariosPage() {
                 />
                 {errores.nombre && <span className="text-xs text-red-500">{errores.nombre}</span>}
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Correo electrónico</label>
+              <input
+                type="email" value={email}
+                onChange={(e) => { setEmail(e.target.value); setErrores((p) => ({ ...p, email: '' })); setExito(false); }}
+                placeholder="correo@ejemplo.com"
+                className={`border ${errores.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+              />
+              {errores.email && <span className="text-xs text-red-500">{errores.email}</span>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

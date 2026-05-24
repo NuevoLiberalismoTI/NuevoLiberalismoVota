@@ -78,7 +78,7 @@ export default function NuevaSesionPage() {
         hora:             form.hora,
         lugar:            form.lugar,
         estado:           'borrador',
-        codigo_asistencia: consecutivo.replace(/-/g,'').slice(0,8).toUpperCase(),
+        codigo_asistencia: Array.from({length:6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random()*36)]).join(''),
       }),
     });
     const json = await res.json();

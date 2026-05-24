@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LogOut, Plus, PlayCircle, Clock, CheckCircle, Settings, BarChart2, FileEdit, Loader2 } from 'lucide-react';
+import { LogOut, Plus, PlayCircle, Clock, CheckCircle, Settings, BarChart2, FileEdit, Loader2, ShieldCheck } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_CFG = {
@@ -93,11 +93,17 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* Crear */}
-        <button onClick={() => router.push('/admin/nueva')}
-          className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold py-4 rounded-xl transition-colors shadow-md">
-          <Plus size={20} /> Crear nueva sesión
-        </button>
+        {/* Acciones rápidas */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button onClick={() => router.push('/admin/nueva')}
+            className="flex-1 flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold py-4 rounded-xl transition-colors shadow-md">
+            <Plus size={20} /> Crear nueva sesión
+          </button>
+          <button onClick={() => router.push('/admin/usuarios')}
+            className="flex items-center justify-center gap-2 bg-white hover:bg-gray-50 border-2 border-brand text-brand font-bold py-4 px-5 rounded-xl transition-colors shadow-sm">
+            <ShieldCheck size={18} /> Administradores
+          </button>
+        </div>
 
         {/* Filtros */}
         <div>

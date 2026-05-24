@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const ESTADO_SESION = {
@@ -230,6 +230,7 @@ export default function AdminSesionPage() {
   const [tab, setTab]                     = useState('preguntas'); // 'preguntas' | 'resultados'
   const [mostrarForm, setMostrarForm]     = useState(false);
   const [mostrarVivo, setMostrarVivo]     = useState(false);
+  const [mostrarCodigo, setMostrarCodigo] = useState(false);
   const [cargando, setCargando]           = useState(false);
 
   const cargar = useCallback(async () => {
@@ -341,7 +342,13 @@ export default function AdminSesionPage() {
             <span>📅 {sesion.fecha} · {sesion.hora}</span>
             <span>📍 {sesion.lugar}</span>
             <span>🏷️ {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
-            <span>🔑 <span className="font-mono font-bold text-gray-800">{sesion.codigo_asistencia}</span></span>
+            <span className="flex items-center gap-2">
+              🔑 <span className="font-mono font-bold text-gray-800">{sesion.codigo_asistencia}</span>
+              <button onClick={() => setMostrarCodigo(true)}
+                className="flex items-center gap-1 text-[10px] font-bold text-brand bg-brand-50 border border-brand px-2 py-0.5 rounded-full hover:bg-brand hover:text-white transition-colors">
+                <Monitor size={10} /> Proyectar
+              </button>
+            </span>
           </div>
 
           {stats && (
@@ -693,6 +700,36 @@ export default function AdminSesionPage() {
         </div>}
 
       </div>
+
+      {/* Modal pantalla completa: código de asistencia */}
+      {mostrarCodigo && (
+        <div
+          className="fixed inset-0 z-50 bg-brand flex flex-col items-center justify-center"
+          onClick={() => setMostrarCodigo(false)}>
+          <button
+            onClick={() => setMostrarCodigo(false)}
+            className="absolute top-5 right-5 text-white/70 hover:text-white transition-colors">
+            <X size={32} />
+          </button>
+
+          <p className="text-white/60 text-sm font-semibold uppercase tracking-widest mb-4">
+            Código de asistencia
+          </p>
+
+          <p className="text-white font-black tracking-[0.25em] font-mono leading-none"
+            style={{ fontSize: 'clamp(5rem, 22vw, 14rem)' }}>
+            {sesion.codigo_asistencia}
+          </p>
+
+          <p className="text-white/50 text-xs mt-10 font-medium">
+            {sesion.nombre}
+          </p>
+
+          <p className="text-white/30 text-xs mt-6">
+            Toca en cualquier lugar para cerrar
+          </p>
+        </div>
+      )}
     </main>
   );
 }

@@ -66,8 +66,9 @@ export default function CrearUsuarioPage() {
 
     setCargando(true);
     try {
+      const nombreCompleto = [militante.nombres, militante.apellidos].filter(Boolean).join(' ');
       const { data, error } = await supabase.functions.invoke('enviar-codigo', {
-        body: { cedula: cedula.trim(), tipo: 'creacion' },
+        body: { cedula: cedula.trim(), tipo: 'creacion', email: militante.email, nombre: nombreCompleto },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || 'Error al enviar código');
@@ -86,10 +87,13 @@ export default function CrearUsuarioPage() {
     setCargando(true);
     setErrCodigo('');
     try {
+      const nombreCompleto = [militante.nombres, militante.apellidos].filter(Boolean).join(' ');
       const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {
         p_cedula:   cedula.trim(),
         p_codigo:   codigoIngresado.trim(),
         p_password: password,
+        p_nombre:   nombreCompleto,
+        p_email:    militante.email || '',
       });
       if (error) throw error;
       if (!data?.ok) { setErrCodigo(data?.error || 'Código incorrecto o expirado'); return; }

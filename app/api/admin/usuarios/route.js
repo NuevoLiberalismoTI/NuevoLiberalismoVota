@@ -31,12 +31,6 @@ export async function POST(request) {
 
   const supabase = createServerClient();
 
-  // Upsert en militantes para satisfacer la FK constraint de usuarios
-  await supabase.from('militantes').upsert(
-    { cedula: cedula.trim(), nombres: nombre.trim(), apellidos: '', email: email.trim(), estado: 'activo' },
-    { onConflict: 'cedula' }
-  );
-
   // Crear el usuario admin
   const { data, error } = await supabase.rpc('crear_usuario_admin', {
     p_cedula:   cedula.trim(),

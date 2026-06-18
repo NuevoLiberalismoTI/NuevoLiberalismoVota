@@ -38,33 +38,15 @@ export default function CrearUsuarioPage() {
     setCargando(true);
     setErrorCedula('');
     try {
-      const { data, error } = await supabase
-        .from('militantes')
-        .select('cedula, nombres, apellidos, email, estado')
-        .eq('cedula', cedula.trim())
-        .maybeSingle();
+      const res = await fetch(`/api/militante?cedula=${encodeURIComponent(cedula.trim())}`);
+      const json = await res.json();
 
-      if (error) throw error;
-
-      if (!data) {
-        setErrorCedula('no_encontrado'); return;
-      }
-      if (data.estado !== 'activo') {
-        setErrorCedula('no_activo'); return;
+      if (!json.ok) {
+        setErrorCedula(json.tipo || json.error || 'no_encontrado');
+        return;
       }
 
-      // Verificar que no tenga ya un usuario
-      const { data: usuarioExiste } = await supabase
-        .from('usuarios')
-        .select('cedula')
-        .eq('cedula', cedula.trim())
-        .maybeSingle();
-
-      if (usuarioExiste) {
-        setErrorCedula('ya_existe'); return;
-      }
-
-      setMilitante(data);
+      setMilitante(json.militante);
       setStep(2);
     } catch {
       setErrorCedula('Error al verificar. Intenta de nuevo.');

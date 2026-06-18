@@ -82,28 +82,49 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { cedula, tipo } = await req.json() as {
+    const { cedula, tipo, email: emailBody } = await req.json() as {
       cedula: string;
       tipo: 'creacion' | 'cambio_password';
+      email?: string;
     };
 
     if (!cedula || !tipo) {
       return Response.json({ ok: false, error: 'Faltan parámetros' }, { status: 400, headers: CORS });
     }
 
-    // Generar y guardar código en Supabase DB
     const supabase = createClient(SUPA_URL, SERVICE_KEY);
-    const fn = tipo === 'creacion' ? 'generar_codigo_creacion' : 'solicitar_cambio_password';
-    const { data, error } = await supabase.rpc(fn, { p_cedula: cedula });
+    let codigo: string;
+    let email: string;
 
-    if (error || !data?.ok) {
-      return Response.json(
-        { ok: false, error: data?.error ?? error?.message ?? 'Error al generar código' },
-        { headers: CORS }
-      );
+    if (emailBody) {
+      // Email viene directamente de la API externa — no se consulta militantes
+      codigo = Math.floor(100000 + Math.random() * 900000).toString();
+      const expira_en = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+      const { error: insErr } = await supabase
+        .from('codigos_pendientes')
+        .insert({ cedula, codigo, expira_en, usado: false });
+
+      if (insErr) {
+        return Response.json({ ok: false, error: 'Error al generar código' }, { headers: CORS });
+      }
+
+      email = emailBody;
+    } else {
+      // Flujo legado (recuperar contraseña): usa la RPC que lee de la tabla local
+      const fn = tipo === 'creacion' ? 'generar_codigo_creacion' : 'solicitar_cambio_password';
+      const { data, error } = await supabase.rpc(fn, { p_cedula: cedula });
+
+      if (error || !data?.ok) {
+        return Response.json(
+          { ok: false, error: data?.error ?? error?.message ?? 'Error al generar código' },
+          { headers: CORS }
+        );
+      }
+
+      codigo = (data as { codigo: string; email: string }).codigo;
+      email  = (data as { codigo: string; email: string }).email;
     }
-
-    const { codigo, email } = data as { codigo: string; email: string };
 
     // Enviar correo vía SendGrid
     const sgRes = await fetch('https://api.sendgrid.com/v3/mail/send', {

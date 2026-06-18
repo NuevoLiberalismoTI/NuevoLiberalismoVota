@@ -175,7 +175,7 @@ export default function CrearUsuarioPage() {
                     : 'Debes inscribirte primero como militante del Nuevo Liberalismo.'}
                 </p>
                 {errorCedula === 'no_encontrado' && (
-                  <a href="/registro-militante"
+                  <a href="https://nuevoliberalismo.org/militancia/" target="_blank" rel="noopener noreferrer"
                     className="inline-block mt-3 text-xs font-bold text-white bg-brand hover:bg-brand-hover px-4 py-2 rounded-lg transition-colors">
                     Inscribirme como militante
                   </a>

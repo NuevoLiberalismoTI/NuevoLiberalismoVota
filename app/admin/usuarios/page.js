@@ -3,28 +3,32 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, UserPlus, Eye, EyeOff, Loader2, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, UserPlus, Eye, EyeOff, Loader2, Trash2, ShieldCheck, AlertCircle, CheckCircle, Search, User } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 export default function AdminUsuariosPage() {
   const router = useRouter();
-  const [usuario, setUsuario]     = useState(null);
-  const [admins, setAdmins]       = useState([]);
-  const [cargando, setCargando]   = useState(true);
+  const [usuario, setUsuario]       = useState(null);
+  const [admins, setAdmins]         = useState([]);
+  const [cargando, setCargando]     = useState(true);
 
-  const [cedula, setCedula]       = useState('');
-  const [nombre, setNombre]       = useState('');
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
-  const [confirmar, setConfirmar] = useState('');
-  const [showPass, setShowPass]   = useState(false);
-  const [showConf, setShowConf]   = useState(false);
-  const [errores, setErrores]     = useState({});
-  const [creando, setCreando]     = useState(false);
-  const [exito, setExito]         = useState(false);
-  const [elimError, setElimError] = useState('');
+  const [cedula, setCedula]         = useState('');
+  const [nombre, setNombre]         = useState('');
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [confirmar, setConfirmar]   = useState('');
+  const [showPass, setShowPass]     = useState(false);
+  const [showConf, setShowConf]     = useState(false);
+  const [errores, setErrores]       = useState({});
+  const [creando, setCreando]       = useState(false);
+  const [exito, setExito]           = useState(false);
+  const [elimError, setElimError]   = useState('');
   const [eliminando, setEliminando] = useState(null);
+
+  const [buscando, setBuscando]     = useState(false);
+  const [militante, setMilitante]   = useState(null);
+  const [errBusqueda, setErrBusqueda] = useState('');
 
   const cargar = async () => {
     const res = await fetch('/api/admin/usuarios');
@@ -44,9 +48,31 @@ export default function AdminUsuariosPage() {
     cargar();
   }, [router]);
 
+  const handleBuscar = async () => {
+    if (!cedula.trim()) { setErrBusqueda('Ingresa una cédula'); return; }
+    setBuscando(true);
+    setMilitante(null);
+    setErrBusqueda('');
+    setErrores({});
+    try {
+      const res = await fetch(`/api/admin/militante?cedula=${encodeURIComponent(cedula.trim())}`);
+      const json = await res.json();
+      if (!json.ok) { setErrBusqueda(json.error || 'No encontrado'); return; }
+      const m = json.militante;
+      setMilitante(m);
+      const nombreCompleto = [m.primer_nombre, m.segundo_nombre, m.primer_apellido, m.segundo_apellido]
+        .filter(Boolean).join(' ');
+      setNombre(nombreCompleto);
+      setEmail(m.email || '');
+    } finally {
+      setBuscando(false);
+    }
+  };
+
   const validar = () => {
     const e = {};
     if (!cedula.trim()) e.cedula = 'Campo requerido';
+    if (!militante) e.cedula = 'Busca y verifica el militante primero';
     if (!nombre.trim()) e.nombre = 'Campo requerido';
     if (!email.trim()) e.email = 'Campo requerido';
     if (!password) e.password = 'Campo requerido';
@@ -69,17 +95,11 @@ export default function AdminUsuariosPage() {
         body: JSON.stringify({ cedula: cedula.trim(), nombre: nombre.trim(), email: email.trim(), password }),
       });
       const json = await res.json();
-      if (!json.ok) {
-        setErrores({ general: json.error || 'Error al crear el usuario' });
-        return;
-      }
+      if (!json.ok) { setErrores({ general: json.error || 'Error al crear el usuario' }); return; }
       setExito(true);
-      setCedula('');
-      setNombre('');
-      setEmail('');
-      setPassword('');
-      setConfirmar('');
-      setErrores({});
+      setCedula(''); setNombre(''); setEmail('');
+      setPassword(''); setConfirmar('');
+      setMilitante(null); setErrores({});
       await cargar();
     } finally {
       setCreando(false);
@@ -130,7 +150,6 @@ export default function AdminUsuariosPage() {
               <span className="text-sm text-green-700 font-medium">Usuario administrador creado correctamente.</span>
             </div>
           )}
-
           {errores.general && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
               <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
@@ -139,80 +158,132 @@ export default function AdminUsuariosPage() {
           )}
 
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cédula</label>
+
+            {/* Paso 1: Buscar por cédula */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                Paso 1 — Buscar militante por cédula
+              </label>
+              <div className="flex gap-2">
                 <input
                   type="text" inputMode="numeric" value={cedula}
-                  onChange={(e) => { setCedula(e.target.value); setErrores((p) => ({ ...p, cedula: '' })); setExito(false); }}
-                  placeholder="Ej: 1234567890"
-                  className={`border ${errores.cedula ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                  onChange={(e) => {
+                    setCedula(e.target.value);
+                    setMilitante(null);
+                    setErrBusqueda('');
+                    setErrores((p) => ({ ...p, cedula: '' }));
+                    setExito(false);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+                  placeholder="Número de cédula"
+                  className={`flex-1 border ${errores.cedula || errBusqueda ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
                 />
-                {errores.cedula && <span className="text-xs text-red-500">{errores.cedula}</span>}
+                <button onClick={handleBuscar} disabled={buscando}
+                  className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold px-4 py-2.5 rounded-lg text-sm transition-colors flex-shrink-0">
+                  {buscando ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                  {buscando ? 'Buscando...' : 'Buscar'}
+                </button>
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Nombre completo</label>
-                <input
-                  type="text" value={nombre}
-                  onChange={(e) => { setNombre(e.target.value); setErrores((p) => ({ ...p, nombre: '' })); setExito(false); }}
-                  placeholder="Nombre del administrador"
-                  className={`border ${errores.nombre ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                />
-                {errores.nombre && <span className="text-xs text-red-500">{errores.nombre}</span>}
-              </div>
+              {(errores.cedula || errBusqueda) && (
+                <span className="text-xs text-red-500">{errores.cedula || errBusqueda}</span>
+              )}
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Correo electrónico</label>
-              <input
-                type="email" value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrores((p) => ({ ...p, email: '' })); setExito(false); }}
-                placeholder="correo@ejemplo.com"
-                className={`border ${errores.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-              />
-              {errores.email && <span className="text-xs text-red-500">{errores.email}</span>}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Contraseña</label>
-                <div className="relative">
-                  <input
-                    type={showPass ? 'text' : 'password'} value={password}
-                    onChange={(e) => { setPassword(e.target.value); setErrores((p) => ({ ...p, password: '', confirmar: '' })); setExito(false); }}
-                    placeholder="Mínimo 8 caracteres"
-                    className={`w-full border ${errores.password ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                  />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+            {/* Tarjeta del militante encontrado */}
+            {militante && (
+              <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="bg-green-100 rounded-full p-2 flex-shrink-0">
+                  <User size={16} className="text-green-700" />
                 </div>
-                {errores.password && <span className="text-xs text-red-500">{errores.password}</span>}
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Confirmar contraseña</label>
-                <div className="relative">
-                  <input
-                    type={showConf ? 'text' : 'password'} value={confirmar}
-                    onChange={(e) => { setConfirmar(e.target.value); setErrores((p) => ({ ...p, confirmar: '' })); setExito(false); }}
-                    placeholder="Repite la contraseña"
-                    className={`w-full border ${errores.confirmar ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                  />
-                  <button type="button" onClick={() => setShowConf(!showConf)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showConf ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-green-800">
+                    {[militante.primer_nombre, militante.segundo_nombre, militante.primer_apellido, militante.segundo_apellido].filter(Boolean).join(' ')}
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                    <span className="text-xs text-green-600">{militante.tipo_documento} {militante.numero_documento}</span>
+                    <span className={`text-xs font-semibold ${militante.estado_afiliacion === 'Activo' ? 'text-green-700' : 'text-amber-600'}`}>
+                      {militante.estado_afiliacion}
+                    </span>
+                    {militante.nombre_departamento && (
+                      <span className="text-xs text-green-600">{militante.nombre_departamento}</span>
+                    )}
+                  </div>
                 </div>
-                {errores.confirmar && <span className="text-xs text-red-500">{errores.confirmar}</span>}
+                <CheckCircle size={18} className="text-green-600 flex-shrink-0" />
               </div>
-            </div>
+            )}
 
-            <button onClick={handleCrear} disabled={creando}
-              className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
-              {creando ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
-              {creando ? 'Creando...' : 'Crear administrador'}
-            </button>
+            {/* Paso 2: Datos del usuario (solo si encontró militante) */}
+            {militante && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Paso 2 — Confirmar datos del usuario
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500">Nombre completo</label>
+                    <input
+                      type="text" value={nombre}
+                      onChange={(e) => { setNombre(e.target.value); setErrores((p) => ({ ...p, nombre: '' })); }}
+                      className={`border ${errores.nombre ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                    />
+                    {errores.nombre && <span className="text-xs text-red-500">{errores.nombre}</span>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500">Correo electrónico</label>
+                    <input
+                      type="email" value={email}
+                      onChange={(e) => { setEmail(e.target.value); setErrores((p) => ({ ...p, email: '' })); }}
+                      placeholder="correo@ejemplo.com"
+                      className={`border ${errores.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                    />
+                    {errores.email && <span className="text-xs text-red-500">{errores.email}</span>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500">Contraseña</label>
+                    <div className="relative">
+                      <input
+                        type={showPass ? 'text' : 'password'} value={password}
+                        onChange={(e) => { setPassword(e.target.value); setErrores((p) => ({ ...p, password: '', confirmar: '' })); }}
+                        placeholder="Mínimo 8 caracteres"
+                        className={`w-full border ${errores.password ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                      />
+                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                    {errores.password && <span className="text-xs text-red-500">{errores.password}</span>}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-500">Confirmar contraseña</label>
+                    <div className="relative">
+                      <input
+                        type={showConf ? 'text' : 'password'} value={confirmar}
+                        onChange={(e) => { setConfirmar(e.target.value); setErrores((p) => ({ ...p, confirmar: '' })); }}
+                        placeholder="Repite la contraseña"
+                        className={`w-full border ${errores.confirmar ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                      />
+                      <button type="button" onClick={() => setShowConf(!showConf)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        {showConf ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                    {errores.confirmar && <span className="text-xs text-red-500">{errores.confirmar}</span>}
+                  </div>
+                </div>
+
+                <button onClick={handleCrear} disabled={creando}
+                  className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
+                  {creando ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
+                  {creando ? 'Creando...' : 'Crear administrador'}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -229,11 +300,7 @@ export default function AdminUsuariosPage() {
             </div>
           )}
 
-          {cargando && (
-            <div className="flex justify-center py-8">
-              <Loader2 size={26} className="text-brand animate-spin" />
-            </div>
-          )}
+          {cargando && <div className="flex justify-center py-8"><Loader2 size={26} className="text-brand animate-spin" /></div>}
 
           {!cargando && admins.length === 0 && (
             <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
@@ -254,13 +321,9 @@ export default function AdminUsuariosPage() {
                   </div>
                 </div>
                 {a.cedula !== usuario.cedula && (
-                  <button
-                    onClick={() => handleEliminar(a.cedula)}
-                    disabled={eliminando === a.cedula}
+                  <button onClick={() => handleEliminar(a.cedula)} disabled={eliminando === a.cedula}
                     className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 flex-shrink-0">
-                    {eliminando === a.cedula
-                      ? <Loader2 size={13} className="animate-spin" />
-                      : <Trash2 size={13} />}
+                    {eliminando === a.cedula ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     Eliminar
                   </button>
                 )}

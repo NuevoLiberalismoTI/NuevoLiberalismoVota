@@ -18,6 +18,18 @@ export async function POST(request) {
   }
 
   const supabase = createServerClient();
+
+  // Verificar si las asistencias están cerradas
+  const { data: asm } = await supabase
+    .from('asambleas')
+    .select('asistencias_cerradas')
+    .eq('id', sesionId)
+    .single();
+
+  if (asm?.asistencias_cerradas) {
+    return Response.json({ ok: false, error: 'El registro de asistencia para esta asamblea está cerrado.' });
+  }
+
   const { data, error } = await supabase.rpc('verificar_y_registrar_asistencia', {
     p_asamblea_id: sesionId,
     p_cedula:      cedula,

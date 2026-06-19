@@ -230,11 +230,29 @@ export default function AdminSesionPage() {
   const [resultados, setResultados]       = useState([]);
   const [tab, setTab]                     = useState('preguntas'); // 'preguntas' | 'resultados'
   const [mostrarForm, setMostrarForm]     = useState(false);
-  const [mostrarVivo, setMostrarVivo]     = useState(false);
-  const [mostrarCodigo, setMostrarCodigo] = useState(false);
-  const [cargando, setCargando]           = useState(false);
+  const [mostrarVivo, setMostrarVivo]         = useState(false);
+  const [mostrarCodigo, setMostrarCodigo]     = useState(false);
+  const [cargando, setCargando]               = useState(false);
+  const [cerrandoInsc, setCerrandoInsc]       = useState(false);
+  const [cerrandoAsist, setCerrandoAsist]     = useState(false);
   const [qrTs, setQrTs]                   = useState(() => Math.floor(Date.now() / 30000));
   const [qrSegundos, setQrSegundos]       = useState(30);
+
+  const handleCerrarInscripciones = async () => {
+    if (!confirm('¿Cerrar inscripciones? Esta acción es permanente y no se puede revertir.')) return;
+    setCerrandoInsc(true);
+    await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar-inscripciones`, { method: 'POST' });
+    await cargar();
+    setCerrandoInsc(false);
+  };
+
+  const handleCerrarAsistencias = async () => {
+    if (!confirm('¿Cerrar registro de asistencias? Esta acción es permanente y no se puede revertir.')) return;
+    setCerrandoAsist(true);
+    await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar-asistencias`, { method: 'POST' });
+    await cargar();
+    setCerrandoAsist(false);
+  };
 
   useEffect(() => {
     if (!mostrarCodigo) return;
@@ -359,10 +377,10 @@ export default function AdminSesionPage() {
             <span>📍 {sesion.lugar}</span>
             <span>🏷️ {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
             <span className="flex items-center gap-2">
-              🔑 <span className="font-mono font-bold text-gray-800">{sesion.codigo_asistencia}</span>
+              🔑 <span className="font-mono font-bold text-gray-400 tracking-widest">••••••</span>
               <button onClick={() => setMostrarCodigo(true)}
                 className="flex items-center gap-1 text-[10px] font-bold text-brand bg-brand-50 border border-brand px-2 py-0.5 rounded-full hover:bg-brand hover:text-white transition-colors">
-                <Monitor size={10} /> Proyectar
+                <Monitor size={10} /> Proyectar QR
               </button>
             </span>
           </div>
@@ -411,6 +429,32 @@ export default function AdminSesionPage() {
                   </span>
                 </div>
               )}
+
+              {/* Botones de cierre */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {sesion.inscripciones_cerradas ? (
+                  <div className="flex items-center justify-center gap-1.5 bg-gray-100 text-gray-400 font-semibold py-2 rounded-xl text-xs border border-gray-200">
+                    <Lock size={12} /> Inscripciones cerradas
+                  </div>
+                ) : (
+                  <button onClick={handleCerrarInscripciones} disabled={cerrandoInsc}
+                    className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl text-xs border border-red-200 transition-colors disabled:opacity-50">
+                    {cerrandoInsc ? <Loader2 size={12} className="animate-spin" /> : <Lock size={12} />}
+                    Cerrar inscripciones
+                  </button>
+                )}
+                {sesion.asistencias_cerradas ? (
+                  <div className="flex items-center justify-center gap-1.5 bg-gray-100 text-gray-400 font-semibold py-2 rounded-xl text-xs border border-gray-200">
+                    <Lock size={12} /> Asistencias cerradas
+                  </div>
+                ) : (
+                  <button onClick={handleCerrarAsistencias} disabled={cerrandoAsist}
+                    className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 rounded-xl text-xs border border-red-200 transition-colors disabled:opacity-50">
+                    {cerrandoAsist ? <Loader2 size={12} className="animate-spin" /> : <Lock size={12} />}
+                    Cerrar asistencias
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

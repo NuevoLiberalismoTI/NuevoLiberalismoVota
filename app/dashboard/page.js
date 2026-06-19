@@ -42,8 +42,13 @@ export default function DashboardPage() {
 
   const handleInscribirse = async (id) => {
     setAccionId(id);
-    const { data } = await supabase.rpc('inscribir_usuario', { p_asamblea_id: id, p_cedula: usuario.cedula });
-    if (!data?.ok) alert(data?.error || 'Error al inscribirse');
+    const res = await fetch('/api/inscribir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ asambleaId: id, cedula: usuario.cedula }),
+    });
+    const data = await res.json();
+    if (!data.ok) alert(data.error || 'Error al inscribirse');
     await cargar(usuario.cedula);
     setAccionId(null);
   };

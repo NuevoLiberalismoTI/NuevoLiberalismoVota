@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -16,8 +16,9 @@ function Header() {
   );
 }
 
-function AsistirContent({ sesionId }) {
+function AsistirContent() {
   const router = useRouter();
+  const { id: sesionId } = useParams();
   const searchParams = useSearchParams();
   const codigo = searchParams.get('c');
 
@@ -39,7 +40,7 @@ function AsistirContent({ sesionId }) {
 
     const usuario = JSON.parse(usuarioStr);
     registrar(usuario.cedula);
-  }, []);
+  }, [sesionId, codigo]);
 
   const registrar = async (cedula) => {
     try {
@@ -108,14 +109,14 @@ function AsistirContent({ sesionId }) {
   );
 }
 
-export default function AsistirPage({ params }) {
+export default function AsistirPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <Loader2 size={48} className="text-brand animate-spin" />
       </main>
     }>
-      <AsistirContent sesionId={params.id} />
+      <AsistirContent />
     </Suspense>
   );
 }

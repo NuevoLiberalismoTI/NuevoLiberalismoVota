@@ -37,7 +37,13 @@ export default function HomePage() {
       }
       const user = json.user;
       sessionStorage.setItem('usuario', JSON.stringify(user));
-      router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
+      const params = new URLSearchParams(window.location.search);
+      const retorno = params.get('retorno');
+      if (retorno && user.rol !== 'admin') {
+        router.push(retorno);
+      } else {
+        router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
+      }
     } catch {
       setError('Error al conectar. Intenta de nuevo.');
     } finally {

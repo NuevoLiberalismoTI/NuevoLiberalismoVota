@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
+import QRCode from 'react-qr-code';
 import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X } from 'lucide-react';
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -701,10 +702,10 @@ export default function AdminSesionPage() {
 
       </div>
 
-      {/* Modal pantalla completa: código de asistencia */}
+      {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (
         <div
-          className="fixed inset-0 z-50 bg-brand flex flex-col items-center justify-center"
+          className="fixed inset-0 z-50 bg-brand flex flex-col items-center justify-center gap-6"
           onClick={() => setMostrarCodigo(false)}>
           <button
             onClick={() => setMostrarCodigo(false)}
@@ -712,22 +713,25 @@ export default function AdminSesionPage() {
             <X size={32} />
           </button>
 
-          <p className="text-white/60 text-sm font-semibold uppercase tracking-widest mb-4">
-            Código de asistencia
+          <p className="text-white/70 text-sm font-bold uppercase tracking-widest">
+            Escanea el QR para registrar tu asistencia
           </p>
 
-          <p className="text-white font-black tracking-[0.25em] font-mono leading-none"
-            style={{ fontSize: 'clamp(5rem, 22vw, 14rem)' }}>
+          <div className="bg-white rounded-3xl p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <QRCode
+              value={`${window.location.origin}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`}
+              size={Math.min(280, window.innerWidth - 96)}
+              level="M"
+            />
+          </div>
+
+          <p className="text-white/60 font-mono font-bold tracking-[0.3em] text-xl">
             {sesion.codigo_asistencia}
           </p>
 
-          <p className="text-white/50 text-xs mt-10 font-medium">
-            {sesion.nombre}
-          </p>
+          <p className="text-white/40 text-xs font-medium">{sesion.nombre}</p>
 
-          <p className="text-white/30 text-xs mt-6">
-            Toca en cualquier lugar para cerrar
-          </p>
+          <p className="text-white/25 text-xs mt-2">Toca en cualquier lugar para cerrar</p>
         </div>
       )}
     </main>

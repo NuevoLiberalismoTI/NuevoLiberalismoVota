@@ -233,6 +233,21 @@ export default function AdminSesionPage() {
   const [mostrarVivo, setMostrarVivo]     = useState(false);
   const [mostrarCodigo, setMostrarCodigo] = useState(false);
   const [cargando, setCargando]           = useState(false);
+  const [qrTs, setQrTs]                   = useState(() => Math.floor(Date.now() / 30000));
+  const [qrSegundos, setQrSegundos]       = useState(30);
+
+  useEffect(() => {
+    if (!mostrarCodigo) return;
+    const tick = () => {
+      const ahora = Date.now();
+      const elapsed = (ahora / 1000) % 30;
+      setQrSegundos(Math.ceil(30 - elapsed));
+      setQrTs(Math.floor(ahora / 30000));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [mostrarCodigo]);
 
   const cargar = useCallback(async () => {
     const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`);
@@ -705,7 +720,7 @@ export default function AdminSesionPage() {
       {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (
         <div
-          className="fixed inset-0 z-50 bg-brand flex flex-col items-center justify-center gap-6"
+          className="fixed inset-0 z-50 bg-brand flex flex-col items-center justify-center gap-5"
           onClick={() => setMostrarCodigo(false)}>
           <button
             onClick={() => setMostrarCodigo(false)}
@@ -719,19 +734,28 @@ export default function AdminSesionPage() {
 
           <div className="bg-white rounded-3xl p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <QRCode
-              value={`${window.location.origin}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`}
+              value={`${window.location.origin}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}&ts=${qrTs}`}
               size={Math.min(280, window.innerWidth - 96)}
               level="M"
             />
           </div>
 
-          <p className="text-white/60 font-mono font-bold tracking-[0.3em] text-xl">
-            {sesion.codigo_asistencia}
-          </p>
+          {/* Barra de tiempo restante */}
+          <div className="flex flex-col items-center gap-2 w-64" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full bg-white/20 rounded-full h-2">
+              <div
+                className="bg-white rounded-full h-2 transition-all duration-1000"
+                style={{ width: `${(qrSegundos / 30) * 100}%` }}
+              />
+            </div>
+            <p className="text-white/60 text-xs font-semibold">
+              Código actualiza en {qrSegundos}s
+            </p>
+          </div>
 
           <p className="text-white/40 text-xs font-medium">{sesion.nombre}</p>
 
-          <p className="text-white/25 text-xs mt-2">Toca en cualquier lugar para cerrar</p>
+          <p className="text-white/25 text-xs">Toca en cualquier lugar para cerrar</p>
         </div>
       )}
     </main>

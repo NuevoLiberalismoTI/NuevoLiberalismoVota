@@ -3,8 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { CheckCircle, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -21,8 +20,9 @@ function AsistirContent() {
   const { id: sesionId } = useParams();
   const searchParams = useSearchParams();
   const codigo = searchParams.get('c');
+  const ts     = searchParams.get('ts');
 
-  const [estado, setEstado] = useState('cargando');
+  const [estado, setEstado]   = useState('cargando');
   const [mensaje, setMensaje] = useState('');
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function AsistirContent() {
 
     const usuarioStr = sessionStorage.getItem('usuario');
     if (!usuarioStr) {
-      router.replace(`/?retorno=${encodeURIComponent(`/asistir/${sesionId}?c=${codigo}`)}`);
+      router.replace(`/?retorno=${encodeURIComponent(`/asistir/${sesionId}?c=${codigo}&ts=${ts}`)}`);
       return;
     }
 
@@ -44,15 +44,16 @@ function AsistirContent() {
 
   const registrar = async (cedula) => {
     try {
-      const { data, error } = await supabase.rpc('verificar_y_registrar_asistencia', {
-        p_asamblea_id: sesionId,
-        p_cedula:      cedula,
-        p_codigo:      codigo,
+      const res = await fetch('/api/asistencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sesionId, cedula, codigo, ts: ts ? Number(ts) : Math.floor(Date.now() / 30000) }),
       });
+      const data = await res.json();
 
-      if (error || !data?.ok) {
-        setEstado('error');
-        setMensaje(data?.error || error?.message || 'No se pudo registrar la asistencia.');
+      if (!data.ok) {
+        setEstado(data.expirado ? 'expirado' : 'error');
+        setMensaje(data.error || 'No se pudo registrar la asistencia.');
       } else {
         setEstado('exito');
       }
@@ -79,13 +80,22 @@ function AsistirContent() {
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
           <CheckCircle size={72} className="text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Asistencia registrada!</h2>
-          <p className="text-gray-500 text-sm mb-8">
-            Tu asistencia ha sido registrada exitosamente.
-          </p>
-          <button onClick={() => router.push('/dashboard')}
-            className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors">
-            Ir al inicio
-          </button>
+          <p className="text-gray-500 text-sm mb-8">Ingresando a la asamblea...</p>
+          {/* Redirige automáticamente a la sesión */}
+          <AutoRedirect destino={`/sesion/${sesionId}`} />
+        </div>
+      </div>
+    </main>
+  );
+
+  if (estado === 'expirado') return (
+    <main className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
+          <RefreshCw size={64} className="text-orange-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Código QR expirado</h2>
+          <p className="text-sm text-gray-500 mb-2">{mensaje}</p>
         </div>
       </div>
     </main>
@@ -107,6 +117,15 @@ function AsistirContent() {
       </div>
     </main>
   );
+}
+
+function AutoRedirect({ destino }) {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setTimeout(() => router.replace(destino), 1500);
+    return () => clearTimeout(t);
+  }, [destino]);
+  return null;
 }
 
 export default function AsistirPage() {

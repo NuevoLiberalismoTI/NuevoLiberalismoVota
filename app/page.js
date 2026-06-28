@@ -73,10 +73,10 @@ export default function HomePage() {
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
 
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700" htmlFor="usuario">Usuario (cédula)</label>
+              <label className="text-sm font-semibold text-gray-700" htmlFor="usuario">Usuario (No. de identificación)</label>
               <input
                 id="usuario" name="usuario" type="text" autoComplete="username"
-                value={form.usuario} onChange={handleChange} placeholder="Ingresa tu número de cédula"
+                value={form.usuario} onChange={handleChange} placeholder="Ingresa tu número de identificación"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition"
               />
             </div>

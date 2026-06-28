@@ -3,7 +3,7 @@ import { createServerClient } from '../../lib/supabase-server';
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const cedula = searchParams.get('cedula')?.trim();
-  if (!cedula) return Response.json({ ok: false, error: 'Cédula requerida' }, { status: 400 });
+  if (!cedula) return Response.json({ ok: false, error: 'Número de identificación requerido' }, { status: 400 });
 
   const token = process.env.MILITANTES_API_TOKEN;
   if (!token) return Response.json({ ok: false, error: 'Servicio no disponible' }, { status: 500 });

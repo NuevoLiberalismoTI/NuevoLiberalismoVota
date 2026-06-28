@@ -184,7 +184,7 @@ export default function RegistroAsambleaPage() {
           <div className="flex flex-col gap-4">
             <Field label="Nombres" name="nombres" placeholder="Ej: Juan David" value={form.nombres} onChange={handleChange} error={errores.nombres} />
             <Field label="Apellidos" name="apellidos" placeholder="Ej: García Ruiz" value={form.apellidos} onChange={handleChange} error={errores.apellidos} />
-            <Field label="Número de cédula" name="cedula" type="number" placeholder="Ej: 1234567890" value={form.cedula} onChange={handleChange} error={errores.cedula} />
+            <Field label="Número de identificación" name="cedula" type="number" placeholder="Ej: 1234567890" value={form.cedula} onChange={handleChange} error={errores.cedula} />
             <Field label="Correo electrónico" name="email" type="email" placeholder="correo@ejemplo.com" value={form.email} onChange={handleChange} error={errores.email} />
             <Field label="Celular" name="celular" type="tel" placeholder="Ej: 3001234567" value={form.celular} onChange={handleChange} error={errores.celular} />
 

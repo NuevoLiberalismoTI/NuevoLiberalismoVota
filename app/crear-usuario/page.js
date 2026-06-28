@@ -34,7 +34,7 @@ export default function CrearUsuarioPage() {
 
   // ── PASO 1: Validar cédula contra Supabase ───────────────────────────────
   const handleValidarCedula = async () => {
-    if (!cedula.trim()) { setErrorCedula('Ingresa tu número de cédula'); return; }
+    if (!cedula.trim()) { setErrorCedula('Ingresa tu número de identificación'); return; }
     setCargando(true);
     setErrorCedula('');
     try {
@@ -145,11 +145,11 @@ export default function CrearUsuarioPage() {
           <div className="flex justify-center mb-4">
             <div className="bg-brand-50 rounded-full p-4"><ShieldCheck size={36} className="text-brand"/></div>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-1">Verifica tu cédula</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Verifica tu número de identificación</h2>
           <p className="text-sm text-gray-500 mb-6">Solo los militantes registrados y activos pueden crear un usuario.</p>
 
           <div className="flex flex-col gap-1 mb-4">
-            <label className="text-sm font-semibold text-gray-700">Número de cédula</label>
+            <label className="text-sm font-semibold text-gray-700">Número de identificación</label>
             <input type="number" value={cedula}
               onChange={(e) => { setCedula(e.target.value); setErrorCedula(''); }}
               placeholder="Ej: 1234567890"
@@ -187,7 +187,7 @@ export default function CrearUsuarioPage() {
           {errorCedula === 'ya_existe' && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
               <p className="text-sm font-semibold text-blue-800">Ya tienes un usuario creado</p>
-              <p className="text-xs text-blue-700 mt-1">Usa tu cédula y contraseña para iniciar sesión.</p>
+              <p className="text-xs text-blue-700 mt-1">Usa tu número de identificación y contraseña para iniciar sesión.</p>
               <a href="/" className="inline-block mt-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
                 Ir a iniciar sesión
               </a>
@@ -197,7 +197,7 @@ export default function CrearUsuarioPage() {
           <button onClick={handleValidarCedula} disabled={cargando}
             className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
             {cargando ? <Loader2 size={17} className="animate-spin"/> : <ShieldCheck size={17}/>}
-            {cargando ? 'Verificando...' : 'Verificar cédula'}
+            {cargando ? 'Verificando...' : 'Verificar identificación'}
           </button>
         </div>
       </div>
@@ -217,13 +217,13 @@ export default function CrearUsuarioPage() {
             <div>
               <p className="text-sm font-semibold text-green-800">¡Militante verificado!</p>
               <p className="text-xs text-green-700 mt-0.5">{militante?.nombres} {militante?.apellidos}</p>
-              <p className="text-xs text-green-600 mt-0.5">Cédula: {cedula}</p>
+              <p className="text-xs text-green-600 mt-0.5">No. identificación: {cedula}</p>
             </div>
           </div>
 
           <h2 className="text-xl font-bold text-gray-900 mb-1">Crea tu contraseña</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Tu usuario será tu número de cédula: <span className="font-bold text-gray-800">{cedula}</span>
+            Tu usuario será tu número de identificación: <span className="font-bold text-gray-800">{cedula}</span>
           </p>
 
           <div className="flex flex-col gap-4">

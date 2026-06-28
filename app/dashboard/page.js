@@ -86,7 +86,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Bienvenido(a)</p>
           <h1 className="text-xl font-bold text-gray-900">{usuario.nombre}</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Cédula: {usuario.cedula}</p>
+          <p className="text-xs text-gray-400 mt-0.5">No. identificación: {usuario.cedula}</p>
         </div>
 
         {/* Tabs */}

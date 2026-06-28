@@ -5,6 +5,20 @@ import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw } from 'lucide-react';
 
+const ACRED_CFG = {
+  preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  acreditado_voto:    { label: 'Ingreso + Voto', color: 'bg-green-100 text-green-700 border-green-200'   },
+  acreditado_ingreso: { label: 'Solo Ingreso',   color: 'bg-blue-100 text-blue-700 border-blue-200'      },
+  rechazado:          { label: 'Rechazado',      color: 'bg-red-100 text-red-600 border-red-200'         },
+};
+
+const ACRED_FILTROS = [
+  { key: 'preinscrito',        label: 'Pendientes',   color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+  { key: 'acreditado_voto',    label: 'Ingreso+Voto', color: 'text-green-700 bg-green-50 border-green-200'    },
+  { key: 'acreditado_ingreso', label: 'Solo Ingreso', color: 'text-blue-700 bg-blue-50 border-blue-200'       },
+  { key: 'rechazado',          label: 'Rechazados',   color: 'text-red-600 bg-red-50 border-red-200'          },
+];
+
 const ESTADO_SESION = {
   borrador:   { label: 'Borrador',   color: 'bg-yellow-100 text-yellow-700', next: 'proxima',    nextLabel: 'Publicar como Próxima' },
   proxima:    { label: 'Próxima',    color: 'bg-blue-100 text-blue-700',     next: 'en_curso',   nextLabel: 'Iniciar sesión'        },
@@ -371,6 +385,17 @@ export default function AdminSesionPage() {
     await cargar(); setCargando(false);
   };
 
+  // Preinscritos computed values (calculated before render, no IIFE needed)
+  const acredCounts = preinscritos.reduce((acc, p) => {
+    const k = p.estado_acreditacion || 'preinscrito';
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const acredFiltrados = filtroAcred === 'todos'
+    ? preinscritos
+    : preinscritos.filter((p) => (p.estado_acreditacion || 'preinscrito') === filtroAcred);
+  const acredPendientes = acredCounts.preinscrito || 0;
+
   return (
     <div className="flex h-full min-h-screen bg-gray-50">
       {/* Left panel — session info, fixed ~360px */}
@@ -544,132 +569,100 @@ export default function AdminSesionPage() {
         </div>
 
         {/* Tab: Preinscritos */}
-        {tab === 'preinscritos' && (() => {
-          const ACRED_CFG = {
-            preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-            acreditado_voto:    { label: 'Ingreso + Voto', color: 'bg-green-100 text-green-700 border-green-200'   },
-            acreditado_ingreso: { label: 'Solo Ingreso',   color: 'bg-blue-100 text-blue-700 border-blue-200'      },
-            rechazado:          { label: 'Rechazado',      color: 'bg-red-100 text-red-600 border-red-200'         },
-          };
-
-          const counts = preinscritos.reduce((acc, p) => {
-            acc[p.estado_acreditacion] = (acc[p.estado_acreditacion] || 0) + 1;
-            return acc;
-          }, {});
-
-          const filtrados = filtroAcred === 'todos'
-            ? preinscritos
-            : preinscritos.filter((p) => p.estado_acreditacion === filtroAcred);
-
-          const pendientesCount = counts.preinscrito || 0;
-
-          return (
-            <div className="flex flex-col gap-4">
-              {/* Resumen */}
-              <div className="grid grid-cols-4 gap-3">
-                {[
-                  { key: 'preinscrito',        label: 'Pendientes',   color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
-                  { key: 'acreditado_voto',    label: 'Ingreso+Voto', color: 'text-green-700 bg-green-50 border-green-200'    },
-                  { key: 'acreditado_ingreso', label: 'Solo Ingreso', color: 'text-blue-700 bg-blue-50 border-blue-200'       },
-                  { key: 'rechazado',          label: 'Rechazados',   color: 'text-red-600 bg-red-50 border-red-200'          },
-                ].map(({ key, label, color }) => (
-                  <div key={key} className={`border rounded-xl p-3 text-center cursor-pointer transition-all ${color} ${filtroAcred === key ? 'ring-2 ring-offset-1 ring-brand' : ''}`}
-                    onClick={() => setFiltroAcred(filtroAcred === key ? 'todos' : key)}>
-                    <p className="text-2xl font-extrabold">{counts[key] || 0}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wide mt-0.5">{label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Acciones bulk */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500 font-semibold">
-                  {pendientesCount} pendiente{pendientesCount !== 1 ? 's' : ''} sin acreditar
-                </span>
-                {pendientesCount > 0 && (
-                  <>
-                    <button onClick={() => handleAcreditarBulk('acreditado_voto')}
-                      className="flex items-center gap-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors">
-                      <ShieldCheck size={12}/> Acreditar todos (Ingreso + Voto)
-                    </button>
-                    <button onClick={() => handleAcreditarBulk('acreditado_ingreso')}
-                      className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors">
-                      <ShieldCheck size={12}/> Acreditar todos (Solo Ingreso)
-                    </button>
-                  </>
-                )}
-                <button onClick={cargar} disabled={cargandoPreins}
-                  className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
-                  <RefreshCw size={13} className={cargandoPreins ? 'animate-spin' : ''} />
-                </button>
-              </div>
-
-              {/* Filtro */}
-              {filtroAcred !== 'todos' && (
-                <button onClick={() => setFiltroAcred('todos')}
-                  className="text-xs text-brand font-semibold hover:underline self-start">
-                  ← Ver todos ({preinscritos.length})
-                </button>
-              )}
-
-              {/* Lista */}
-              {cargandoPreins && preinscritos.length === 0 ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 size={22} className="text-brand animate-spin" />
+        {tab === 'preinscritos' && (
+          <div className="flex flex-col gap-4">
+            {/* Resumen */}
+            <div className="grid grid-cols-4 gap-3">
+              {ACRED_FILTROS.map(({ key, label, color }) => (
+                <div key={key}
+                  className={`border rounded-xl p-3 text-center cursor-pointer transition-all ${color} ${filtroAcred === key ? 'ring-2 ring-offset-1 ring-brand' : ''}`}
+                  onClick={() => setFiltroAcred(filtroAcred === key ? 'todos' : key)}>
+                  <p className="text-2xl font-extrabold">{acredCounts[key] || 0}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wide mt-0.5">{label}</p>
                 </div>
-              ) : filtrados.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-                  <p className="text-gray-400 text-sm">
-                    {preinscritos.length === 0 ? 'Aún no hay inscripciones' : 'Sin resultados para este filtro'}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {filtrados.map((p) => {
-                    const cfg = ACRED_CFG[p.estado_acreditacion] || ACRED_CFG.preinscrito;
-                    const initials = p.nombre
-                      ? p.nombre.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
-                      : p.cedula.slice(0, 2).toUpperCase();
-                    return (
-                      <div key={p.cedula} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 hover:border-gray-200 transition-colors">
-                        <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
-                          {initials}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{p.nombre}</p>
-                          <p className="text-xs text-gray-400 font-mono">{p.cedula}</p>
-                        </div>
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${cfg.color}`}>
-                          {cfg.label}
-                        </span>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => handleAcreditar(p.cedula, 'acreditado_voto')}
-                            title="Acreditar: Ingreso + Voto"
-                            className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'acreditado_voto' ? 'bg-green-500 text-white' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}>
-                            <ShieldCheck size={15}/>
-                          </button>
-                          <button
-                            onClick={() => handleAcreditar(p.cedula, 'acreditado_ingreso')}
-                            title="Acreditar: Solo Ingreso"
-                            className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'acreditado_ingreso' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
-                            <Shield size={15}/>
-                          </button>
-                          <button
-                            onClick={() => handleAcreditar(p.cedula, 'rechazado')}
-                            title="Rechazar"
-                            className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'rechazado' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}>
-                            <ShieldX size={15}/>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              ))}
             </div>
-          );
-        })()}
+
+            {/* Acciones bulk */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-500 font-semibold">
+                {acredPendientes} pendiente{acredPendientes !== 1 ? 's' : ''} sin acreditar
+              </span>
+              {acredPendientes > 0 && (
+                <>
+                  <button onClick={() => handleAcreditarBulk('acreditado_voto')}
+                    className="flex items-center gap-1.5 text-xs font-bold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition-colors">
+                    <ShieldCheck size={12}/> Acreditar todos (Ingreso + Voto)
+                  </button>
+                  <button onClick={() => handleAcreditarBulk('acreditado_ingreso')}
+                    className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors">
+                    <ShieldCheck size={12}/> Acreditar todos (Solo Ingreso)
+                  </button>
+                </>
+              )}
+              <button onClick={cargar} disabled={cargandoPreins}
+                className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
+                <RefreshCw size={13} className={cargandoPreins ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            {/* Filtro activo */}
+            {filtroAcred !== 'todos' && (
+              <button onClick={() => setFiltroAcred('todos')}
+                className="text-xs text-brand font-semibold hover:underline self-start">
+                ← Ver todos ({preinscritos.length})
+              </button>
+            )}
+
+            {/* Lista */}
+            {acredFiltrados.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <p className="text-gray-400 text-sm">
+                  {preinscritos.length === 0 ? 'Aún no hay inscripciones' : 'Sin resultados para este filtro'}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {acredFiltrados.map((p) => {
+                  const aCredCfg = ACRED_CFG[p.estado_acreditacion] || ACRED_CFG.preinscrito;
+                  const nombreStr = p.nombre || p.cedula;
+                  const initials = nombreStr.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+                  return (
+                    <div key={p.cedula} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 hover:border-gray-200 transition-colors">
+                      <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{nombreStr}</p>
+                        <p className="text-xs text-gray-400 font-mono">{p.cedula}</p>
+                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${aCredCfg.color}`}>
+                        {aCredCfg.label}
+                      </span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => handleAcreditar(p.cedula, 'acreditado_voto')}
+                          title="Acreditar: Ingreso + Voto"
+                          className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'acreditado_voto' ? 'bg-green-500 text-white' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}>
+                          <ShieldCheck size={15}/>
+                        </button>
+                        <button onClick={() => handleAcreditar(p.cedula, 'acreditado_ingreso')}
+                          title="Acreditar: Solo Ingreso"
+                          className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'acreditado_ingreso' ? 'bg-blue-500 text-white' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                          <Shield size={15}/>
+                        </button>
+                        <button onClick={() => handleAcreditar(p.cedula, 'rechazado')}
+                          title="Rechazar"
+                          className={`p-1.5 rounded-lg transition-colors ${p.estado_acreditacion === 'rechazado' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}>
+                          <ShieldX size={15}/>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab: Resultados */}
         {tab === 'resultados' && (

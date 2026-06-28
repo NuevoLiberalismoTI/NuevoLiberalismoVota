@@ -22,7 +22,7 @@ export async function POST(request) {
   // Verificar asistencias cerradas y acreditación del usuario en paralelo
   const [{ data: asm }, { data: inscripcion }] = await Promise.all([
     supabase.from('asambleas').select('asistencias_cerradas').eq('id', sesionId).single(),
-    supabase.from('inscripciones').select('estado_acreditacion').eq('asamblea_id', sesionId).eq('cedula', cedula).maybeSingle(),
+    supabase.from('inscripciones').select('estado_acreditacion').eq('asamblea_id', sesionId).eq('usuario_cedula', cedula).maybeSingle(),
   ]);
 
   if (asm?.asistencias_cerradas) {

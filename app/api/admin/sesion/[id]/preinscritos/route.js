@@ -11,18 +11,17 @@ export async function GET(request, { params }) {
   const sesionId = decodeURIComponent(id);
   const supabase = createServerClient();
 
-  // Consulta base sin JOIN para garantizar que siempre funcione
+  // Columnas reales: usuario_cedula, fecha_inscripcion, estado_acreditacion
   const { data, error } = await supabase
     .from('inscripciones')
-    .select('cedula, estado_acreditacion, created_at')
+    .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
     .eq('asamblea_id', sesionId)
-    .order('created_at', { ascending: true });
+    .order('fecha_inscripcion', { ascending: true });
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
 
-  const cedulas = (data || []).map((i) => i.cedula);
+  const cedulas = (data || []).map((i) => i.usuario_cedula).filter(Boolean);
 
-  // Intentar enriquecer con datos de usuario (falla silenciosamente si la tabla/FK es diferente)
   let nombresMap = {};
   if (cedulas.length > 0) {
     const { data: usuarios } = await supabase
@@ -32,13 +31,15 @@ export async function GET(request, { params }) {
     (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
   }
 
-  const preinscritos = (data || []).map((i) => ({
-    cedula:              i.cedula,
-    nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
-    email:               nombresMap[i.cedula]?.email  || null,
-    estado_acreditacion: i.estado_acreditacion || 'preinscrito',
-    created_at:          i.created_at,
-  }));
+  const preinscritos = (data || [])
+    .filter((i) => i.usuario_cedula)
+    .map((i) => ({
+      cedula:              String(i.usuario_cedula),
+      nombre:              nombresMap[i.usuario_cedula]?.nombre || String(i.usuario_cedula),
+      email:               nombresMap[i.usuario_cedula]?.email  || null,
+      estado_acreditacion: i.estado_acreditacion || 'preinscrito',
+      created_at:          i.fecha_inscripcion,
+    }));
 
   return Response.json({ ok: true, data: preinscritos });
 }
@@ -62,7 +63,7 @@ export async function PATCH(request, { params }) {
       .from('inscripciones')
       .update({ estado_acreditacion: body.estado_acreditacion })
       .eq('asamblea_id', sesionId)
-      .in('cedula', body.cedulas);
+      .in('usuario_cedula', body.cedulas);
     if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
     return Response.json({ ok: true });
   }
@@ -73,7 +74,7 @@ export async function PATCH(request, { params }) {
     .from('inscripciones')
     .update({ estado_acreditacion: body.estado_acreditacion })
     .eq('asamblea_id', sesionId)
-    .eq('cedula', body.cedula);
+    .eq('usuario_cedula', body.cedula);
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
   return Response.json({ ok: true });

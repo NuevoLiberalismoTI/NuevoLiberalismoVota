@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const cargar = async (cedula) => {
     const [{ data, error }, { data: acredData }] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
-      supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('cedula', cedula),
+      supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('usuario_cedula', cedula),
     ]);
     if (!error && data) {
       const acredMap = {};

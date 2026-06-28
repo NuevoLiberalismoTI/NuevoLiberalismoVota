@@ -27,18 +27,18 @@ export async function GET(request, { params }) {
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
-  // Fetch preinscritos con fallback si la columna estado_acreditacion aún no existe
-  // select('*') garantiza que funciona sin importar qué columnas existan
+  // Columnas reales: usuario_cedula, fecha_inscripcion, estado_acreditacion
   const { data: inscAll } = await supabase
     .from('inscripciones')
-    .select('*')
-    .eq('asamblea_id', sesionId);
+    .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
+    .eq('asamblea_id', sesionId)
+    .order('fecha_inscripcion', { ascending: true });
 
   const rawInsc = (inscAll || [])
     .map((i) => ({
-      cedula:              i.cedula != null ? String(i.cedula) : null,
+      cedula:              i.usuario_cedula != null ? String(i.usuario_cedula) : null,
       estado_acreditacion: i.estado_acreditacion || 'preinscrito',
-      created_at:          i.created_at || null,
+      created_at:          i.fecha_inscripcion || null,
     }))
     .filter((i) => i.cedula);
 

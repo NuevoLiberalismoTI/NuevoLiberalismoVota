@@ -57,14 +57,14 @@ export const COLECTIVOS     = ['GENERAL', 'JÓVENES', 'MUJERES'];
 export const TIPO_CODIGO   = { TERRITORIAL: 'T', NACIONAL: 'N', OTRO: 'O' };
 export const COLECT_CODIGO = { GENERAL: 'G', 'JÓVENES': 'J', MUJERES: 'M' };
 
-export function generarConsecutivo({ tipo, colectivo, departamento, zona, fecha }) {
-  const d     = new Date(fecha || Date.now());
-  const mm    = String(d.getMonth() + 1).padStart(2, '0');
-  const yyyy  = d.getFullYear();
-  const dept  = DEPARTAMENTOS_CON_CODIGO.find((x) => x.nombre === departamento)?.codigo || 'GEN';
-  const zon   = (zona || 'Z1').toUpperCase().replace(/\s+/g, '').slice(0, 6);
-  const t     = TIPO_CODIGO[tipo]   || 'O';
-  const c     = COLECT_CODIGO[colectivo] || 'G';
+export function generarConsecutivo({ tipo, colectivo, departamento, zona, fecha, codigoTipo, codigoColectivo }) {
+  const d    = new Date(fecha || Date.now());
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const dept = DEPARTAMENTOS_CON_CODIGO.find((x) => x.nombre === departamento)?.codigo || 'GEN';
+  const zon  = (zona || 'Z1').toUpperCase().replace(/\s+/g, '').slice(0, 6);
+  const t    = codigoTipo      || TIPO_CODIGO[tipo]        || 'O';
+  const c    = codigoColectivo || COLECT_CODIGO[colectivo] || 'G';
   return `${t}${c}-${dept}-${zon}-${mm}${yyyy}`;
 }
 

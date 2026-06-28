@@ -30,7 +30,13 @@ export default function NuevaSesionPage() {
     const { tipo, colectivo, departamento, zona, fecha } = form;
     const deptoOk = tipo === 'NACIONAL' || !!departamento;
     if (tipo && colectivo && deptoOk && zona && fecha) {
-      setConsecutivoBase(generarConsecutivo({ tipo, colectivo, departamento, zona, fecha }));
+      const tipoObj      = tipos.find((t) => t.nombre === tipo);
+      const colectivoObj = colectivos.find((c) => c.nombre === colectivo);
+      setConsecutivoBase(generarConsecutivo({
+        tipo, colectivo, departamento, zona, fecha,
+        codigoTipo:      tipoObj?.codigo,
+        codigoColectivo: colectivoObj?.codigo,
+      }));
     } else {
       setConsecutivoBase('');
       setConsecutivo('');

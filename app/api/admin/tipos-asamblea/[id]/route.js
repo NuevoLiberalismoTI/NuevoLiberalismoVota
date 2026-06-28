@@ -10,10 +10,11 @@ export async function PATCH(request, { params }) {
   const supabase = createServerClient();
 
   const update = {};
-  if (body.nombre !== undefined) update.nombre = body.nombre.trim().toUpperCase();
-  if (body.codigo !== undefined) update.codigo = body.codigo.trim().toUpperCase();
-  if (body.activo !== undefined) update.activo = body.activo;
-  if (body.orden  !== undefined) update.orden  = body.orden;
+  if (body.nombre             !== undefined) update.nombre             = body.nombre.trim().toUpperCase();
+  if (body.codigo             !== undefined) update.codigo             = body.codigo.trim().toUpperCase();
+  if (body.activo             !== undefined) update.activo             = body.activo;
+  if (body.orden              !== undefined) update.orden              = body.orden;
+  if (body.permite_colectivos !== undefined) update.permite_colectivos = body.permite_colectivos;
 
   const { error } = await supabase.from('tipos_asamblea').update(update).eq('id', id);
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });

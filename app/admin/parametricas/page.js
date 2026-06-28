@@ -61,6 +61,18 @@ export default function ParametricasPage() {
     await cargar();
   };
 
+  const handleToggleColectivos = async (tipo) => {
+    const res = await fetch(`/api/admin/tipos-asamblea/${tipo.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ permite_colectivos: !tipo.permite_colectivos }),
+    });
+    const json = await res.json();
+    if (!json.ok) { setError(json.error); return; }
+    mostrarExito(tipo.permite_colectivos ? 'Selección de colectivo deshabilitada' : 'Selección de colectivo habilitada');
+    await cargar();
+  };
+
   const iniciarEdicion = (tipo) => {
     setEditandoId(tipo.id);
     setEditForm({ nombre: tipo.nombre, codigo: tipo.codigo });
@@ -145,6 +157,7 @@ export default function ParametricasPage() {
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3">Nombre</th>
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-36">Código</th>
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-28">Estado</th>
+                <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-40">Colectivos</th>
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-28">Orden</th>
                 <th className="px-6 py-3 w-36" />
               </tr>
@@ -180,6 +193,7 @@ export default function ParametricasPage() {
                       </td>
                       <td className="px-6 py-3 text-xs text-gray-400 italic">—</td>
                       <td className="px-6 py-3 text-xs text-gray-400 italic">—</td>
+                      <td className="px-6 py-3 text-xs text-gray-400 italic">—</td>
                       <td className="px-6 py-3">
                         <div className="flex items-center gap-2 justify-end">
                           <button onClick={() => handleGuardarEdicion(tipo.id)}
@@ -211,6 +225,19 @@ export default function ParametricasPage() {
                           {tipo.activo
                             ? <><ToggleRight size={13} /> Activo</>
                             : <><ToggleLeft size={13} /> Inactivo</>
+                          }
+                        </button>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <button onClick={() => handleToggleColectivos(tipo)}
+                          className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border transition-all ${
+                            tipo.permite_colectivos
+                              ? 'bg-brand-50 text-brand border-brand-200 hover:bg-brand-100'
+                              : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                          }`}>
+                          {tipo.permite_colectivos
+                            ? <><ToggleRight size={13} /> Habilitado</>
+                            : <><ToggleLeft size={13} /> General</>
                           }
                         </button>
                       </td>
@@ -254,6 +281,7 @@ export default function ParametricasPage() {
                   />
                 </td>
                 <td className="px-6 py-3 text-xs text-gray-400 italic">Activo por defecto</td>
+                <td className="px-6 py-3 text-xs text-gray-400 italic">General por defecto</td>
                 <td className="px-6 py-3 text-xs text-gray-400 italic">Auto</td>
                 <td className="px-6 py-3">
                   <button onClick={handleCrear} disabled={guardando}

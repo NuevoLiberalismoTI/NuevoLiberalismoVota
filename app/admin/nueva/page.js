@@ -55,18 +55,33 @@ export default function NuevaSesionPage() {
   }, [consecutivoBase]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setErrores({ ...errores, [e.target.name]: '' });
+    const { name, value } = e.target;
+    let next = { ...form, [name]: value };
+    if (name === 'tipo') {
+      const tipoObj = tipos.find((t) => t.nombre === value);
+      if (!tipoObj?.permite_colectivos) {
+        const general = colectivos.find((c) => c.nombre === 'GENERAL') || colectivos[0];
+        next.colectivo = general?.nombre || '';
+      }
+    }
+    setForm(next);
+    setErrores({ ...errores, [name]: '' });
     setErrServidor('');
   };
 
   const validar = () => {
     const e = {};
-    const camposRequeridos = form.tipo === 'NACIONAL'
-      ? ['tipo','colectivo','zona','fecha','hora','lugar']
-      : ['tipo','colectivo','departamento','zona','fecha','hora','lugar'];
+    const tipoObj = tipos.find((t) => t.nombre === form.tipo);
+    const needsDept = form.tipo !== 'NACIONAL';
+    const needsColectivo = !tipoObj || tipoObj.permite_colectivos;
+    const camposRequeridos = [
+      'tipo',
+      ...(needsColectivo ? ['colectivo'] : []),
+      ...(needsDept ? ['departamento'] : []),
+      'zona', 'fecha', 'hora', 'lugar',
+    ];
     camposRequeridos.forEach((k) => {
-      if (!form[k].trim()) e[k] = 'Campo requerido';
+      if (!form[k]?.trim()) e[k] = 'Campo requerido';
     });
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -147,14 +162,29 @@ export default function NuevaSesionPage() {
             {errores.tipo && <span className="text-xs text-red-500">{errores.tipo}</span>}
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Colectivo</label>
-            <select name="colectivo" value={form.colectivo} onChange={handleChange} className={sel(errores.colectivo)}>
-              <option value="">Selecciona...</option>
-              {colectivos.map((c) => <option key={c.id}>{c.nombre}</option>)}
-            </select>
-            {errores.colectivo && <span className="text-xs text-red-500">{errores.colectivo}</span>}
-          </div>
+          {(() => {
+            const tipoSeleccionado = tipos.find((t) => t.nombre === form.tipo);
+            if (tipoSeleccionado && !tipoSeleccionado.permite_colectivos) {
+              return (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-semibold text-gray-700">Colectivo</label>
+                  <div className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-500">
+                    General <span className="text-gray-400">(predeterminado para este tipo)</span>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-semibold text-gray-700">Colectivo</label>
+                <select name="colectivo" value={form.colectivo} onChange={handleChange} className={sel(errores.colectivo)}>
+                  <option value="">Selecciona...</option>
+                  {colectivos.map((c) => <option key={c.id}>{c.nombre}</option>)}
+                </select>
+                {errores.colectivo && <span className="text-xs text-red-500">{errores.colectivo}</span>}
+              </div>
+            );
+          })()}
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Departamento</label>

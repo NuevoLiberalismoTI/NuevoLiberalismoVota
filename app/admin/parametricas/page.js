@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Plus, Trash2, Loader2, CheckCircle, AlertCircle, Pencil, X, Save,
-  ToggleLeft, ToggleRight, Tag,
+  ToggleLeft, ToggleRight, Tag, ChevronUp, ChevronDown,
 } from 'lucide-react';
 
 export default function ParametricasPage() {
@@ -97,6 +97,27 @@ export default function ParametricasPage() {
     await cargar();
   };
 
+  const handleMoverOrden = async (tipo, direccion) => {
+    const ordenados = [...tipos].sort((a, b) => a.orden - b.orden);
+    const idx = ordenados.findIndex((t) => t.id === tipo.id);
+    const vecino = ordenados[idx + direccion];
+    if (!vecino) return;
+
+    await Promise.all([
+      fetch(`/api/admin/tipos-asamblea/${tipo.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orden: vecino.orden }),
+      }),
+      fetch(`/api/admin/tipos-asamblea/${vecino.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orden: tipo.orden }),
+      }),
+    ]);
+    await cargar();
+  };
+
   const handleEliminar = async (tipo) => {
     if (!confirm(`¿Eliminar el tipo "${tipo.nombre}"? Esta acción no se puede deshacer.`)) return;
     const res = await fetch(`/api/admin/tipos-asamblea/${tipo.id}`, { method: 'DELETE' });
@@ -158,7 +179,7 @@ export default function ParametricasPage() {
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-36">Código</th>
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-28">Estado</th>
                 <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-40">Colectivos</th>
-                <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-28">Orden</th>
+                <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-6 py-3 w-24">Orden</th>
                 <th className="px-6 py-3 w-36" />
               </tr>
             </thead>
@@ -241,7 +262,21 @@ export default function ParametricasPage() {
                           }
                         </button>
                       </td>
-                      <td className="px-6 py-3.5 text-sm text-gray-400 font-mono">{tipo.orden}</td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-0.5">
+                          <button onClick={() => handleMoverOrden(tipo, -1)}
+                            disabled={tipos.sort((a,b) => a.orden - b.orden)[0]?.id === tipo.id}
+                            className="p-1 text-gray-400 hover:text-brand hover:bg-brand-50 rounded disabled:opacity-20 disabled:cursor-default transition-colors">
+                            <ChevronUp size={14} />
+                          </button>
+                          <button onClick={() => handleMoverOrden(tipo, 1)}
+                            disabled={tipos.sort((a,b) => a.orden - b.orden).at(-1)?.id === tipo.id}
+                            className="p-1 text-gray-400 hover:text-brand hover:bg-brand-50 rounded disabled:opacity-20 disabled:cursor-default transition-colors">
+                            <ChevronDown size={14} />
+                          </button>
+                          <span className="text-xs text-gray-300 font-mono ml-1">{tipo.orden}</span>
+                        </div>
+                      </td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-1 justify-end">
                           <button onClick={() => iniciarEdicion(tipo)}

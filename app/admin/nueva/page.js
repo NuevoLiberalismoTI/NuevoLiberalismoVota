@@ -162,29 +162,16 @@ export default function NuevaSesionPage() {
             {errores.tipo && <span className="text-xs text-red-500">{errores.tipo}</span>}
           </div>
 
-          {(() => {
-            const tipoSeleccionado = tipos.find((t) => t.nombre === form.tipo);
-            if (tipoSeleccionado && !tipoSeleccionado.permite_colectivos) {
-              return (
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-semibold text-gray-700">Colectivo</label>
-                  <div className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-gray-50 text-gray-500">
-                    General <span className="text-gray-400">(predeterminado para este tipo)</span>
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-semibold text-gray-700">Colectivo</label>
-                <select name="colectivo" value={form.colectivo} onChange={handleChange} className={sel(errores.colectivo)}>
-                  <option value="">Selecciona...</option>
-                  {colectivos.map((c) => <option key={c.id}>{c.nombre}</option>)}
-                </select>
-                {errores.colectivo && <span className="text-xs text-red-500">{errores.colectivo}</span>}
-              </div>
-            );
-          })()}
+          {tipos.find((t) => t.nombre === form.tipo)?.permite_colectivos && (
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-semibold text-gray-700">Colectivo</label>
+              <select name="colectivo" value={form.colectivo} onChange={handleChange} className={sel(errores.colectivo)}>
+                <option value="">Selecciona...</option>
+                {colectivos.map((c) => <option key={c.id}>{c.nombre}</option>)}
+              </select>
+              {errores.colectivo && <span className="text-xs text-red-500">{errores.colectivo}</span>}
+            </div>
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Departamento</label>

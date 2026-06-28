@@ -20,12 +20,31 @@ export async function GET(request, { params }) {
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,orden))').eq('asamblea_id', sesionId).order('created_at'),
     supabase.from('preguntas_base').select('*').eq('activa', true),
-    supabase.from('inscripciones').select('estado_acreditacion', { count: 'exact' }).eq('asamblea_id', sesionId),
+    supabase.from('inscripciones').select('cedula, estado_acreditacion, created_at', { count: 'exact' }).eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
+
+  // Intentar enriquecer inscripciones con nombres de usuarios
+  const cedulas = (inscData || []).map((i) => i.cedula);
+  let nombresMap = {};
+  if (cedulas.length > 0) {
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('cedula, nombre, email')
+      .in('cedula', cedulas);
+    (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
+  }
+
+  const preinscritos = (inscData || []).map((i) => ({
+    cedula:              i.cedula,
+    nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
+    email:               nombresMap[i.cedula]?.email  || null,
+    estado_acreditacion: i.estado_acreditacion || 'preinscrito',
+    created_at:          i.created_at,
+  }));
 
   return Response.json({
     ok: true,
@@ -40,9 +59,10 @@ export async function GET(request, { params }) {
     stats: {
       inscritos:   inscritos || 0,
       asistentes:  asistentes || 0,
-      acreditados: (inscData || []).filter((i) => i.estado_acreditacion === 'acreditado_voto' || i.estado_acreditacion === 'acreditado_ingreso').length,
-      pendientes:  (inscData || []).filter((i) => i.estado_acreditacion === 'preinscrito').length,
+      acreditados: preinscritos.filter((i) => i.estado_acreditacion === 'acreditado_voto' || i.estado_acreditacion === 'acreditado_ingreso').length,
+      pendientes:  preinscritos.filter((i) => i.estado_acreditacion === 'preinscrito').length,
     },
+    preinscritos,
     resultados: resultados?.preguntas || [],
   });
 }

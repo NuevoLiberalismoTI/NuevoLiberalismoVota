@@ -235,25 +235,15 @@ export default function AdminSesionPage() {
   const [cargandoPreins, setCargandoPreins] = useState(false);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
 
-  const cargarPreinscritos = useCallback(async () => {
-    setCargandoPreins(true);
-    const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preinscritos`);
-    const json = await res.json();
-    if (json.ok) setPreinscritos(json.data);
-    setCargandoPreins(false);
-  }, [sesionId]);
-
-  useEffect(() => {
-    if (tab === 'preinscritos') cargarPreinscritos();
-  }, [tab, cargarPreinscritos]);
-
   const handleAcreditar = async (cedula, estado) => {
+    setCargandoPreins(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preinscritos`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cedula, estado_acreditacion: estado }),
     });
-    await cargarPreinscritos();
+    await cargar();
+    setCargandoPreins(false);
   };
 
   const handleAcreditarBulk = async (estado) => {
@@ -261,12 +251,14 @@ export default function AdminSesionPage() {
       .filter((p) => p.estado_acreditacion === 'preinscrito')
       .map((p) => p.cedula);
     if (pendientes.length === 0) return;
+    setCargandoPreins(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preinscritos`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cedulas: pendientes, estado_acreditacion: estado }),
     });
-    await cargarPreinscritos();
+    await cargar();
+    setCargandoPreins(false);
   };
 
   const handleCerrarInscripciones = async () => {
@@ -307,6 +299,7 @@ export default function AdminSesionPage() {
     setPreguntas(json.preguntas);
     setPreguntasBase(json.preguntasBase);
     setStats(json.stats);
+    setPreinscritos(json.preinscritos || []);
     setResultados(json.resultados || []);
   }, [sesionId]);
 
@@ -605,7 +598,7 @@ export default function AdminSesionPage() {
                     </button>
                   </>
                 )}
-                <button onClick={cargarPreinscritos} disabled={cargandoPreins}
+                <button onClick={cargar} disabled={cargandoPreins}
                   className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50">
                   <RefreshCw size={13} className={cargandoPreins ? 'animate-spin' : ''} />
                 </button>

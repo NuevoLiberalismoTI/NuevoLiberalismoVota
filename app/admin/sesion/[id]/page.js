@@ -2,10 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Image from 'next/image';
 import QRCode from 'react-qr-code';
-import { ArrowLeft, Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X } from 'lucide-react';
-const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X } from 'lucide-react';
 
 const ESTADO_SESION = {
   borrador:   { label: 'Borrador',   color: 'bg-yellow-100 text-yellow-700', next: 'proxima',    nextLabel: 'Publicar como Próxima' },
@@ -123,7 +121,6 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
 
           {opciones.map((op, i) => (
             <div key={i} className="border-2 border-gray-200 rounded-xl p-3 flex flex-col gap-2 bg-white">
-              {/* Tipo individual / plancha */}
               <div className="flex gap-2">
                 {[
                   { key: 'individual', label: 'Persona',  Icon: User  },
@@ -148,7 +145,6 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
                 )}
               </div>
 
-              {/* Nombre */}
               <input
                 value={op.nombre}
                 onChange={(e) => { setOpcion(i, { nombre: e.target.value }); setErr(''); }}
@@ -156,7 +152,6 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
               />
 
-              {/* Integrantes de plancha */}
               {op.tipo === 'plancha' && (
                 <div className="flex flex-col gap-2 pl-3 border-l-2 border-brand-200 ml-1">
                   <p className="text-xs font-semibold text-gray-500">Integrantes:</p>
@@ -190,7 +185,6 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
             </div>
           ))}
 
-          {/* Botones agregar */}
           <div className="flex gap-2">
             <button onClick={() => setOpciones([...opciones, OPCION_VACIA_INDIVIDUAL()])}
               className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold border-2 border-dashed border-gray-300 text-gray-500 hover:border-brand hover:text-brand transition-colors">
@@ -228,7 +222,7 @@ export default function AdminSesionPage() {
   const [preguntasBase, setPreguntasBase] = useState([]);
   const [stats, setStats]                 = useState(null);
   const [resultados, setResultados]       = useState([]);
-  const [tab, setTab]                     = useState('preguntas'); // 'preguntas' | 'resultados'
+  const [tab, setTab]                     = useState('preguntas');
   const [mostrarForm, setMostrarForm]     = useState(false);
   const [mostrarVivo, setMostrarVivo]         = useState(false);
   const [mostrarCodigo, setMostrarCodigo]     = useState(false);
@@ -280,19 +274,15 @@ export default function AdminSesionPage() {
   }, [sesionId]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (!stored || JSON.parse(stored).rol !== 'admin') { router.replace('/'); return; }
     cargar();
-
-    // Polling cada 2 segundos para ver inscripciones, asistentes y estado de preguntas
     const interval = setInterval(cargar, 2000);
     return () => clearInterval(interval);
-  }, [sesionId, router, cargar]);
+  }, [sesionId, cargar]);
 
   if (!sesion) return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="flex h-full min-h-screen items-center justify-center bg-gray-50">
       <Loader2 size={30} className="text-brand animate-spin" />
-    </main>
+    </div>
   );
 
   const cfg      = ESTADO_SESION[sesion.estado] || ESTADO_SESION.borrador;
@@ -352,19 +342,12 @@ export default function AdminSesionPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="w-full bg-brand shadow-md sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.push('/admin')} className="text-white flex-shrink-0"><ArrowLeft size={22} /></button>
-          <Image src={LOGO} alt="Nuevo Liberalismo" width={120} height={40} className="object-contain" priority />
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto w-full px-4 py-6 flex flex-col gap-5">
-
-        {/* Info + estado */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 border border-gray-100">
-          <div className="flex items-start justify-between gap-2 mb-3">
+    <div className="flex h-full min-h-screen bg-gray-50">
+      {/* Left panel — session info, fixed ~360px */}
+      <div className="w-96 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
+        <div className="px-5 py-5 flex flex-col gap-4">
+          {/* Header: name + status */}
+          <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <h1 className="font-bold text-gray-900 text-base leading-snug">{sesion.nombre}</h1>
               <p className="text-xs font-mono text-gray-400 mt-0.5">{sesion.id}</p>
@@ -372,7 +355,8 @@ export default function AdminSesionPage() {
             <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${cfg.color}`}>{cfg.label}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
+          {/* Metadata */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
             <span>📅 {sesion.fecha} · {sesion.hora}</span>
             <span>📍 {sesion.lugar}</span>
             <span>🏷️ {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
@@ -385,16 +369,15 @@ export default function AdminSesionPage() {
             </span>
           </div>
 
+          {/* Stats */}
           {stats && (
-            <div className="flex flex-col gap-3 mb-4">
-              {/* Contadores */}
+            <div className="flex flex-col gap-3">
               <div className="flex gap-4 text-xs text-gray-500">
                 <span><Users size={11} className="inline mr-1" /><strong>{stats.inscritos}</strong> inscritos</span>
                 <span>✅ <strong>{stats.asistentes}</strong> asistentes</span>
                 <span className="text-gray-400">Quorum: <strong>{quorumRequerido}</strong></span>
               </div>
 
-              {/* Barra de progreso */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-semibold text-gray-500">Asistencia</span>
@@ -405,7 +388,6 @@ export default function AdminSesionPage() {
                     className={`h-2.5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
                     style={{ width: `${pctAsistencia}%` }}
                   />
-                  {/* Marcador de quorum */}
                   {stats.inscritos > 0 && (
                     <div
                       className="absolute top-0 h-2.5 w-0.5 bg-brand"
@@ -415,7 +397,6 @@ export default function AdminSesionPage() {
                 </div>
               </div>
 
-              {/* Indicador quorum */}
               {quorumAlcanzado ? (
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
                   <CheckCircle size={15} className="text-green-600 flex-shrink-0" />
@@ -430,7 +411,7 @@ export default function AdminSesionPage() {
                 </div>
               )}
 
-              {/* Botones de cierre */}
+              {/* Close buttons */}
               <div className="grid grid-cols-2 gap-2 pt-1">
                 {sesion.inscripciones_cerradas ? (
                   <div className="flex items-center justify-center gap-1.5 bg-gray-100 text-gray-400 font-semibold py-2 rounded-xl text-xs border border-gray-200">
@@ -458,6 +439,7 @@ export default function AdminSesionPage() {
             </div>
           )}
 
+          {/* State change button */}
           {cfg.next ? (
             <button onClick={handleCambiarEstado} disabled={cargando}
               className={`w-full flex items-center justify-center gap-2 font-bold py-3 rounded-xl text-sm text-white transition-colors disabled:opacity-60 ${
@@ -474,8 +456,11 @@ export default function AdminSesionPage() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Pregunta activa ahora */}
+      {/* Right panel — questions / results */}
+      <div className="flex-1 overflow-auto p-6 flex flex-col gap-5">
+        {/* Active question alert */}
         {enCurso && hayActiva && (() => {
           const pa = preguntas.find((p) => p.id === activaId);
           return pa ? (
@@ -544,7 +529,6 @@ export default function AdminSesionPage() {
                   esCerrada && esValida         ? 'border-green-200' :
                   esCerrada && esValida === false ? 'border-red-200'   : 'border-gray-100'
                 }`}>
-                  {/* Cabecera */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <p className="text-sm font-semibold text-gray-900 leading-snug flex-1">{preg.texto}</p>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -558,7 +542,6 @@ export default function AdminSesionPage() {
                     </div>
                   </div>
 
-                  {/* Barra de participación vs umbral */}
                   <div className="mb-3">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs font-semibold text-gray-500">Participación</span>
@@ -580,7 +563,6 @@ export default function AdminSesionPage() {
                     <p className="text-[10px] text-gray-300 text-right mt-0.5">│ = umbral 50%+1</p>
                   </div>
 
-                  {/* Validez al cerrar */}
                   {esCerrada && (
                     <div className={`flex items-start gap-2 rounded-xl px-3 py-2 mb-3 ${
                       esValida ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
@@ -611,7 +593,6 @@ export default function AdminSesionPage() {
                     </div>
                   )}
 
-                  {/* Distribución de votos por opción */}
                   {total === 0 ? (
                     <p className="text-xs text-gray-300 italic">Sin votos aún</p>
                   ) : (
@@ -648,117 +629,118 @@ export default function AdminSesionPage() {
         )}
 
         {/* Tab: Preguntas */}
-        {tab === 'preguntas' && <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-              Preguntas ({preguntas.length})
-            </h2>
-            <div className="flex gap-2">
-              {enCurso && (
-                <button onClick={() => { setMostrarVivo(!mostrarVivo); setMostrarForm(false); }}
-                  disabled={!quorumAlcanzado}
-                  title={!quorumAlcanzado ? `Sin quorum — faltan ${faltanParaQuorum} asistentes` : ''}
-                  className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
-                  <Zap size={12}/> En vivo
-                </button>
-              )}
-              {sesion.estado !== 'finalizada' && (
-                <button onClick={() => { setMostrarForm(!mostrarForm); setMostrarVivo(false); }}
-                  className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg">
-                  <Plus size={12}/> Agregar
-                </button>
-              )}
+        {tab === 'preguntas' && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                Preguntas ({preguntas.length})
+              </h2>
+              <div className="flex gap-2">
+                {enCurso && (
+                  <button onClick={() => { setMostrarVivo(!mostrarVivo); setMostrarForm(false); }}
+                    disabled={!quorumAlcanzado}
+                    title={!quorumAlcanzado ? `Sin quorum — faltan ${faltanParaQuorum} asistentes` : ''}
+                    className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
+                    <Zap size={12}/> En vivo
+                  </button>
+                )}
+                {sesion.estado !== 'finalizada' && (
+                  <button onClick={() => { setMostrarForm(!mostrarForm); setMostrarVivo(false); }}
+                    className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold px-3 py-2 rounded-lg">
+                    <Plus size={12}/> Agregar
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
 
-          {mostrarVivo && <div className="mb-3"><FormPregunta enVivo preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarVivo(false)}/></div>}
-          {mostrarForm && <div className="mb-3"><FormPregunta preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarForm(false)}/></div>}
+            {mostrarVivo && <div className="mb-3"><FormPregunta enVivo preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarVivo(false)}/></div>}
+            {mostrarForm && <div className="mb-3"><FormPregunta preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarForm(false)}/></div>}
 
-          {preguntas.length === 0 && !mostrarForm && !mostrarVivo && (
-            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-              <p className="text-gray-400 text-sm mb-3">No hay preguntas configuradas</p>
-              {sesion.estado !== 'finalizada' && (
-                <button onClick={() => setMostrarForm(true)} className="text-brand text-sm font-bold hover:underline">
-                  + Agregar primera pregunta
-                </button>
-              )}
-            </div>
-          )}
+            {preguntas.length === 0 && !mostrarForm && !mostrarVivo && (
+              <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
+                <p className="text-gray-400 text-sm mb-3">No hay preguntas configuradas</p>
+                {sesion.estado !== 'finalizada' && (
+                  <button onClick={() => setMostrarForm(true)} className="text-brand text-sm font-bold hover:underline">
+                    + Agregar primera pregunta
+                  </button>
+                )}
+              </div>
+            )}
 
-          <div className="flex flex-col gap-3">
-            {preguntas.map((p, idx) => {
-              const est    = ESTADO_PREG[p.estado] || ESTADO_PREG.pendiente;
-              const activa = p.id === activaId;
-              return (
-                <div key={p.id} className={`bg-white rounded-xl shadow-sm border-2 p-4 transition-all ${activa ? 'border-green-500' : p.estado==='cerrada' ? 'border-gray-200 opacity-75' : 'border-gray-100'}`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-gray-400">#{idx+1}</span>
-                      <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${est.bg} ${est.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${est.dot} ${activa?'animate-pulse':''}`}/>{est.label}
-                      </span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo==='sino'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}`}>
-                        {p.tipo==='sino'?'👍 Sí/No':'👤 Candidatos'}
-                      </span>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo_mayoria==='absoluta'?'bg-purple-100 text-purple-700':'bg-teal-100 text-teal-700'}`}>
-                        {p.tipo_mayoria==='absoluta'?'M. Absoluta':'M. Simple'}
-                      </span>
-                      {p.en_vivo && <span className="text-xs font-bold text-orange-500 flex items-center gap-0.5"><Zap size={10}/>En vivo</span>}
-                    </div>
-                    {sesion.estado !== 'finalizada' && p.estado !== 'activa' && (
-                      <button onClick={() => handleEliminar(p.id)} className="text-gray-300 hover:text-red-500 p-1 flex-shrink-0">
-                        <Trash2 size={15}/>
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-gray-900 leading-snug mb-2">{p.texto}</p>
-
-                  {p.tipo === 'candidatos' && p.candidatos?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {p.candidatos.map((c) => (
-                        <span key={c.id} className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${c.es_plancha ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {c.es_plancha ? <Users size={10}/> : <User size={10}/>}
-                          {c.nombre}
-                          {c.es_plancha && c.miembros?.length > 0 && <span className="text-[10px] opacity-70">({c.miembros.length})</span>}
+            <div className="flex flex-col gap-3">
+              {preguntas.map((p, idx) => {
+                const est    = ESTADO_PREG[p.estado] || ESTADO_PREG.pendiente;
+                const activa = p.id === activaId;
+                return (
+                  <div key={p.id} className={`bg-white rounded-xl shadow-sm border-2 p-4 transition-all ${activa ? 'border-green-500' : p.estado==='cerrada' ? 'border-gray-200 opacity-75' : 'border-gray-100'}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-400">#{idx+1}</span>
+                        <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${est.bg} ${est.text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${est.dot} ${activa?'animate-pulse':''}`}/>{est.label}
                         </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {enCurso && (
-                    <div className="mt-2">
-                      {p.estado === 'pendiente' && (
-                        !quorumAlcanzado ? (
-                          <div className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-200 text-orange-500 font-semibold py-2.5 rounded-xl text-xs">
-                            <AlertTriangle size={13}/> Sin quorum — faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''}
-                          </div>
-                        ) : (
-                          <button onClick={() => handlePublicar(p.id)} disabled={hayActiva || cargando}
-                            className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                            <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar esta pregunta'}
-                          </button>
-                        )
-                      )}
-                      {p.estado === 'activa' && (
-                        <button onClick={handleCerrar} disabled={cargando}
-                          className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                          <Lock size={13}/> Cerrar votación
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo==='sino'?'bg-green-100 text-green-700':'bg-blue-100 text-blue-700'}`}>
+                          {p.tipo==='sino'?'👍 Sí/No':'👤 Candidatos'}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.tipo_mayoria==='absoluta'?'bg-purple-100 text-purple-700':'bg-teal-100 text-teal-700'}`}>
+                          {p.tipo_mayoria==='absoluta'?'M. Absoluta':'M. Simple'}
+                        </span>
+                        {p.en_vivo && <span className="text-xs font-bold text-orange-500 flex items-center gap-0.5"><Zap size={10}/>En vivo</span>}
+                      </div>
+                      {sesion.estado !== 'finalizada' && p.estado !== 'activa' && (
+                        <button onClick={() => handleEliminar(p.id)} className="text-gray-300 hover:text-red-500 p-1 flex-shrink-0">
+                          <Trash2 size={15}/>
                         </button>
                       )}
-                      {p.estado === 'cerrada' && (
-                        <div className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 py-2">
-                          <CheckCircle size={12}/> Votación cerrada
-                        </div>
-                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>}
 
+                    <p className="text-sm text-gray-900 leading-snug mb-2">{p.texto}</p>
+
+                    {p.tipo === 'candidatos' && p.candidatos?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {p.candidatos.map((c) => (
+                          <span key={c.id} className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${c.es_plancha ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                            {c.es_plancha ? <Users size={10}/> : <User size={10}/>}
+                            {c.nombre}
+                            {c.es_plancha && c.miembros?.length > 0 && <span className="text-[10px] opacity-70">({c.miembros.length})</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {enCurso && (
+                      <div className="mt-2">
+                        {p.estado === 'pendiente' && (
+                          !quorumAlcanzado ? (
+                            <div className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-200 text-orange-500 font-semibold py-2.5 rounded-xl text-xs">
+                              <AlertTriangle size={13}/> Sin quorum — faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''}
+                            </div>
+                          ) : (
+                            <button onClick={() => handlePublicar(p.id)} disabled={hayActiva || cargando}
+                              className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                              <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar esta pregunta'}
+                            </button>
+                          )
+                        )}
+                        {p.estado === 'activa' && (
+                          <button onClick={handleCerrar} disabled={cargando}
+                            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                            <Lock size={13}/> Cerrar votación
+                          </button>
+                        )}
+                        {p.estado === 'cerrada' && (
+                          <div className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 py-2">
+                            <CheckCircle size={12}/> Votación cerrada
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal pantalla completa: QR de asistencia */}
@@ -784,7 +766,6 @@ export default function AdminSesionPage() {
             />
           </div>
 
-          {/* Barra de tiempo restante */}
           <div className="flex flex-col items-center gap-2 w-64" onClick={(e) => e.stopPropagation()}>
             <div className="w-full bg-white/20 rounded-full h-2">
               <div
@@ -802,6 +783,6 @@ export default function AdminSesionPage() {
           <p className="text-white/25 text-xs">Toca en cualquier lugar para cerrar</p>
         </div>
       )}
-    </main>
+    </div>
   );
 }

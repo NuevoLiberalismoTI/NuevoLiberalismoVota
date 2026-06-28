@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { ArrowLeft, Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { DEPARTAMENTOS_CON_CODIGO, generarConsecutivo } from '../../lib/data';
 
-const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', hora: '', lugar: '' };
 
 export default function NuevaSesionPage() {
@@ -22,14 +20,10 @@ export default function NuevaSesionPage() {
   const [errServidor, setErrServidor]       = useState('');
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (!stored || JSON.parse(stored).rol !== 'admin') { router.replace('/'); return; }
-
-    // Cargar paramétricas desde el servidor
     fetch('/api/admin/parametricas').then((r) => r.json()).then((json) => {
       if (json.ok) { setTipos(json.tipos); setColectivos(json.colectivos); }
     });
-  }, [router]);
+  }, []);
 
   // Genera la base del consecutivo (sin secuencial) cuando el formulario está completo
   useEffect(() => {
@@ -112,41 +106,32 @@ export default function NuevaSesionPage() {
     `w-full border ${err ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand transition`;
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="w-full bg-brand shadow-md sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.push('/admin')} className="text-white flex-shrink-0"><ArrowLeft size={22} /></button>
-          <Image src={LOGO} alt="Nuevo Liberalismo" width={130} height={44} className="object-contain" priority />
-        </div>
-      </header>
+    <div className="p-6 max-w-4xl">
+      <h1 className="text-xl font-bold text-gray-900 mb-1">Nueva sesión</h1>
+      <p className="text-sm text-gray-500 mb-5">Completa los datos para generar el consecutivo</p>
 
-      <div className="max-w-2xl mx-auto w-full px-4 py-6 flex flex-col gap-5">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Crear nueva sesión</h1>
-          <p className="text-sm text-gray-500">Completa los datos para generar el consecutivo automáticamente</p>
-        </div>
-
-        {consecutivoBase && (
-          <div className="bg-brand-50 border-2 border-brand rounded-xl p-4 flex items-center gap-3">
-            <Sparkles size={20} className="text-brand flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-xs text-brand font-semibold uppercase tracking-wide">Consecutivo generado</p>
-              {cargandoSeq ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <Loader2 size={16} className="text-brand animate-spin" />
-                  <span className="text-sm text-brand font-mono">{consecutivoBase}-...</span>
-                </div>
-              ) : (
-                <p className="text-xl font-extrabold text-brand tracking-widest font-mono">{consecutivo}</p>
-              )}
-            </div>
+      {consecutivoBase && (
+        <div className="bg-brand-50 border-2 border-brand rounded-xl p-4 flex items-center gap-3 mb-5">
+          <Sparkles size={20} className="text-brand flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-xs text-brand font-semibold uppercase tracking-wide">Consecutivo generado</p>
+            {cargandoSeq ? (
+              <div className="flex items-center gap-2 mt-1">
+                <Loader2 size={16} className="text-brand animate-spin" />
+                <span className="text-sm text-brand font-mono">{consecutivoBase}-...</span>
+              </div>
+            ) : (
+              <p className="text-xl font-extrabold text-brand tracking-widest font-mono">{consecutivo}</p>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Clasificación */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Clasificación</h2>
+      {/* Clasificación */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-4 mb-5">
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Clasificación</h2>
 
+        <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Tipo de asamblea</label>
             <select name="tipo" value={form.tipo} onChange={handleChange} className={sel(errores.tipo)}>
@@ -182,43 +167,43 @@ export default function NuevaSesionPage() {
             {errores.zona && <span className="text-xs text-red-500">{errores.zona}</span>}
           </div>
         </div>
+      </div>
 
-        {/* Logística */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-4">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Logística</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Fecha</label>
-              <input type="date" name="fecha" value={form.fecha} onChange={handleChange} className={inp(errores.fecha)} />
-              {errores.fecha && <span className="text-xs text-red-500">{errores.fecha}</span>}
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Hora</label>
-              <input type="time" name="hora" value={form.hora} onChange={handleChange} className={inp(errores.hora)} />
-              {errores.hora && <span className="text-xs text-red-500">{errores.hora}</span>}
-            </div>
+      {/* Logística */}
+      <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col gap-4 mb-5">
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Logística</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold text-gray-700">Fecha</label>
+            <input type="date" name="fecha" value={form.fecha} onChange={handleChange} className={inp(errores.fecha)} />
+            {errores.fecha && <span className="text-xs text-red-500">{errores.fecha}</span>}
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Lugar</label>
-            <input name="lugar" value={form.lugar} onChange={handleChange}
-              placeholder="Ciudad — Nombre del lugar" className={inp(errores.lugar)} />
-            {errores.lugar && <span className="text-xs text-red-500">{errores.lugar}</span>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-semibold text-gray-700">Cupo máximo <span className="text-gray-400 font-normal">(opcional)</span></label>
-            <input type="number" name="cupo_maximo" value={form.cupo_maximo || ''} onChange={handleChange}
-              placeholder="Sin límite" className={inp(false)} />
+            <label className="text-sm font-semibold text-gray-700">Hora</label>
+            <input type="time" name="hora" value={form.hora} onChange={handleChange} className={inp(errores.hora)} />
+            {errores.hora && <span className="text-xs text-red-500">{errores.hora}</span>}
           </div>
         </div>
-
-        {errServidor && <p className="text-sm text-red-500 text-center">{errServidor}</p>}
-
-        <button onClick={handleCrear} disabled={guardando}
-          className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-colors shadow-md">
-          {guardando ? <Loader2 size={18} className="animate-spin" /> : null}
-          {guardando ? 'Creando...' : 'Crear sesión y configurar preguntas'}
-        </button>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-700">Lugar</label>
+          <input name="lugar" value={form.lugar} onChange={handleChange}
+            placeholder="Ciudad — Nombre del lugar" className={inp(errores.lugar)} />
+          {errores.lugar && <span className="text-xs text-red-500">{errores.lugar}</span>}
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-semibold text-gray-700">Cupo máximo <span className="text-gray-400 font-normal">(opcional)</span></label>
+          <input type="number" name="cupo_maximo" value={form.cupo_maximo || ''} onChange={handleChange}
+            placeholder="Sin límite" className={inp(false)} />
+        </div>
       </div>
-    </main>
+
+      {errServidor && <p className="text-sm text-red-500 text-center mb-4">{errServidor}</p>}
+
+      <button onClick={handleCrear} disabled={guardando}
+        className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-colors shadow-md">
+        {guardando ? <Loader2 size={18} className="animate-spin" /> : null}
+        {guardando ? 'Creando...' : 'Crear sesión y configurar preguntas'}
+      </button>
+    </div>
   );
 }

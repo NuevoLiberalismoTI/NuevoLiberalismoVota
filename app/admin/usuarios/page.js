@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { ArrowLeft, UserPlus, Eye, EyeOff, Loader2, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
-
-const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
+import { UserPlus, Eye, EyeOff, Loader2, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function AdminUsuariosPage() {
   const router = useRouter();
@@ -37,12 +34,9 @@ export default function AdminUsuariosPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('usuario');
-    if (!stored) { router.replace('/'); return; }
-    const u = JSON.parse(stored);
-    if (u.rol !== 'admin') { router.replace('/dashboard'); return; }
-    setUsuario(u);
+    if (stored) setUsuario(JSON.parse(stored));
     cargar();
-  }, [router]);
+  }, []);
 
   const validar = () => {
     const e = {};
@@ -95,122 +89,111 @@ export default function AdminUsuariosPage() {
     setEliminando(null);
   };
 
-  if (!usuario) return null;
-
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="w-full bg-brand shadow-md sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.push('/admin')} className="text-white">
-            <ArrowLeft size={22} />
-          </button>
-          <Image src={LOGO} alt="Nuevo Liberalismo" width={130} height={44} className="object-contain" priority />
-          <span className="text-brand-200 text-xs font-semibold ml-1">Gestión de admins</span>
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
-
-        {/* Crear nuevo admin */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <ShieldCheck size={20} className="text-brand" />
-            <h2 className="text-base font-bold text-gray-900">Crear usuario administrador</h2>
-          </div>
-
-          {exito && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4">
-              <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
-              <span className="text-sm text-green-700 font-medium">Usuario administrador creado correctamente.</span>
+    <div className="p-6">
+      <div className="flex gap-6 items-start">
+        {/* Left panel: form */}
+        <div className="flex-1 max-w-xl">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <ShieldCheck size={20} className="text-brand" />
+              <h2 className="text-base font-bold text-gray-900">Crear usuario administrador</h2>
             </div>
-          )}
-          {errores.general && (
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-              <span className="text-sm text-red-600">{errores.general}</span>
-            </div>
-          )}
 
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cédula</label>
-                <input
-                  type="text" inputMode="numeric" value={cedula}
-                  onChange={(e) => { setCedula(e.target.value); setErrores((p) => ({ ...p, cedula: '' })); setExito(false); }}
-                  placeholder="Ej: 1234567890"
-                  className={`border ${errores.cedula ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                />
-                {errores.cedula && <span className="text-xs text-red-500">{errores.cedula}</span>}
+            {exito && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4">
+                <CheckCircle size={16} className="text-green-600 flex-shrink-0" />
+                <span className="text-sm text-green-700 font-medium">Usuario administrador creado correctamente.</span>
               </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Nombre completo</label>
-                <input
-                  type="text" value={nombre}
-                  onChange={(e) => { setNombre(e.target.value); setErrores((p) => ({ ...p, nombre: '' })); setExito(false); }}
-                  placeholder="Nombre del administrador"
-                  className={`border ${errores.nombre ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                />
-                {errores.nombre && <span className="text-xs text-red-500">{errores.nombre}</span>}
+            )}
+            {errores.general && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+                <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+                <span className="text-sm text-red-600">{errores.general}</span>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Correo electrónico</label>
-              <input
-                type="email" value={email}
-                onChange={(e) => { setEmail(e.target.value); setErrores((p) => ({ ...p, email: '' })); setExito(false); }}
-                placeholder="correo@ejemplo.com"
-                className={`border ${errores.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-              />
-              {errores.email && <span className="text-xs text-red-500">{errores.email}</span>}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Contraseña</label>
-                <div className="relative">
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Cédula</label>
                   <input
-                    type={showPass ? 'text' : 'password'} value={password}
-                    onChange={(e) => { setPassword(e.target.value); setErrores((p) => ({ ...p, password: '', confirmar: '' })); setExito(false); }}
-                    placeholder="Mínimo 8 caracteres"
-                    className={`w-full border ${errores.password ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                    type="text" inputMode="numeric" value={cedula}
+                    onChange={(e) => { setCedula(e.target.value); setErrores((p) => ({ ...p, cedula: '' })); setExito(false); }}
+                    placeholder="Ej: 1234567890"
+                    className={`border ${errores.cedula ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
                   />
-                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
+                  {errores.cedula && <span className="text-xs text-red-500">{errores.cedula}</span>}
                 </div>
-                {errores.password && <span className="text-xs text-red-500">{errores.password}</span>}
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Nombre completo</label>
+                  <input
+                    type="text" value={nombre}
+                    onChange={(e) => { setNombre(e.target.value); setErrores((p) => ({ ...p, nombre: '' })); setExito(false); }}
+                    placeholder="Nombre del administrador"
+                    className={`border ${errores.nombre ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                  />
+                  {errores.nombre && <span className="text-xs text-red-500">{errores.nombre}</span>}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Confirmar contraseña</label>
-                <div className="relative">
-                  <input
-                    type={showConf ? 'text' : 'password'} value={confirmar}
-                    onChange={(e) => { setConfirmar(e.target.value); setErrores((p) => ({ ...p, confirmar: '' })); setExito(false); }}
-                    placeholder="Repite la contraseña"
-                    className={`w-full border ${errores.confirmar ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
-                  />
-                  <button type="button" onClick={() => setShowConf(!showConf)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    {showConf ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-                {errores.confirmar && <span className="text-xs text-red-500">{errores.confirmar}</span>}
+                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Correo electrónico</label>
+                <input
+                  type="email" value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErrores((p) => ({ ...p, email: '' })); setExito(false); }}
+                  placeholder="correo@ejemplo.com"
+                  className={`border ${errores.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                />
+                {errores.email && <span className="text-xs text-red-500">{errores.email}</span>}
               </div>
-            </div>
 
-            <button onClick={handleCrear} disabled={creando}
-              className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
-              {creando ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
-              {creando ? 'Creando...' : 'Crear administrador'}
-            </button>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Contraseña</label>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'} value={password}
+                      onChange={(e) => { setPassword(e.target.value); setErrores((p) => ({ ...p, password: '', confirmar: '' })); setExito(false); }}
+                      placeholder="Mínimo 8 caracteres"
+                      className={`w-full border ${errores.password ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                    />
+                    <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  {errores.password && <span className="text-xs text-red-500">{errores.password}</span>}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Confirmar contraseña</label>
+                  <div className="relative">
+                    <input
+                      type={showConf ? 'text' : 'password'} value={confirmar}
+                      onChange={(e) => { setConfirmar(e.target.value); setErrores((p) => ({ ...p, confirmar: '' })); setExito(false); }}
+                      placeholder="Repite la contraseña"
+                      className={`w-full border ${errores.confirmar ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-2.5 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand`}
+                    />
+                    <button type="button" onClick={() => setShowConf(!showConf)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      {showConf ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  {errores.confirmar && <span className="text-xs text-red-500">{errores.confirmar}</span>}
+                </div>
+              </div>
+
+              <button onClick={handleCrear} disabled={creando}
+                className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors">
+                {creando ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
+                {creando ? 'Creando...' : 'Crear administrador'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Lista de admins */}
-        <div>
+        {/* Right panel: list */}
+        <div className="w-80 flex-shrink-0">
           <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-3">
             Administradores actuales
           </h2>
@@ -242,7 +225,7 @@ export default function AdminUsuariosPage() {
                     <p className="text-xs text-gray-400 font-mono">{a.cedula}</p>
                   </div>
                 </div>
-                {a.cedula !== usuario.cedula && (
+                {usuario && a.cedula !== usuario.cedula && (
                   <button onClick={() => handleEliminar(a.cedula)} disabled={eliminando === a.cedula}
                     className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 flex-shrink-0">
                     {eliminando === a.cedula ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
@@ -254,10 +237,6 @@ export default function AdminUsuariosPage() {
           </div>
         </div>
       </div>
-
-      <footer className="text-center text-xs text-gray-400 py-4 border-t border-gray-200 mt-6">
-        © {new Date().getFullYear()} Nuevo Liberalismo · Panel de Administración
-      </footer>
-    </main>
+    </div>
   );
 }

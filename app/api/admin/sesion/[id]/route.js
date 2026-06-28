@@ -16,7 +16,6 @@ export async function GET(request, { params }) {
     { count: inscritos },
     { count: asistentes },
     { data: resultados },
-    { data: inscData },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,orden))').eq('asamblea_id', sesionId).order('created_at'),
@@ -24,14 +23,32 @@ export async function GET(request, { params }) {
     supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
-    // Query separado para preinscritos — no afecta el conteo si falla por columna faltante
-    supabase.from('inscripciones').select('cedula, estado_acreditacion, created_at').eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
-  // Enriquecer con nombres de usuario (falla silenciosamente si tabla no existe)
-  const cedulas = (inscData || []).map((i) => i.cedula);
+  // Fetch preinscritos con fallback si la columna estado_acreditacion aún no existe
+  let rawInsc = [];
+  const { data: inscConEstado, error: inscErr } = await supabase
+    .from('inscripciones')
+    .select('cedula, estado_acreditacion, created_at')
+    .eq('asamblea_id', sesionId)
+    .order('created_at', { ascending: true });
+
+  if (inscErr) {
+    // Columna no existe todavía: obtener solo cédulas
+    const { data: inscBasic } = await supabase
+      .from('inscripciones')
+      .select('cedula, created_at')
+      .eq('asamblea_id', sesionId)
+      .order('created_at', { ascending: true });
+    rawInsc = (inscBasic || []).map((i) => ({ ...i, estado_acreditacion: 'preinscrito' }));
+  } else {
+    rawInsc = (inscConEstado || []).map((i) => ({ ...i, estado_acreditacion: i.estado_acreditacion || 'preinscrito' }));
+  }
+
+  // Enriquecer con nombres de usuario (falla silenciosamente si la tabla no existe)
+  const cedulas = rawInsc.map((i) => i.cedula);
   let nombresMap = {};
   if (cedulas.length > 0) {
     const { data: usuarios } = await supabase
@@ -41,11 +58,11 @@ export async function GET(request, { params }) {
     (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
   }
 
-  const preinscritos = (inscData || []).map((i) => ({
+  const preinscritos = rawInsc.map((i) => ({
     cedula:              i.cedula,
     nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
     email:               nombresMap[i.cedula]?.email  || null,
-    estado_acreditacion: i.estado_acreditacion || 'preinscrito',
+    estado_acreditacion: i.estado_acreditacion,
     created_at:          i.created_at,
   }));
 

@@ -226,13 +226,13 @@ export default function DashboardPage() {
                     </button>
                   ) : (
                     <div className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-700 font-semibold py-2.5 rounded-xl text-sm border border-blue-200">
-                      <CheckCircle size={14} /> Inscrito — sesión próximamente
+                      <CheckCircle size={14} /> Preinscrito — sesión próximamente
                     </div>
                   )}
                   <button onClick={() => handleCancelar(s.id)} disabled={busy}
                     className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-red-500 py-1.5 transition-colors disabled:opacity-50">
                     {busy ? <Loader2 size={12} className="animate-spin" /> : <UserMinus size={12} />}
-                    Cancelar inscripción
+                    Cancelar preinscripción
                   </button>
                 </div>
               ) : cuposAgotados ? (
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                 <button onClick={() => handleInscribirse(s.id)} disabled={busy}
                   className="w-full flex items-center justify-center gap-2 bg-white border-2 border-brand text-brand hover:bg-brand-50 font-bold py-3 rounded-xl transition-colors disabled:opacity-60">
                   {busy ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                  {busy ? 'Inscribiendo...' : 'Inscribirme'}
+                  {busy ? 'Preinscribiendo...' : 'Preinscribirse'}
                 </button>
               )}
             </div>

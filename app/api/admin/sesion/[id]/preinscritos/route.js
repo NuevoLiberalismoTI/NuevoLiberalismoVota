@@ -11,18 +11,31 @@ export async function GET(request, { params }) {
   const sesionId = decodeURIComponent(id);
   const supabase = createServerClient();
 
+  // Consulta base sin JOIN para garantizar que siempre funcione
   const { data, error } = await supabase
     .from('inscripciones')
-    .select('cedula, estado_acreditacion, created_at, usuarios(nombre, email)')
+    .select('cedula, estado_acreditacion, created_at')
     .eq('asamblea_id', sesionId)
     .order('created_at', { ascending: true });
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
 
+  const cedulas = (data || []).map((i) => i.cedula);
+
+  // Intentar enriquecer con datos de usuario (falla silenciosamente si la tabla/FK es diferente)
+  let nombresMap = {};
+  if (cedulas.length > 0) {
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('cedula, nombre, email')
+      .in('cedula', cedulas);
+    (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
+  }
+
   const preinscritos = (data || []).map((i) => ({
     cedula:              i.cedula,
-    nombre:              i.usuarios?.nombre || i.cedula,
-    email:               i.usuarios?.email  || null,
+    nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
+    email:               nombresMap[i.cedula]?.email  || null,
     estado_acreditacion: i.estado_acreditacion || 'preinscrito',
     created_at:          i.created_at,
   }));

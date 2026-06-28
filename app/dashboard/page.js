@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar, Radio } from 'lucide-react';
+import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar, Radio, Shield, ShieldCheck, ShieldX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -23,8 +23,15 @@ export default function DashboardPage() {
   const [tab, setTab]               = useState('activas');
 
   const cargar = async (cedula) => {
-    const { data, error } = await supabase.rpc('get_asambleas_usuario', { p_cedula: cedula });
-    if (!error && data) setSesiones(data);
+    const [{ data, error }, { data: acredData }] = await Promise.all([
+      supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
+      supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('cedula', cedula),
+    ]);
+    if (!error && data) {
+      const acredMap = {};
+      (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
+      setSesiones(data.map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null })));
+    }
     setCargando(false);
   };
 
@@ -166,6 +173,21 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+
+              {/* Badge de acreditación */}
+              {s.esta_inscrito && s.estado_acreditacion && (
+                <div className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl mb-3 border ${
+                  s.estado_acreditacion === 'acreditado_voto'    ? 'bg-green-50 text-green-700 border-green-200' :
+                  s.estado_acreditacion === 'acreditado_ingreso' ? 'bg-blue-50 text-blue-700 border-blue-200'   :
+                  s.estado_acreditacion === 'rechazado'          ? 'bg-red-50 text-red-600 border-red-200'       :
+                  'bg-yellow-50 text-yellow-700 border-yellow-200'
+                }`}>
+                  {s.estado_acreditacion === 'acreditado_voto'    && <><ShieldCheck size={13} /> Acreditado — Ingreso y Voto</>}
+                  {s.estado_acreditacion === 'acreditado_ingreso' && <><ShieldCheck size={13} /> Acreditado — Solo Ingreso (sin voto)</>}
+                  {s.estado_acreditacion === 'rechazado'          && <><ShieldX size={13} /> Acceso rechazado — Contacta al administrador</>}
+                  {s.estado_acreditacion === 'preinscrito'        && <><Shield size={13} /> Preinscrito — pendiente de acreditación</>}
+                </div>
+              )}
 
               {/* Acciones */}
               {s.estado === 'finalizada' ? (

@@ -13,14 +13,14 @@ export async function GET(request, { params }) {
     { data: asm },
     { data: pregs },
     { data: pb },
-    { count: inscritos },
+    { data: inscData, count: inscritos },
     { count: asistentes },
     { data: resultados },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,orden))').eq('asamblea_id', sesionId).order('created_at'),
     supabase.from('preguntas_base').select('*').eq('activa', true),
-    supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
+    supabase.from('inscripciones').select('estado_acreditacion', { count: 'exact' }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
   ]);
@@ -37,7 +37,12 @@ export async function GET(request, { params }) {
         .map((c) => ({ ...c, miembros: (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden) })),
     })),
     preguntasBase: pb || [],
-    stats: { inscritos: inscritos || 0, asistentes: asistentes || 0 },
+    stats: {
+      inscritos:   inscritos || 0,
+      asistentes:  asistentes || 0,
+      acreditados: (inscData || []).filter((i) => i.estado_acreditacion === 'acreditado_voto' || i.estado_acreditacion === 'acreditado_ingreso').length,
+      pendientes:  (inscData || []).filter((i) => i.estado_acreditacion === 'preinscrito').length,
+    },
     resultados: resultados?.preguntas || [],
   });
 }

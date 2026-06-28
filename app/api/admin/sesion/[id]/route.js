@@ -13,21 +13,24 @@ export async function GET(request, { params }) {
     { data: asm },
     { data: pregs },
     { data: pb },
-    { data: inscData, count: inscritos },
+    { count: inscritos },
     { count: asistentes },
     { data: resultados },
+    { data: inscData },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,orden))').eq('asamblea_id', sesionId).order('created_at'),
     supabase.from('preguntas_base').select('*').eq('activa', true),
-    supabase.from('inscripciones').select('cedula, estado_acreditacion, created_at', { count: 'exact' }).eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
+    supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
+    // Query separado para preinscritos — no afecta el conteo si falla por columna faltante
+    supabase.from('inscripciones').select('cedula, estado_acreditacion, created_at').eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
-  // Intentar enriquecer inscripciones con nombres de usuarios
+  // Enriquecer con nombres de usuario (falla silenciosamente si tabla no existe)
   const cedulas = (inscData || []).map((i) => i.cedula);
   let nombresMap = {};
   if (cedulas.length > 0) {

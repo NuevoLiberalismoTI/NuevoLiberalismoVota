@@ -623,12 +623,12 @@ export default function AdminSesionPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {acredFiltrados.map((p) => {
+                {acredFiltrados.map((p, idx) => {
                   const aCredCfg = ACRED_CFG[p.estado_acreditacion] || ACRED_CFG.preinscrito;
-                  const nombreStr = p.nombre || p.cedula;
-                  const initials = nombreStr.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+                  const nombreStr = String(p.nombre || p.cedula || '?');
+                  const initials = nombreStr.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
                   return (
-                    <div key={p.cedula} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 hover:border-gray-200 transition-colors">
+                    <div key={p.cedula || idx} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 hover:border-gray-200 transition-colors">
                       <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">
                         {initials}
                       </div>

@@ -34,11 +34,13 @@ export async function GET(request, { params }) {
     .select('*')
     .eq('asamblea_id', sesionId);
 
-  const rawInsc = (inscAll || []).map((i) => ({
-    cedula:              i.cedula,
-    estado_acreditacion: i.estado_acreditacion || 'preinscrito',
-    created_at:          i.created_at || null,
-  }));
+  const rawInsc = (inscAll || [])
+    .map((i) => ({
+      cedula:              i.cedula != null ? String(i.cedula) : null,
+      estado_acreditacion: i.estado_acreditacion || 'preinscrito',
+      created_at:          i.created_at || null,
+    }))
+    .filter((i) => i.cedula);
 
   // Enriquecer con nombres de usuario (falla silenciosamente si la tabla no existe)
   const cedulas = rawInsc.map((i) => i.cedula);

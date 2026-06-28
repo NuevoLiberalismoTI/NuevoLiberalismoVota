@@ -385,6 +385,9 @@ export default function AdminSesionPage() {
     await cargar(); setCargando(false);
   };
 
+  // Active question (pre-computed to avoid IIFE in JSX)
+  const preguntaActiva = enCurso && hayActiva ? preguntas.find((p) => p.id === activaId) ?? null : null;
+
   // Preinscritos computed values (calculated before render, no IIFE needed)
   const acredCounts = preinscritos.reduce((acc, p) => {
     const k = p.estado_acreditacion || 'preinscrito';
@@ -522,25 +525,22 @@ export default function AdminSesionPage() {
       {/* Right panel — questions / results */}
       <div className="flex-1 overflow-auto p-6 flex flex-col gap-5">
         {/* Active question alert */}
-        {enCurso && hayActiva && (() => {
-          const pa = preguntas.find((p) => p.id === activaId);
-          return pa ? (
-            <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-                </span>
-                <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Pregunta activa ahora</span>
-              </div>
-              <p className="text-sm font-semibold text-gray-800 mb-3">{pa.texto}</p>
-              <button onClick={handleCerrar} disabled={cargando}
-                className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
-                <Lock size={14}/> Cerrar pregunta
-              </button>
+        {preguntaActiva && (
+          <div className="bg-green-50 border-2 border-green-500 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Pregunta activa ahora</span>
             </div>
-          ) : null;
-        })()}
+            <p className="text-sm font-semibold text-gray-800 mb-3">{preguntaActiva.texto}</p>
+            <button onClick={handleCerrar} disabled={cargando}
+              className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
+              <Lock size={14}/> Cerrar pregunta
+            </button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200">

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -89,14 +89,22 @@ function nombreMilitante(m) {
 }
 
 function TabInvitaciones({ sesion }) {
-  // seleccionados: Map<email, { email, nombre }> — se guarda el nombre para el modal
-  const [depto,        setDepto]        = useState('');
+  // Deriva el ID de departamento del API a partir del nombre guardado en la sesión
+  const deptoInicial = (() => {
+    if (!sesion.departamento) return ''; // NACIONAL u otro sin departamento → sin filtro
+    return DEPARTAMENTOS_API.find(
+      (d) => d.nombre.toLowerCase() === (sesion.departamento || '').toLowerCase()
+    )?.id ?? '';
+  })();
+
+  const [depto,        setDepto]        = useState(deptoInicial);
+  const [busqueda,     setBusqueda]     = useState('');
   const [militantes,   setMilitantes]   = useState([]);
   const [total,        setTotal]        = useState(0);
   const [page,         setPage]         = useState(1);
-  const [cargando,     setCargando]     = useState(false);
+  const [cargando,     setCargando]     = useState(true);
   const [seleccionados,setSeleccionados]= useState(new Map());
-  const [confirmacion, setConfirmacion] = useState(false); // muestra el modal
+  const [confirmacion, setConfirmacion] = useState(false);
   const [enviando,     setEnviando]     = useState(false);
   const [resultado,    setResultado]    = useState(null);
   const [errorInv,     setErrorInv]     = useState('');
@@ -104,14 +112,15 @@ function TabInvitaciones({ sesion }) {
   const PER_PAGE     = 20;
   const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
 
+  // Carga militantes siempre (con o sin filtro de departamento)
   useEffect(() => {
-    if (!depto) { setMilitantes([]); setTotal(0); return; }
     let activo = true;
+    setCargando(true);
+    setErrorInv('');
     (async () => {
-      setCargando(true);
-      setErrorInv('');
       try {
-        const params = new URLSearchParams({ page, departamento: depto });
+        const params = new URLSearchParams({ page });
+        if (depto) params.set('departamento', depto);
         const res  = await fetch(`/api/admin/militantes?${params}`);
         const json = await res.json();
         if (!activo) return;
@@ -127,15 +136,26 @@ function TabInvitaciones({ sesion }) {
     return () => { activo = false; };
   }, [depto, page]);
 
+  // Filtrado local en tiempo real por nombre o número de documento
+  const datosFiltrados = busqueda.trim()
+    ? militantes.filter((m) => {
+        const q = busqueda.trim().toLowerCase();
+        return (
+          nombreMilitante(m).toLowerCase().includes(q) ||
+          (m.numero_documento ?? '').toLowerCase().includes(q)
+        );
+      })
+    : militantes;
+
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);
     setPage(1);
+    setBusqueda('');
     setSeleccionados(new Map());
     setResultado(null);
     setErrorInv('');
   };
 
-  // Al cambiar página, limpiamos la selección para no perder pista de lo seleccionado
   const cambiarPagina = (nuevaPagina) => {
     setPage(nuevaPagina);
     setSeleccionados(new Map());
@@ -174,28 +194,66 @@ function TabInvitaciones({ sesion }) {
     }
   };
 
+  const nombreDepto = depto
+    ? (DEPARTAMENTOS_API.find((d) => d.id === depto)?.nombre ?? depto)
+    : 'todos los departamentos';
+
   return (
     <div className="flex flex-col gap-4">
-      {/* Selector de departamento */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {/* Departamento */}
+        <div className="relative">
           <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <select
             value={depto}
             onChange={handleDeptoChange}
-            className="w-full pl-8 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700"
+            className="pl-8 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700 w-52"
           >
-            <option value="">Selecciona un departamento…</option>
+            <option value="">Todos los departamentos</option>
             {DEPARTAMENTOS_API.map((d) => (
               <option key={d.id} value={d.id}>{d.nombre}</option>
             ))}
           </select>
         </div>
-        {total > 0 && !cargando && (
+
+        {/* Búsqueda por nombre / documento */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Nombre o número de documento…"
+            className="pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white w-60"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+
+        {!cargando && total > 0 && (
           <span className="text-xs text-gray-400">
-            {total.toLocaleString('es-CO')} militante{total !== 1 ? 's' : ''} en este departamento
+            {busqueda.trim()
+              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} en esta página`
+              : `${total.toLocaleString('es-CO')} militante${total !== 1 ? 's' : ''} en ${nombreDepto}`
+            }
           </span>
         )}
+      </div>
+
+      {/* Aviso fase de pruebas */}
+      <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
+        <AlertTriangle size={15} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-yellow-700 font-medium leading-relaxed">
+          <strong>Fase de pruebas:</strong> Selecciona destinatarios uno por uno. Antes de enviar se mostrará un resumen exacto de a quiénes se enviará el correo.
+        </p>
       </div>
 
       {/* Resultado del envío */}
@@ -223,57 +281,42 @@ function TabInvitaciones({ sesion }) {
         </div>
       )}
 
-      {/* Aviso fase de pruebas */}
-      {depto && !cargando && militantes.length > 0 && (
-        <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-          <AlertTriangle size={15} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-yellow-700 font-medium leading-relaxed">
-            <strong>Fase de pruebas:</strong> Selecciona los destinatarios uno por uno. Antes de enviar se mostrará un resumen exacto de a quiénes se enviará el correo.
-          </p>
-        </div>
-      )}
-
-      {/* Lista de militantes */}
-      {!depto && !cargando && (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-          <MapPin size={28} className="mx-auto text-gray-200 mb-3" />
-          <p className="text-sm text-gray-400">Selecciona un departamento para ver sus militantes</p>
-        </div>
-      )}
-
+      {/* Spinner */}
       {cargando && (
         <div className="flex justify-center py-10">
           <Loader2 size={26} className="text-brand animate-spin" />
         </div>
       )}
 
-      {depto && !cargando && militantes.length === 0 && (
+      {/* Sin resultados */}
+      {!cargando && datosFiltrados.length === 0 && (
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm text-gray-400">No hay militantes en este departamento</p>
+          <p className="text-sm text-gray-400">
+            {busqueda.trim() ? 'Sin resultados para esa búsqueda en esta página' : 'No hay militantes para mostrar'}
+          </p>
         </div>
       )}
 
-      {depto && !cargando && militantes.length > 0 && (
+      {/* Lista */}
+      {!cargando && datosFiltrados.length > 0 && (
         <>
-          {/* Contador + limpiar */}
           {seleccionados.size > 0 && (
             <div className="flex items-center gap-3">
               <span className="text-sm font-semibold text-brand">
-                {seleccionados.size} militante{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+                {seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''}
               </span>
               <button
                 onClick={() => setSeleccionados(new Map())}
                 className="text-xs text-gray-400 hover:text-red-500 font-semibold"
               >
-                × Limpiar selección
+                × Limpiar
               </button>
             </div>
           )}
 
-          {/* Lista */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-50">
-              {militantes.map((m) => {
+              {datosFiltrados.map((m) => {
                 const sinEmail = !m.email;
                 const marcado  = m.email ? seleccionados.has(m.email) : false;
                 const initials = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
@@ -294,7 +337,7 @@ function TabInvitaciones({ sesion }) {
                       checked={marcado}
                       disabled={sinEmail}
                       readOnly
-                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand flex-shrink-0 pointer-events-none"
+                      className="h-4 w-4 rounded border-gray-300 text-brand flex-shrink-0 pointer-events-none"
                     />
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${marcado ? 'bg-brand text-white' : 'bg-brand-50 text-brand'}`}>
                       {initials}
@@ -315,7 +358,6 @@ function TabInvitaciones({ sesion }) {
             </div>
           </div>
 
-          {/* Paginación */}
           {totalPaginas > 1 && (
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Página {page} de {totalPaginas}</span>
@@ -332,7 +374,6 @@ function TabInvitaciones({ sesion }) {
             </div>
           )}
 
-          {/* Botón revisar antes de enviar */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setConfirmacion(true)}
@@ -355,7 +396,6 @@ function TabInvitaciones({ sesion }) {
           onClick={() => !enviando && setConfirmacion(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <Send size={16} className="text-brand" />
@@ -368,24 +408,20 @@ function TabInvitaciones({ sesion }) {
               )}
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-              {/* Advertencia */}
               <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3">
                 <AlertTriangle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-yellow-800 font-medium leading-relaxed">
-                  Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos de la base de datos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
+                  Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
                 </p>
               </div>
 
-              {/* Info sesión */}
               <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
                 <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
                 <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
                 <p>📍 {sesion.lugar}</p>
               </div>
 
-              {/* Lista de destinatarios */}
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                   Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
@@ -406,20 +442,13 @@ function TabInvitaciones({ sesion }) {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button
-                onClick={() => setConfirmacion(false)}
-                disabled={enviando}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
+              <button onClick={() => setConfirmacion(false)} disabled={enviando}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
                 Cancelar
               </button>
-              <button
-                onClick={handleEnviar}
-                disabled={enviando}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors"
-              >
+              <button onClick={handleEnviar} disabled={enviando}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors">
                 {enviando
                   ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
                   : <><Send size={14} /> Confirmar envío</>

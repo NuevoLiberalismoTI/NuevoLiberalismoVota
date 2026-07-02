@@ -108,7 +108,8 @@ function TabInvitaciones({ sesion }) {
   const [enviando,     setEnviando]     = useState(false);
   const [resultado,    setResultado]    = useState(null);
   const [errorInv,     setErrorInv]     = useState('');
-  const [invitados,    setInvitados]    = useState(new Set());
+  const [invitadosSet,   setInvitadosSet]   = useState(new Set());
+  const [invitadosLista, setInvitadosLista] = useState([]);
 
   const PER_PAGE     = 20;
   const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
@@ -118,7 +119,11 @@ function TabInvitaciones({ sesion }) {
     try {
       const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitados`);
       const json = await res.json();
-      if (json.ok) setInvitados(new Set((json.data ?? []).map((r) => r.email)));
+      if (json.ok) {
+        const data = json.data ?? [];
+        setInvitadosSet(new Set(data.map((r) => r.email)));
+        setInvitadosLista(data);
+      }
     } catch { /* silencioso */ }
   }, [sesion.id]);
 
@@ -214,7 +219,47 @@ function TabInvitaciones({ sesion }) {
     : 'todos los departamentos';
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+    <>
+    <div className="flex gap-4 items-start">
+
+      {/* ── Panel izquierdo: ya invitados ── */}
+      <div className="w-72 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl flex items-center gap-2">
+          <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
+          <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: '520px' }}>
+          {invitadosLista.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Send size={24} className="mb-2 text-gray-200" />
+              <p className="text-sm text-center leading-relaxed text-gray-300">Sin invitaciones<br/>enviadas aún</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {invitadosLista.map((inv, i) => {
+                const initials = inv.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+                return (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center text-xs font-bold text-green-700 flex-shrink-0">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{inv.nombre}</p>
+                      <p className="text-xs text-gray-400 truncate">{inv.email}</p>
+                      <p className="text-[10px] text-gray-300 mt-0.5">
+                        {new Date(inv.enviado_en).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Panel derecho: selección ── */}
+      <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
 
       {/* ── Cabecera: filtros ── */}
       <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center bg-gray-50 rounded-t-2xl">
@@ -307,7 +352,7 @@ function TabInvitaciones({ sesion }) {
             {datosFiltrados.map((m) => {
               const sinEmail    = !m.email;
               const marcado     = m.email ? seleccionados.has(m.email) : false;
-              const yaInvitado  = m.email ? invitados.has(m.email) : false;
+              const yaInvitado  = m.email ? invitadosSet.has(m.email) : false;
               const initials    = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
               return (
                 <div
@@ -394,85 +439,88 @@ function TabInvitaciones({ sesion }) {
         </div>
       </div>
 
-      {/* Modal de confirmación */}
-      {confirmacion && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => !enviando && setConfirmacion(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <Send size={16} className="text-brand" />
-                <h3 className="font-bold text-gray-900 text-sm">Confirmar envío de invitaciones</h3>
-              </div>
-              {!enviando && (
-                <button onClick={() => setConfirmacion(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={18} />
-                </button>
-              )}
+      </div>{/* fin panel derecho */}
+    </div>{/* fin flex row */}
+
+    {/* Modal de confirmación */}
+    {confirmacion && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        onClick={() => !enviando && setConfirmacion(false)}>
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Send size={16} className="text-brand" />
+              <h3 className="font-bold text-gray-900 text-sm">Confirmar envío de invitaciones</h3>
+            </div>
+            {!enviando && (
+              <button onClick={() => setConfirmacion(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+            <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3">
+              <AlertTriangle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-800 font-medium leading-relaxed">
+                Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
+              </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-              <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3">
-                <AlertTriangle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-yellow-800 font-medium leading-relaxed">
-                  Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
-                </p>
-              </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
+              <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
+              <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
+              <p>📍 {sesion.lugar}</p>
+            </div>
 
-              <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
-                <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
-                <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
-                <p>📍 {sesion.lugar}</p>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                  Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
-                </p>
-                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                  {listaSeleccionada.map(({ email, nombre }) => {
-                    const reinvitacion = invitados.has(email);
-                    return (
-                      <div key={email} className={`flex items-center gap-3 px-4 py-2.5 ${reinvitacion ? 'bg-yellow-50' : ''}`}>
-                        <div className="h-7 w-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand flex-shrink-0">
-                          {nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
-                            {reinvitacion && (
-                              <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
-                                <AlertTriangle size={9} /> Re-envío
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-400 truncate">{email}</p>
-                        </div>
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
+              </p>
+              <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                {listaSeleccionada.map(({ email, nombre }) => {
+                  const reinvitacion = invitadosSet.has(email);
+                  return (
+                    <div key={email} className={`flex items-center gap-3 px-4 py-2.5 ${reinvitacion ? 'bg-yellow-50' : ''}`}>
+                      <div className="h-7 w-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand flex-shrink-0">
+                        {nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
+                          {reinvitacion && (
+                            <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
+                              <AlertTriangle size={9} /> Re-envío
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{email}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-              <button onClick={() => setConfirmacion(false)} disabled={enviando}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
-                Cancelar
-              </button>
-              <button onClick={handleEnviar} disabled={enviando}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors">
-                {enviando
-                  ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
-                  : <><Send size={14} /> Confirmar envío</>
-                }
-              </button>
             </div>
           </div>
+
+          <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+            <button onClick={() => setConfirmacion(false)} disabled={enviando}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+              Cancelar
+            </button>
+            <button onClick={handleEnviar} disabled={enviando}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors">
+              {enviando
+                ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
+                : <><Send size={14} /> Confirmar envío</>
+              }
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+    </>
   );
 }
 

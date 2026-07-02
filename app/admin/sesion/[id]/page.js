@@ -108,9 +108,21 @@ function TabInvitaciones({ sesion }) {
   const [enviando,     setEnviando]     = useState(false);
   const [resultado,    setResultado]    = useState(null);
   const [errorInv,     setErrorInv]     = useState('');
+  const [invitados,    setInvitados]    = useState(new Set());
 
   const PER_PAGE     = 20;
   const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
+
+  // Carga emails ya invitados para esta sesión
+  const cargarInvitados = useCallback(async () => {
+    try {
+      const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitados`);
+      const json = await res.json();
+      if (json.ok) setInvitados(new Set((json.data ?? []).map((r) => r.email)));
+    } catch { /* silencioso */ }
+  }, [sesion.id]);
+
+  useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
   // Carga militantes siempre (con o sin filtro de departamento)
   useEffect(() => {
@@ -185,7 +197,10 @@ function TabInvitaciones({ sesion }) {
       });
       const json = await res.json();
       setResultado(json);
-      if (json.ok) setSeleccionados(new Map());
+      if (json.ok) {
+        setSeleccionados(new Map());
+        cargarInvitados();
+      }
     } catch {
       setResultado({ ok: false, error: 'Error de red al enviar.' });
     } finally {
@@ -290,9 +305,10 @@ function TabInvitaciones({ sesion }) {
         {!cargando && datosFiltrados.length > 0 && (
           <div className="divide-y divide-gray-50">
             {datosFiltrados.map((m) => {
-              const sinEmail = !m.email;
-              const marcado  = m.email ? seleccionados.has(m.email) : false;
-              const initials = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
+              const sinEmail    = !m.email;
+              const marcado     = m.email ? seleccionados.has(m.email) : false;
+              const yaInvitado  = m.email ? invitados.has(m.email) : false;
+              const initials    = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
               return (
                 <div
                   key={m.id_militante}
@@ -316,7 +332,14 @@ function TabInvitaciones({ sesion }) {
                     {initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
+                      {yaInvitado && (
+                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
+                          <AlertTriangle size={9} /> Ya invitado
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -408,17 +431,27 @@ function TabInvitaciones({ sesion }) {
                   Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
                 </p>
                 <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
-                  {listaSeleccionada.map(({ email, nombre }) => (
-                    <div key={email} className="flex items-center gap-3 px-4 py-2.5">
-                      <div className="h-7 w-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand flex-shrink-0">
-                        {nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
+                  {listaSeleccionada.map(({ email, nombre }) => {
+                    const reinvitacion = invitados.has(email);
+                    return (
+                      <div key={email} className={`flex items-center gap-3 px-4 py-2.5 ${reinvitacion ? 'bg-yellow-50' : ''}`}>
+                        <div className="h-7 w-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand flex-shrink-0">
+                          {nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
+                            {reinvitacion && (
+                              <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
+                                <AlertTriangle size={9} /> Re-envío
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 truncate">{email}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
-                        <p className="text-xs text-gray-400 truncate">{email}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

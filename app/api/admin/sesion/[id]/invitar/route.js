@@ -44,5 +44,12 @@ export async function POST(request, { params }) {
   });
 
   const json = await res.json();
+
+  if (json.ok) {
+    await supabase
+      .from('invitaciones_enviadas')
+      .insert(militantes.map(({ email, nombre }) => ({ sesion_id: sesionId, email, nombre })));
+  }
+
   return Response.json(json, { status: res.ok ? 200 : 502 });
 }

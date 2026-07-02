@@ -220,11 +220,11 @@ function TabInvitaciones({ sesion }) {
 
   return (
     <>
-    <div className="flex gap-4 items-start">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex">
 
       {/* ── Panel izquierdo: ya invitados ── */}
-      <div className="w-72 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl flex items-center gap-2">
+      <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
           <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
           <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
         </div>
@@ -259,7 +259,7 @@ function TabInvitaciones({ sesion }) {
       </div>
 
       {/* ── Panel derecho: selección ── */}
-      <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
 
       {/* ── Cabecera: filtros ── */}
       <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center bg-gray-50 rounded-t-2xl">
@@ -440,7 +440,7 @@ function TabInvitaciones({ sesion }) {
       </div>
 
       </div>{/* fin panel derecho */}
-    </div>{/* fin flex row */}
+    </div>{/* fin tarjeta única */}
 
     {/* Modal de confirmación */}
     {confirmacion && (

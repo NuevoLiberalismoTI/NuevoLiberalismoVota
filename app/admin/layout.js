@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -12,6 +12,7 @@ function getPageTitle(pathname) {
   if (pathname === '/admin/nueva') return 'Nueva sesión';
   if (pathname === '/admin/usuarios') return 'Administradores';
   if (pathname === '/admin/parametricas') return 'Parámetricas';
+  if (pathname === '/admin/militantes') return 'Militantes';
   if (pathname.startsWith('/admin/sesion/')) return 'Gestión de sesión';
   return 'Admin';
 }
@@ -22,6 +23,12 @@ const NAV_ITEMS = [
     items: [
       { label: 'Dashboard',    href: '/admin',        Icon: LayoutDashboard, exact: true  },
       { label: 'Nueva sesión', href: '/admin/nueva',  Icon: Plus,            exact: false },
+    ],
+  },
+  {
+    group: 'DIRECTORIO',
+    items: [
+      { label: 'Militantes', href: '/admin/militantes', Icon: Users, exact: false },
     ],
   },
   {

@@ -5,11 +5,13 @@ const TOKEN    = '7TvcetUYWs0zuLMy5bX4Fx0cfYvrg2WCfbMpIOWVhCFwOQXB2WfMyWBB3kqSKI
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const page   = searchParams.get('page')   || '1';
-  const search = searchParams.get('search') || '';
+  const page        = searchParams.get('page')        || '1';
+  const search      = searchParams.get('search')      || '';
+  const departamento = searchParams.get('departamento') || '';
 
   const params = new URLSearchParams({ token: TOKEN, page });
-  if (search) params.set('search', search);
+  if (search)       params.set('search',      search);
+  if (departamento) params.set('departamento', departamento);
 
   try {
     const res = await fetch(`${API_BASE}?${params}`, { cache: 'no-store' });

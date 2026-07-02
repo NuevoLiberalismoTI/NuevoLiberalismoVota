@@ -3,10 +3,20 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Users, Search, ChevronLeft, ChevronRight, Loader2,
-  AlertCircle, User, Phone, Mail, Calendar, IdCard, X,
+  AlertCircle, User, Phone, Mail, Calendar, IdCard, X, MapPin,
 } from 'lucide-react';
+import { DEPARTAMENTOS_CON_CODIGO } from '../../lib/data';
 
 const PER_PAGE_ESTIMATE = 20;
+
+// id_departamento_residencia de la API → nombre (el arreglo está indexado desde 1)
+const DEPT_MAP = Object.fromEntries(
+  DEPARTAMENTOS_CON_CODIGO.map((d, i) => [String(i + 1), d.nombre])
+);
+
+function nombreDepto(id) {
+  return id ? (DEPT_MAP[String(id)] ?? `Dept. ${id}`) : '—';
+}
 
 const ESTADO_COLORS = {
   Activo:    'bg-green-100 text-green-700',
@@ -31,23 +41,25 @@ function formatFecha(str) {
 }
 
 export default function MilitantesPage() {
-  const [data,      setData]      = useState([]);
-  const [total,     setTotal]     = useState(0);
-  const [page,      setPage]      = useState(1);
-  const [cargando,  setCargando]  = useState(true);
-  const [error,     setError]     = useState('');
-  const [busqueda,  setBusqueda]  = useState('');
-  const [inputVal,  setInputVal]  = useState('');
-  const [detalle,   setDetalle]   = useState(null);
+  const [data,        setData]        = useState([]);
+  const [total,       setTotal]       = useState(0);
+  const [page,        setPage]        = useState(1);
+  const [cargando,    setCargando]    = useState(true);
+  const [error,       setError]       = useState('');
+  const [busqueda,    setBusqueda]    = useState('');
+  const [inputVal,    setInputVal]    = useState('');
+  const [depto,       setDepto]       = useState('');
+  const [detalle,     setDetalle]     = useState(null);
 
   const totalPaginas = Math.ceil(total / PER_PAGE_ESTIMATE) || 1;
 
-  const cargar = useCallback(async (pg, q) => {
+  const cargar = useCallback(async (pg, q, dp) => {
     setCargando(true);
     setError('');
     try {
       const params = new URLSearchParams({ page: pg });
-      if (q) params.set('search', q);
+      if (q)  params.set('search',      q);
+      if (dp) params.set('departamento', dp);
       const res  = await fetch(`/api/admin/militantes?${params}`);
       const json = await res.json();
       if (!res.ok) { setError(json.error || 'Error al cargar militantes'); return; }
@@ -60,7 +72,7 @@ export default function MilitantesPage() {
     }
   }, []);
 
-  useEffect(() => { cargar(page, busqueda); }, [page, busqueda, cargar]);
+  useEffect(() => { cargar(page, busqueda, depto); }, [page, busqueda, depto, cargar]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -68,11 +80,19 @@ export default function MilitantesPage() {
     setBusqueda(inputVal.trim());
   };
 
-  const limpiarBusqueda = () => {
-    setInputVal('');
+  const handleDepto = (e) => {
     setPage(1);
-    setBusqueda('');
+    setDepto(e.target.value);
   };
+
+  const limpiarTodo = () => {
+    setInputVal('');
+    setBusqueda('');
+    setDepto('');
+    setPage(1);
+  };
+
+  const hayFiltros = busqueda || depto;
 
   return (
     <div className="p-6 flex flex-col gap-5">
@@ -91,29 +111,73 @@ export default function MilitantesPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            placeholder="Buscar por nombre o documento..."
-            className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-          />
-          {inputVal && (
-            <button type="button" onClick={limpiarBusqueda}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={14} />
-            </button>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              placeholder="Nombre o documento..."
+              className="pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white w-56"
+            />
+          </div>
+          <button type="submit"
+            className="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors">
+            Buscar
+          </button>
+        </form>
+
+        {/* Departamento select */}
+        <div className="relative">
+          <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <select
+            value={depto}
+            onChange={handleDepto}
+            className="pl-8 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none cursor-pointer text-gray-700 w-52"
+          >
+            <option value="">Todos los departamentos</option>
+            {DEPARTAMENTOS_CON_CODIGO.map((d, i) => (
+              <option key={i + 1} value={String(i + 1)}>
+                {d.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {hayFiltros && (
+          <button
+            onClick={limpiarTodo}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-gray-500 hover:text-red-500 border border-gray-200 rounded-xl hover:border-red-200 transition-colors bg-white"
+          >
+            <X size={13} /> Limpiar filtros
+          </button>
+        )}
+      </div>
+
+      {/* Active filter chips */}
+      {hayFiltros && (
+        <div className="flex gap-2 flex-wrap -mt-2">
+          {busqueda && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand text-xs font-semibold rounded-full">
+              Búsqueda: "{busqueda}"
+              <button onClick={() => { setBusqueda(''); setInputVal(''); setPage(1); }}>
+                <X size={11} />
+              </button>
+            </span>
+          )}
+          {depto && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand text-xs font-semibold rounded-full">
+              <MapPin size={11} /> {nombreDepto(depto)}
+              <button onClick={() => { setDepto(''); setPage(1); }}>
+                <X size={11} />
+              </button>
+            </span>
           )}
         </div>
-        <button type="submit"
-          className="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors">
-          Buscar
-        </button>
-      </form>
+      )}
 
       {/* Error */}
       {error && (
@@ -143,7 +207,7 @@ export default function MilitantesPage() {
                   <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Nombre</th>
                   <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Documento</th>
                   <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Contacto</th>
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Rol</th>
+                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Departamento</th>
                   <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Estado</th>
                   <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wider px-4 py-3">Creación</th>
                   <th className="px-4 py-3" />
@@ -162,11 +226,13 @@ export default function MilitantesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-0.5">
-                        {m.email  && <span className="text-xs text-gray-500 truncate max-w-[160px]">{m.email}</span>}
+                        {m.email   && <span className="text-xs text-gray-500 truncate max-w-[160px]">{m.email}</span>}
                         {m.celular && <span className="text-xs text-gray-400 font-mono">{m.celular}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{m.rol_electoral ?? '—'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                      {nombreDepto(m.id_departamento_residencia)}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${estadoClass(m.estado_afiliacion)}`}>
                         {m.estado_afiliacion ?? '—'}
@@ -226,7 +292,6 @@ export default function MilitantesPage() {
             className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-brand flex items-center justify-center text-white font-bold text-sm">
@@ -242,7 +307,6 @@ export default function MilitantesPage() {
               </button>
             </div>
 
-            {/* Modal body */}
             <div className="px-6 py-5 flex flex-col gap-4">
               <span className={`self-start inline-flex px-3 py-1 rounded-full text-xs font-bold ${estadoClass(detalle.estado_afiliacion)}`}>
                 {detalle.estado_afiliacion ?? '—'} · {detalle.rol_electoral ?? '—'}
@@ -263,6 +327,9 @@ export default function MilitantesPage() {
                 </Campo>
                 <Campo icon={<Mail size={14} />} label="Email" wide>
                   {detalle.email ?? '—'}
+                </Campo>
+                <Campo icon={<MapPin size={14} />} label="Departamento" wide>
+                  {nombreDepto(detalle.id_departamento_residencia)}
                 </Campo>
               </div>
 

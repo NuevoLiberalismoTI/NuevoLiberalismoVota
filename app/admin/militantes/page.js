@@ -9,7 +9,6 @@ import { DEPARTAMENTOS_CON_CODIGO } from '../../lib/data';
 
 const PER_PAGE_ESTIMATE = 20;
 
-// id_departamento_residencia de la API → nombre (el arreglo está indexado desde 1)
 const DEPT_MAP = Object.fromEntries(
   DEPARTAMENTOS_CON_CODIGO.map((d, i) => [String(i + 1), d.nombre])
 );
@@ -41,24 +40,22 @@ function formatFecha(str) {
 }
 
 export default function MilitantesPage() {
-  const [data,        setData]        = useState([]);
-  const [total,       setTotal]       = useState(0);
-  const [page,        setPage]        = useState(1);
-  const [cargando,    setCargando]    = useState(true);
-  const [error,       setError]       = useState('');
-  const [busqueda,    setBusqueda]    = useState('');
-  const [inputVal,    setInputVal]    = useState('');
-  const [depto,       setDepto]       = useState('');
-  const [detalle,     setDetalle]     = useState(null);
+  const [data,     setData]     = useState([]);
+  const [total,    setTotal]    = useState(0);
+  const [page,     setPage]     = useState(1);
+  const [cargando, setCargando] = useState(true);
+  const [error,    setError]    = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [depto,    setDepto]    = useState('');
+  const [detalle,  setDetalle]  = useState(null);
 
   const totalPaginas = Math.ceil(total / PER_PAGE_ESTIMATE) || 1;
 
-  const cargar = useCallback(async (pg, q, dp) => {
+  const cargar = useCallback(async (pg, dp) => {
     setCargando(true);
     setError('');
     try {
       const params = new URLSearchParams({ page: pg });
-      if (q)  params.set('search',      q);
       if (dp) params.set('departamento', dp);
       const res  = await fetch(`/api/admin/militantes?${params}`);
       const json = await res.json();
@@ -72,13 +69,18 @@ export default function MilitantesPage() {
     }
   }, []);
 
-  useEffect(() => { cargar(page, busqueda, depto); }, [page, busqueda, depto, cargar]);
+  useEffect(() => { cargar(page, depto); }, [page, depto, cargar]);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(1);
-    setBusqueda(inputVal.trim());
-  };
+  // Filtrado local en tiempo real por nombre o número de documento
+  const datosFiltrados = busqueda.trim()
+    ? data.filter((m) => {
+        const q = busqueda.trim().toLowerCase();
+        return (
+          nombreCompleto(m).toLowerCase().includes(q) ||
+          (m.numero_documento ?? '').toLowerCase().includes(q)
+        );
+      })
+    : data;
 
   const handleDepto = (e) => {
     setPage(1);
@@ -86,13 +88,12 @@ export default function MilitantesPage() {
   };
 
   const limpiarTodo = () => {
-    setInputVal('');
     setBusqueda('');
     setDepto('');
     setPage(1);
   };
 
-  const hayFiltros = busqueda || depto;
+  const hayFiltros = busqueda.trim() || depto;
 
   return (
     <div className="p-6 flex flex-col gap-5">
@@ -113,24 +114,28 @@ export default function MilitantesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              placeholder="Nombre o documento..."
-              className="pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white w-56"
-            />
-          </div>
-          <button type="submit"
-            className="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-hover transition-colors">
-            Buscar
-          </button>
-        </form>
+        {/* Búsqueda local */}
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Nombre o número de documento..."
+            className="pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white w-64"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
 
-        {/* Departamento select */}
+        {/* Departamento */}
         <div className="relative">
           <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <select
@@ -160,20 +165,16 @@ export default function MilitantesPage() {
       {/* Active filter chips */}
       {hayFiltros && (
         <div className="flex gap-2 flex-wrap -mt-2">
-          {busqueda && (
+          {busqueda.trim() && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand text-xs font-semibold rounded-full">
-              Búsqueda: "{busqueda}"
-              <button onClick={() => { setBusqueda(''); setInputVal(''); setPage(1); }}>
-                <X size={11} />
-              </button>
+              "{busqueda.trim()}"
+              <button onClick={() => setBusqueda('')}><X size={11} /></button>
             </span>
           )}
           {depto && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-brand-50 text-brand text-xs font-semibold rounded-full">
               <MapPin size={11} /> {nombreDepto(depto)}
-              <button onClick={() => { setDepto(''); setPage(1); }}>
-                <X size={11} />
-              </button>
+              <button onClick={() => { setDepto(''); setPage(1); }}><X size={11} /></button>
             </span>
           )}
         </div>
@@ -193,7 +194,7 @@ export default function MilitantesPage() {
           <div className="flex justify-center items-center py-16">
             <Loader2 size={28} className="text-brand animate-spin" />
           </div>
-        ) : data.length === 0 ? (
+        ) : datosFiltrados.length === 0 ? (
           <div className="py-16 text-center">
             <Users size={36} className="mx-auto text-gray-200 mb-3" />
             <p className="text-sm text-gray-400">No se encontraron militantes</p>
@@ -214,7 +215,7 @@ export default function MilitantesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data.map((m) => (
+                {datosFiltrados.map((m) => (
                   <tr key={m.id_militante} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-gray-400">{m.id_militante}</td>
                     <td className="px-4 py-3">

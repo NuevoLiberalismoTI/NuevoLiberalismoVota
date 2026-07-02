@@ -730,6 +730,7 @@ export default function AdminSesionPage() {
   const [mostrarForm, setMostrarForm]     = useState(false);
   const [mostrarVivo, setMostrarVivo]         = useState(false);
   const [mostrarCodigo, setMostrarCodigo]     = useState(false);
+  const [exportando,   setExportando]         = useState(false);
   const [cargando, setCargando]               = useState(false);
   const [cerrandoInsc, setCerrandoInsc]       = useState(false);
   const [cerrandoAsist, setCerrandoAsist]     = useState(false);
@@ -862,6 +863,29 @@ export default function AdminSesionPage() {
     setCargando(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar`, { method: 'POST' });
     await cargar(); setCargando(false);
+  };
+
+  const handleExportPDF = async () => {
+    setExportando(true);
+    try {
+      const [{ pdf }, { InformePDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./InformePDF'),
+      ]);
+      const blob = await pdf(
+        <InformePDF sesion={sesion} stats={stats} resultados={resultados} />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = `informe-${sesion.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('PDF export error:', e);
+    } finally {
+      setExportando(false);
+    }
   };
 
   const handleCambiarEstado = async () => {
@@ -1005,8 +1029,20 @@ export default function AdminSesionPage() {
               {cfg.nextLabel}
             </button>
           ) : (
-            <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-500 font-semibold py-3 rounded-xl text-sm">
-              <CheckCircle size={14}/> Sesión finalizada
+            <div className="flex flex-col gap-2">
+              <div className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-500 font-semibold py-3 rounded-xl text-sm">
+                <CheckCircle size={14}/> Sesión finalizada
+              </div>
+              <button
+                onClick={handleExportPDF}
+                disabled={exportando}
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+              >
+                {exportando
+                  ? <><Loader2 size={14} className="animate-spin"/> Generando PDF…</>
+                  : <><BarChart2 size={14}/> Exportar informe PDF</>
+                }
+              </button>
             </div>
           )}
         </div>

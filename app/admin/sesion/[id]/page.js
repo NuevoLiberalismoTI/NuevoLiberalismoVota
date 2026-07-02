@@ -89,15 +89,17 @@ function nombreMilitante(m) {
 }
 
 function TabInvitaciones({ sesion }) {
-  const [depto,         setDepto]         = useState('');
-  const [militantes,    setMilitantes]    = useState([]);
-  const [total,         setTotal]         = useState(0);
-  const [page,          setPage]          = useState(1);
-  const [cargando,      setCargando]      = useState(false);
-  const [seleccionados, setSeleccionados] = useState(new Set());
-  const [enviando,      setEnviando]      = useState(false);
-  const [resultado,     setResultado]     = useState(null);
-  const [errorInv,      setErrorInv]      = useState('');
+  // seleccionados: Map<email, { email, nombre }> — se guarda el nombre para el modal
+  const [depto,        setDepto]        = useState('');
+  const [militantes,   setMilitantes]   = useState([]);
+  const [total,        setTotal]        = useState(0);
+  const [page,         setPage]         = useState(1);
+  const [cargando,     setCargando]     = useState(false);
+  const [seleccionados,setSeleccionados]= useState(new Map());
+  const [confirmacion, setConfirmacion] = useState(false); // muestra el modal
+  const [enviando,     setEnviando]     = useState(false);
+  const [resultado,    setResultado]    = useState(null);
+  const [errorInv,     setErrorInv]     = useState('');
 
   const PER_PAGE     = 20;
   const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
@@ -128,50 +130,47 @@ function TabInvitaciones({ sesion }) {
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);
     setPage(1);
-    setSeleccionados(new Set());
+    setSeleccionados(new Map());
     setResultado(null);
     setErrorInv('');
   };
 
-  const toggle = (email) => setSeleccionados((prev) => {
-    const next = new Set(prev);
-    next.has(email) ? next.delete(email) : next.add(email);
-    return next;
-  });
+  // Al cambiar página, limpiamos la selección para no perder pista de lo seleccionado
+  const cambiarPagina = (nuevaPagina) => {
+    setPage(nuevaPagina);
+    setSeleccionados(new Map());
+  };
 
-  const conEmail   = militantes.filter((m) => m.email);
-  const todosMarcados = conEmail.length > 0 && conEmail.every((m) => seleccionados.has(m.email));
-
-  const togglePagina = () => {
+  const toggle = (m) => {
+    if (!m.email) return;
     setSeleccionados((prev) => {
-      const next = new Set(prev);
-      if (todosMarcados) conEmail.forEach((m) => next.delete(m.email));
-      else               conEmail.forEach((m) => next.add(m.email));
+      const next = new Map(prev);
+      if (next.has(m.email)) next.delete(m.email);
+      else next.set(m.email, { email: m.email, nombre: nombreMilitante(m) });
       return next;
     });
   };
 
+  const listaSeleccionada = Array.from(seleccionados.values());
+
   const handleEnviar = async () => {
-    if (seleccionados.size === 0) return;
+    if (listaSeleccionada.length === 0) return;
     setEnviando(true);
     setResultado(null);
     try {
-      const lista = militantes
-        .filter((m) => m.email && seleccionados.has(m.email))
-        .map((m) => ({ email: m.email, nombre: nombreMilitante(m) }));
-
       const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitar`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ militantes: lista }),
+        body:    JSON.stringify({ militantes: listaSeleccionada }),
       });
       const json = await res.json();
       setResultado(json);
-      if (json.ok) setSeleccionados(new Set());
+      if (json.ok) setSeleccionados(new Map());
     } catch {
       setResultado({ ok: false, error: 'Error de red al enviar.' });
     } finally {
       setEnviando(false);
+      setConfirmacion(false);
     }
   };
 
@@ -202,13 +201,10 @@ function TabInvitaciones({ sesion }) {
       {/* Resultado del envío */}
       {resultado && (
         <div className={`flex items-start gap-2 rounded-xl px-4 py-3 border text-sm font-semibold ${
-          resultado.ok
-            ? 'bg-green-50 border-green-200 text-green-700'
-            : 'bg-red-50 border-red-200 text-red-600'
+          resultado.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'
         }`}>
           {resultado.ok ? (
-            <>
-              <CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <><CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
               <span>
                 {resultado.enviados} invitación{resultado.enviados !== 1 ? 'es' : ''} enviada{resultado.enviados !== 1 ? 's' : ''} correctamente.
                 {resultado.fallidos > 0 && <span className="text-orange-600"> {resultado.fallidos} fallida{resultado.fallidos !== 1 ? 's' : ''}.</span>}
@@ -224,6 +220,16 @@ function TabInvitaciones({ sesion }) {
       {errorInv && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
           <AlertTriangle size={15} className="flex-shrink-0" />{errorInv}
+        </div>
+      )}
+
+      {/* Aviso fase de pruebas */}
+      {depto && !cargando && militantes.length > 0 && (
+        <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
+          <AlertTriangle size={15} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-yellow-700 font-medium leading-relaxed">
+            <strong>Fase de pruebas:</strong> Selecciona los destinatarios uno por uno. Antes de enviar se mostrará un resumen exacto de a quiénes se enviará el correo.
+          </p>
         </div>
       )}
 
@@ -249,55 +255,48 @@ function TabInvitaciones({ sesion }) {
 
       {depto && !cargando && militantes.length > 0 && (
         <>
-          {/* Acciones de selección */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-semibold text-gray-700">
-              <input
-                type="checkbox"
-                checked={todosMarcados}
-                onChange={togglePagina}
-                className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
-              />
-              {todosMarcados ? 'Desmarcar página' : 'Seleccionar página'}
-            </label>
-            <span className="text-xs text-gray-400">
-              ({conEmail.length} con email en esta página)
-            </span>
-            {seleccionados.size > 0 && (
+          {/* Contador + limpiar */}
+          {seleccionados.size > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-brand">
+                {seleccionados.size} militante{seleccionados.size !== 1 ? 's' : ''} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+              </span>
               <button
-                onClick={() => setSeleccionados(new Set())}
+                onClick={() => setSeleccionados(new Map())}
                 className="text-xs text-gray-400 hover:text-red-500 font-semibold"
               >
                 × Limpiar selección
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Tabla */}
+          {/* Lista */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="divide-y divide-gray-50">
               {militantes.map((m) => {
-                const email     = m.email;
-                const sinEmail  = !email;
-                const marcado   = email ? seleccionados.has(email) : false;
-                const initials  = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
+                const sinEmail = !m.email;
+                const marcado  = m.email ? seleccionados.has(m.email) : false;
+                const initials = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
                 return (
                   <div
                     key={m.id_militante}
+                    onClick={() => toggle(m)}
                     className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                      sinEmail ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'
-                    } ${marcado ? 'bg-brand-50' : ''}`}
-                    onClick={() => !sinEmail && toggle(email)}
+                      sinEmail
+                        ? 'opacity-40 cursor-not-allowed'
+                        : marcado
+                          ? 'bg-brand-50 cursor-pointer'
+                          : 'hover:bg-gray-50 cursor-pointer'
+                    }`}
                   >
                     <input
                       type="checkbox"
                       checked={marcado}
                       disabled={sinEmail}
-                      onChange={() => !sinEmail && toggle(email)}
-                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand flex-shrink-0"
-                      onClick={(e) => e.stopPropagation()}
+                      readOnly
+                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand flex-shrink-0 pointer-events-none"
                     />
-                    <div className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-xs font-bold text-brand flex-shrink-0">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${marcado ? 'bg-brand text-white' : 'bg-brand-50 text-brand'}`}>
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -305,8 +304,8 @@ function TabInvitaciones({ sesion }) {
                       <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      {email
-                        ? <p className="text-xs text-gray-500 truncate max-w-[180px]">{email}</p>
+                      {m.email
+                        ? <p className="text-xs text-gray-500 truncate max-w-[200px]">{m.email}</p>
                         : <p className="text-xs text-gray-300 italic">Sin email</p>
                       }
                     </div>
@@ -321,11 +320,11 @@ function TabInvitaciones({ sesion }) {
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Página {page} de {totalPaginas}</span>
               <div className="flex gap-1">
-                <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}
+                <button disabled={page === 1} onClick={() => cambiarPagina(page - 1)}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
                   <ChevronLeft size={13} /> Anterior
                 </button>
-                <button disabled={page >= totalPaginas} onClick={() => setPage((p) => p + 1)}
+                <button disabled={page >= totalPaginas} onClick={() => cambiarPagina(page + 1)}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
                   Siguiente <ChevronRight size={13} />
                 </button>
@@ -333,23 +332,102 @@ function TabInvitaciones({ sesion }) {
             </div>
           )}
 
-          {/* Botón enviar */}
+          {/* Botón revisar antes de enviar */}
           <div className="flex items-center gap-3">
             <button
-              onClick={handleEnviar}
-              disabled={seleccionados.size === 0 || enviando}
-              className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors"
+              onClick={() => setConfirmacion(true)}
+              disabled={seleccionados.size === 0}
+              className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors"
             >
-              {enviando
-                ? <><Loader2 size={15} className="animate-spin" /> Enviando…</>
-                : <><Send size={15} /> Enviar {seleccionados.size > 0 ? `${seleccionados.size} invitación${seleccionados.size !== 1 ? 'es' : ''}` : 'invitaciones'}</>
-              }
+              <Send size={15} />
+              Revisar y enviar {seleccionados.size > 0 ? `(${seleccionados.size})` : ''}
             </button>
             {seleccionados.size === 0 && (
-              <p className="text-xs text-gray-400">Selecciona al menos un militante con email</p>
+              <p className="text-xs text-gray-400">Marca al menos un militante con email</p>
             )}
           </div>
         </>
+      )}
+
+      {/* Modal de confirmación */}
+      {confirmacion && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => !enviando && setConfirmacion(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Send size={16} className="text-brand" />
+                <h3 className="font-bold text-gray-900 text-sm">Confirmar envío de invitaciones</h3>
+              </div>
+              {!enviando && (
+                <button onClick={() => setConfirmacion(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+              {/* Advertencia */}
+              <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3">
+                <AlertTriangle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-yellow-800 font-medium leading-relaxed">
+                  Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos de la base de datos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
+                </p>
+              </div>
+
+              {/* Info sesión */}
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
+                <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
+                <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
+                <p>📍 {sesion.lugar}</p>
+              </div>
+
+              {/* Lista de destinatarios */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                  Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
+                </p>
+                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                  {listaSeleccionada.map(({ email, nombre }) => (
+                    <div key={email} className="flex items-center gap-3 px-4 py-2.5">
+                      <div className="h-7 w-7 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-bold text-brand flex-shrink-0">
+                        {nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
+                        <p className="text-xs text-gray-400 truncate">{email}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setConfirmacion(false)}
+                disabled={enviando}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEnviar}
+                disabled={enviando}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors"
+              >
+                {enviando
+                  ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
+                  : <><Send size={14} /> Confirmar envío</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

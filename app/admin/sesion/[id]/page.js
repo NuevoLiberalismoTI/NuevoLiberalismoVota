@@ -1393,10 +1393,10 @@ export default function AdminSesionPage() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Tab: Invitaciones */}
+        {/* Tab: Invitaciones */}
         {tab === 'invitaciones' && <TabInvitaciones sesion={sesion} />}
+      </div>
 
       {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (

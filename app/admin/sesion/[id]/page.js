@@ -199,16 +199,17 @@ function TabInvitaciones({ sesion }) {
     : 'todos los departamentos';
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Filtros */}
-      <div className="flex flex-wrap gap-2 items-center">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+
+      {/* ── Cabecera: filtros ── */}
+      <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center bg-gray-50 rounded-t-2xl">
         {/* Departamento */}
         <div className="relative">
-          <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <select
             value={depto}
             onChange={handleDeptoChange}
-            className="pl-8 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700 w-52"
+            className="pl-8 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700 w-48"
           >
             <option value="">Todos los departamentos</option>
             {DEPARTAMENTOS_API.map((d) => (
@@ -217,178 +218,158 @@ function TabInvitaciones({ sesion }) {
           </select>
         </div>
 
-        {/* Búsqueda por nombre / documento */}
+        {/* Búsqueda */}
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Nombre o número de documento…"
-            className="pl-9 pr-8 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white w-60"
+            placeholder="Nombre o documento…"
+            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
           />
           {busqueda && (
-            <button
-              type="button"
-              onClick={() => setBusqueda('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={13} />
+            <button type="button" onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X size={12} />
             </button>
           )}
         </div>
 
         {!cargando && total > 0 && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 ml-auto">
             {busqueda.trim()
-              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} en esta página`
-              : `${total.toLocaleString('es-CO')} militante${total !== 1 ? 's' : ''} en ${nombreDepto}`
+              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''}`
+              : `${total.toLocaleString('es-CO')} militante${total !== 1 ? 's' : ''} · ${nombreDepto}`
             }
           </span>
         )}
       </div>
 
-      {/* Aviso fase de pruebas */}
-      <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-        <AlertTriangle size={15} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+      {/* ── Aviso pruebas ── */}
+      <div className="px-4 py-2.5 border-b border-yellow-100 bg-yellow-50 flex items-start gap-2">
+        <AlertTriangle size={13} className="text-yellow-600 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-yellow-700 font-medium leading-relaxed">
-          <strong>Fase de pruebas:</strong> Selecciona destinatarios uno por uno. Antes de enviar se mostrará un resumen exacto de a quiénes se enviará el correo.
+          <strong>Fase de pruebas:</strong> selecciona destinatarios uno por uno. Se mostrará un resumen antes de enviar.
         </p>
       </div>
 
-      {/* Resultado del envío */}
+      {/* ── Mensajes ── */}
       {resultado && (
-        <div className={`flex items-start gap-2 rounded-xl px-4 py-3 border text-sm font-semibold ${
-          resultado.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'
+        <div className={`px-4 py-2.5 border-b text-sm font-semibold flex items-center gap-2 ${
+          resultado.ok ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-600'
         }`}>
-          {resultado.ok ? (
-            <><CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
-              <span>
-                {resultado.enviados} invitación{resultado.enviados !== 1 ? 'es' : ''} enviada{resultado.enviados !== 1 ? 's' : ''} correctamente.
-                {resultado.fallidos > 0 && <span className="text-orange-600"> {resultado.fallidos} fallida{resultado.fallidos !== 1 ? 's' : ''}.</span>}
-              </span>
-            </>
-          ) : (
-            <><AlertTriangle size={16} className="flex-shrink-0 mt-0.5" /><span>{resultado.error || 'Error al enviar'}</span></>
-          )}
+          {resultado.ok
+            ? <><CheckCircle size={14} className="flex-shrink-0" />
+                {resultado.enviados} invitación{resultado.enviados !== 1 ? 'es' : ''} enviada{resultado.enviados !== 1 ? 's' : ''}.
+                {resultado.fallidos > 0 && <span className="text-orange-600 ml-1">{resultado.fallidos} fallida{resultado.fallidos !== 1 ? 's' : ''}.</span>}
+              </>
+            : <><AlertTriangle size={14} className="flex-shrink-0" />{resultado.error || 'Error al enviar'}</>
+          }
         </div>
       )}
-
-      {/* Error de carga */}
       {errorInv && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
-          <AlertTriangle size={15} className="flex-shrink-0" />{errorInv}
+        <div className="px-4 py-2.5 border-b border-red-100 bg-red-50 flex items-center gap-2 text-sm text-red-600">
+          <AlertTriangle size={14} className="flex-shrink-0" />{errorInv}
         </div>
       )}
 
-      {/* Spinner */}
-      {cargando && (
-        <div className="flex justify-center py-10">
-          <Loader2 size={26} className="text-brand animate-spin" />
-        </div>
-      )}
-
-      {/* Sin resultados */}
-      {!cargando && datosFiltrados.length === 0 && (
-        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-          <p className="text-sm text-gray-400">
-            {busqueda.trim() ? 'Sin resultados para esa búsqueda en esta página' : 'No hay militantes para mostrar'}
-          </p>
-        </div>
-      )}
-
-      {/* Lista */}
-      {!cargando && datosFiltrados.length > 0 && (
-        <>
-          {seleccionados.size > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-brand">
-                {seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''}
-              </span>
-              <button
-                onClick={() => setSeleccionados(new Map())}
-                className="text-xs text-gray-400 hover:text-red-500 font-semibold"
-              >
-                × Limpiar
-              </button>
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="divide-y divide-gray-50">
-              {datosFiltrados.map((m) => {
-                const sinEmail = !m.email;
-                const marcado  = m.email ? seleccionados.has(m.email) : false;
-                const initials = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
-                return (
-                  <div
-                    key={m.id_militante}
-                    onClick={() => toggle(m)}
-                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                      sinEmail
-                        ? 'opacity-40 cursor-not-allowed'
-                        : marcado
-                          ? 'bg-brand-50 cursor-pointer'
-                          : 'hover:bg-gray-50 cursor-pointer'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={marcado}
-                      disabled={sinEmail}
-                      readOnly
-                      className="h-4 w-4 rounded border-gray-300 text-brand flex-shrink-0 pointer-events-none"
-                    />
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${marcado ? 'bg-brand text-white' : 'bg-brand-50 text-brand'}`}>
-                      {initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
-                      <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      {m.email
-                        ? <p className="text-xs text-gray-500 truncate max-w-[200px]">{m.email}</p>
-                        : <p className="text-xs text-gray-300 italic">Sin email</p>
-                      }
-                    </div>
+      {/* ── Lista (scroll interno) ── */}
+      <div className="flex-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
+        {cargando && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 size={24} className="text-brand animate-spin" />
+          </div>
+        )}
+        {!cargando && datosFiltrados.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <Users size={28} className="mb-2 text-gray-200" />
+            <p className="text-sm">{busqueda.trim() ? 'Sin resultados en esta página' : 'No hay militantes'}</p>
+          </div>
+        )}
+        {!cargando && datosFiltrados.length > 0 && (
+          <div className="divide-y divide-gray-50">
+            {datosFiltrados.map((m) => {
+              const sinEmail = !m.email;
+              const marcado  = m.email ? seleccionados.has(m.email) : false;
+              const initials = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
+              return (
+                <div
+                  key={m.id_militante}
+                  onClick={() => toggle(m)}
+                  className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                    sinEmail
+                      ? 'opacity-40 cursor-not-allowed'
+                      : marcado
+                        ? 'bg-brand-50 cursor-pointer'
+                        : 'hover:bg-gray-50 cursor-pointer'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={marcado}
+                    disabled={sinEmail}
+                    readOnly
+                    className="h-4 w-4 rounded border-gray-300 text-brand flex-shrink-0 pointer-events-none"
+                  />
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${marcado ? 'bg-brand text-white' : 'bg-brand-50 text-brand'}`}>
+                    {initials}
                   </div>
-                );
-              })}
-            </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
+                    <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    {m.email
+                      ? <p className="text-xs text-gray-500 truncate max-w-[180px]">{m.email}</p>
+                      : <p className="text-xs text-gray-300 italic">Sin email</p>
+                    }
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        )}
+      </div>
 
+      {/* ── Footer: paginación + acciones ── */}
+      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex items-center justify-between gap-3 flex-wrap">
+        {/* Paginación */}
+        <div className="flex items-center gap-2">
           {totalPaginas > 1 && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Página {page} de {totalPaginas}</span>
-              <div className="flex gap-1">
-                <button disabled={page === 1} onClick={() => cambiarPagina(page - 1)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
-                  <ChevronLeft size={13} /> Anterior
-                </button>
-                <button disabled={page >= totalPaginas} onClick={() => cambiarPagina(page + 1)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
-                  Siguiente <ChevronRight size={13} />
-                </button>
-              </div>
-            </div>
+            <>
+              <button disabled={page === 1} onClick={() => cambiarPagina(page - 1)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed">
+                <ChevronLeft size={12} /> Anterior
+              </button>
+              <span className="text-xs text-gray-400">Pág. {page}/{totalPaginas}</span>
+              <button disabled={page >= totalPaginas} onClick={() => cambiarPagina(page + 1)}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed">
+                Siguiente <ChevronRight size={12} />
+              </button>
+            </>
           )}
+        </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setConfirmacion(true)}
-              disabled={seleccionados.size === 0}
-              className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors"
-            >
-              <Send size={15} />
-              Revisar y enviar {seleccionados.size > 0 ? `(${seleccionados.size})` : ''}
-            </button>
-            {seleccionados.size === 0 && (
-              <p className="text-xs text-gray-400">Marca al menos un militante con email</p>
-            )}
-          </div>
-        </>
-      )}
+        {/* Selección + envío */}
+        <div className="flex items-center gap-3 ml-auto">
+          {seleccionados.size > 0 && (
+            <span className="text-xs font-semibold text-brand">
+              {seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+              <button onClick={() => setSeleccionados(new Map())}
+                className="ml-2 text-gray-400 hover:text-red-500">× limpiar</button>
+            </span>
+          )}
+          <button
+            onClick={() => setConfirmacion(true)}
+            disabled={seleccionados.size === 0}
+            className="flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors"
+          >
+            <Send size={13} />
+            Revisar y enviar {seleccionados.size > 0 ? `(${seleccionados.size})` : ''}
+          </button>
+        </div>
+      </div>
 
       {/* Modal de confirmación */}
       {confirmacion && (

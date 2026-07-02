@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -34,6 +34,326 @@ const ESTADO_PREG = {
 
 const OPCION_VACIA_INDIVIDUAL = () => ({ tipo: 'individual', nombre: '' });
 const OPCION_VACIA_PLANCHA    = () => ({ tipo: 'plancha',    nombre: '', miembros: [{ nombre: '', cargo: '' }] });
+
+const DEPARTAMENTOS_API = [
+  { id: '29', nombre: 'Amazonas' },
+  { id: '1',  nombre: 'Antioquia' },
+  { id: '25', nombre: 'Arauca' },
+  { id: '2',  nombre: 'Atlántico' },
+  { id: '3',  nombre: 'Bogotá D.C.' },
+  { id: '4',  nombre: 'Bolívar' },
+  { id: '5',  nombre: 'Boyacá' },
+  { id: '6',  nombre: 'Caldas' },
+  { id: '7',  nombre: 'Caquetá' },
+  { id: '26', nombre: 'Casanare' },
+  { id: '8',  nombre: 'Cauca' },
+  { id: '9',  nombre: 'Cesar' },
+  { id: '12', nombre: 'Chocó' },
+  { id: '36', nombre: 'Colombiano En El Exterior' },
+  { id: '10', nombre: 'Córdoba' },
+  { id: '11', nombre: 'Cundinamarca' },
+  { id: '34', nombre: 'Exterior' },
+  { id: '30', nombre: 'Guainía' },
+  { id: '31', nombre: 'Guaviare' },
+  { id: '13', nombre: 'Huila' },
+  { id: '14', nombre: 'La Guajira' },
+  { id: '15', nombre: 'Magdalena' },
+  { id: '16', nombre: 'Meta' },
+  { id: '17', nombre: 'Nariño' },
+  { id: '18', nombre: 'Norte de Santander' },
+  { id: '27', nombre: 'Putumayo' },
+  { id: '19', nombre: 'Quindío' },
+  { id: '20', nombre: 'Risaralda' },
+  { id: '28', nombre: 'San Andrés y Providencia' },
+  { id: '21', nombre: 'Santander' },
+  { id: '22', nombre: 'Sucre' },
+  { id: '23', nombre: 'Tolima' },
+  { id: '35', nombre: 'Urrego' },
+  { id: '32', nombre: 'Vaichada' },
+  { id: '24', nombre: 'Valle del Cauca' },
+  { id: '42', nombre: 'Vaupés' },
+  { id: '33', nombre: 'Vichada' },
+  { id: '37', nombre: 'Rojas' },
+  { id: '38', nombre: 'Gejen' },
+  { id: '39', nombre: 'Lopez' },
+  { id: '40', nombre: 'Fuente' },
+  { id: '41', nombre: 'Mierda' },
+  { id: '43', nombre: '3017700100' },
+  { id: '44', nombre: 'La' },
+  { id: '45', nombre: 'Cubillos' },
+];
+
+function nombreMilitante(m) {
+  return [m.primer_nombre, m.segundo_nombre, m.primer_apellido, m.segundo_apellido]
+    .filter(Boolean).join(' ');
+}
+
+function TabInvitaciones({ sesion }) {
+  const [depto,         setDepto]         = useState('');
+  const [militantes,    setMilitantes]    = useState([]);
+  const [total,         setTotal]         = useState(0);
+  const [page,          setPage]          = useState(1);
+  const [cargando,      setCargando]      = useState(false);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const [enviando,      setEnviando]      = useState(false);
+  const [resultado,     setResultado]     = useState(null);
+  const [errorInv,      setErrorInv]      = useState('');
+
+  const PER_PAGE     = 20;
+  const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
+
+  useEffect(() => {
+    if (!depto) { setMilitantes([]); setTotal(0); return; }
+    let activo = true;
+    (async () => {
+      setCargando(true);
+      setErrorInv('');
+      try {
+        const params = new URLSearchParams({ page, departamento: depto });
+        const res  = await fetch(`/api/admin/militantes?${params}`);
+        const json = await res.json();
+        if (!activo) return;
+        if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); return; }
+        setMilitantes(json.data ?? []);
+        setTotal(json.total ?? 0);
+      } catch {
+        if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
+    return () => { activo = false; };
+  }, [depto, page]);
+
+  const handleDeptoChange = (e) => {
+    setDepto(e.target.value);
+    setPage(1);
+    setSeleccionados(new Set());
+    setResultado(null);
+    setErrorInv('');
+  };
+
+  const toggle = (email) => setSeleccionados((prev) => {
+    const next = new Set(prev);
+    next.has(email) ? next.delete(email) : next.add(email);
+    return next;
+  });
+
+  const conEmail   = militantes.filter((m) => m.email);
+  const todosMarcados = conEmail.length > 0 && conEmail.every((m) => seleccionados.has(m.email));
+
+  const togglePagina = () => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (todosMarcados) conEmail.forEach((m) => next.delete(m.email));
+      else               conEmail.forEach((m) => next.add(m.email));
+      return next;
+    });
+  };
+
+  const handleEnviar = async () => {
+    if (seleccionados.size === 0) return;
+    setEnviando(true);
+    setResultado(null);
+    try {
+      const lista = militantes
+        .filter((m) => m.email && seleccionados.has(m.email))
+        .map((m) => ({ email: m.email, nombre: nombreMilitante(m) }));
+
+      const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitar`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ militantes: lista }),
+      });
+      const json = await res.json();
+      setResultado(json);
+      if (json.ok) setSeleccionados(new Set());
+    } catch {
+      setResultado({ ok: false, error: 'Error de red al enviar.' });
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Selector de departamento */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <select
+            value={depto}
+            onChange={handleDeptoChange}
+            className="w-full pl-8 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700"
+          >
+            <option value="">Selecciona un departamento…</option>
+            {DEPARTAMENTOS_API.map((d) => (
+              <option key={d.id} value={d.id}>{d.nombre}</option>
+            ))}
+          </select>
+        </div>
+        {total > 0 && !cargando && (
+          <span className="text-xs text-gray-400">
+            {total.toLocaleString('es-CO')} militante{total !== 1 ? 's' : ''} en este departamento
+          </span>
+        )}
+      </div>
+
+      {/* Resultado del envío */}
+      {resultado && (
+        <div className={`flex items-start gap-2 rounded-xl px-4 py-3 border text-sm font-semibold ${
+          resultado.ok
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : 'bg-red-50 border-red-200 text-red-600'
+        }`}>
+          {resultado.ok ? (
+            <>
+              <CheckCircle size={16} className="flex-shrink-0 mt-0.5" />
+              <span>
+                {resultado.enviados} invitación{resultado.enviados !== 1 ? 'es' : ''} enviada{resultado.enviados !== 1 ? 's' : ''} correctamente.
+                {resultado.fallidos > 0 && <span className="text-orange-600"> {resultado.fallidos} fallida{resultado.fallidos !== 1 ? 's' : ''}.</span>}
+              </span>
+            </>
+          ) : (
+            <><AlertTriangle size={16} className="flex-shrink-0 mt-0.5" /><span>{resultado.error || 'Error al enviar'}</span></>
+          )}
+        </div>
+      )}
+
+      {/* Error de carga */}
+      {errorInv && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+          <AlertTriangle size={15} className="flex-shrink-0" />{errorInv}
+        </div>
+      )}
+
+      {/* Lista de militantes */}
+      {!depto && !cargando && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <MapPin size={28} className="mx-auto text-gray-200 mb-3" />
+          <p className="text-sm text-gray-400">Selecciona un departamento para ver sus militantes</p>
+        </div>
+      )}
+
+      {cargando && (
+        <div className="flex justify-center py-10">
+          <Loader2 size={26} className="text-brand animate-spin" />
+        </div>
+      )}
+
+      {depto && !cargando && militantes.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <p className="text-sm text-gray-400">No hay militantes en este departamento</p>
+        </div>
+      )}
+
+      {depto && !cargando && militantes.length > 0 && (
+        <>
+          {/* Acciones de selección */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm font-semibold text-gray-700">
+              <input
+                type="checkbox"
+                checked={todosMarcados}
+                onChange={togglePagina}
+                className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+              />
+              {todosMarcados ? 'Desmarcar página' : 'Seleccionar página'}
+            </label>
+            <span className="text-xs text-gray-400">
+              ({conEmail.length} con email en esta página)
+            </span>
+            {seleccionados.size > 0 && (
+              <button
+                onClick={() => setSeleccionados(new Set())}
+                className="text-xs text-gray-400 hover:text-red-500 font-semibold"
+              >
+                × Limpiar selección
+              </button>
+            )}
+          </div>
+
+          {/* Tabla */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="divide-y divide-gray-50">
+              {militantes.map((m) => {
+                const email     = m.email;
+                const sinEmail  = !email;
+                const marcado   = email ? seleccionados.has(email) : false;
+                const initials  = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
+                return (
+                  <div
+                    key={m.id_militante}
+                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                      sinEmail ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'
+                    } ${marcado ? 'bg-brand-50' : ''}`}
+                    onClick={() => !sinEmail && toggle(email)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      disabled={sinEmail}
+                      onChange={() => !sinEmail && toggle(email)}
+                      className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-xs font-bold text-brand flex-shrink-0">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
+                      <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {email
+                        ? <p className="text-xs text-gray-500 truncate max-w-[180px]">{email}</p>
+                        : <p className="text-xs text-gray-300 italic">Sin email</p>
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Paginación */}
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">Página {page} de {totalPaginas}</span>
+              <div className="flex gap-1">
+                <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <ChevronLeft size={13} /> Anterior
+                </button>
+                <button disabled={page >= totalPaginas} onClick={() => setPage((p) => p + 1)}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  Siguiente <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Botón enviar */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleEnviar}
+              disabled={seleccionados.size === 0 || enviando}
+              className="flex items-center gap-2 px-5 py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors"
+            >
+              {enviando
+                ? <><Loader2 size={15} className="animate-spin" /> Enviando…</>
+                : <><Send size={15} /> Enviar {seleccionados.size > 0 ? `${seleccionados.size} invitación${seleccionados.size !== 1 ? 'es' : ''}` : 'invitaciones'}</>
+              }
+            </button>
+            {seleccionados.size === 0 && (
+              <p className="text-xs text-gray-400">Selecciona al menos un militante con email</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = false }) {
   const [tipo, setTipo]               = useState('sino');
@@ -545,9 +865,10 @@ export default function AdminSesionPage() {
         {/* Tabs */}
         <div className="flex gap-2 border-b border-gray-200">
           {[
-            { key: 'preinscritos', label: 'Preinscritos', Icon: Shield    },
-            { key: 'preguntas',    label: 'Preguntas',    Icon: Radio     },
-            { key: 'resultados',   label: 'Resultados',   Icon: BarChart2 },
+            { key: 'preinscritos',  label: 'Preinscritos',  Icon: Shield    },
+            { key: 'preguntas',     label: 'Preguntas',     Icon: Radio     },
+            { key: 'resultados',    label: 'Resultados',    Icon: BarChart2 },
+            { key: 'invitaciones',  label: 'Invitaciones',  Icon: Send      },
           ].map(({ key, label, Icon }) => {
             const badge =
               key === 'preinscritos' ? preinscritos.filter((p) => p.estado_acreditacion === 'preinscrito').length :
@@ -903,6 +1224,9 @@ export default function AdminSesionPage() {
           </div>
         )}
       </div>
+
+      {/* Tab: Invitaciones */}
+        {tab === 'invitaciones' && <TabInvitaciones sesion={sesion} />}
 
       {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (

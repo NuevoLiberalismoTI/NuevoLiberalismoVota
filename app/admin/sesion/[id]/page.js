@@ -869,12 +869,14 @@ export default function AdminSesionPage() {
   const handleExportPDF = async () => {
     setExportando(true);
     try {
-      const [{ pdf }, { InformePDF }] = await Promise.all([
+      const [{ pdf }, { InformePDF }, logoRes] = await Promise.all([
         import('@react-pdf/renderer'),
         import('./InformePDF'),
+        fetch('/api/logo'),
       ]);
+      const { data: logoData } = await logoRes.json();
       const blob = await pdf(
-        <InformePDF sesion={sesion} stats={stats} resultados={resultados} />
+        <InformePDF sesion={sesion} stats={stats} resultados={resultados} logoData={logoData} />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');

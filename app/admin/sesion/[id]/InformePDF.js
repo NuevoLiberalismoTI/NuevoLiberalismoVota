@@ -1,8 +1,6 @@
 'use client';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 
-const LOGO_URL = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
-
 const BRAND = '#C20A00';
 const GRAY  = '#6b7280';
 const LIGHT = '#f4f4f5';
@@ -60,7 +58,7 @@ const s = StyleSheet.create({
   footerR:      { fontSize: 7.5, color: '#9ca3af' },
 });
 
-export function InformePDF({ sesion, stats, resultados }) {
+export function InformePDF({ sesion, stats, resultados, logoData }) {
   const quorumReq      = stats ? Math.floor(stats.inscritos / 2) + 1 : 0;
   const pctAsist       = stats?.inscritos > 0 ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100)) : 0;
   const quorumAlcanzado = stats ? stats.asistentes >= quorumReq : false;
@@ -72,7 +70,7 @@ export function InformePDF({ sesion, stats, resultados }) {
 
         {/* ── Encabezado ── */}
         <View style={{ backgroundColor: '#ffffff', paddingVertical: 14, paddingHorizontal: 40, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-          <Image src={LOGO_URL} style={{ width: 110, objectFit: 'contain' }} />
+          {logoData && <Image src={logoData} style={{ width: 110, objectFit: 'contain' }} />}
           <Text style={{ fontSize: 8, color: '#9ca3af', marginLeft: 'auto' }}>Informe generado el {hoy}</Text>
         </View>
         <View style={s.header}>

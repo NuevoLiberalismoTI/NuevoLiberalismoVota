@@ -10,7 +10,7 @@ const RED   = '#b91c1c';
 
 const s = StyleSheet.create({
   page:         { fontFamily: 'Helvetica', fontSize: 10, color: DARK },
-  header:       { backgroundColor: BRAND, paddingVertical: 28, paddingHorizontal: 40 },
+  header:       { backgroundColor: BRAND, paddingVertical: 22, paddingHorizontal: 40 },
   headerParty:  { color: '#ffcccc', fontSize: 8, marginBottom: 6 },
   headerTitle:  { color: '#ffffff', fontSize: 22, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
   headerDoc:    { color: '#ffb3b3', fontSize: 9 },
@@ -69,14 +69,18 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
       <Page size="A4" style={s.page}>
 
         {/* ── Encabezado ── */}
-        <View style={{ backgroundColor: '#ffffff', paddingVertical: 14, paddingHorizontal: 40, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-          {logoData && <Image src={logoData} style={{ width: 110, objectFit: 'contain' }} />}
-          <Text style={{ fontSize: 8, color: '#9ca3af', marginLeft: 'auto' }}>Informe generado el {hoy}</Text>
-        </View>
         <View style={s.header}>
-          <Text style={s.headerParty}>PARTIDO NUEVO LIBERALISMO</Text>
-          <Text style={s.headerTitle}>{sesion.nombre}</Text>
-          <Text style={s.headerDoc}>Informe oficial de resultados</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            {logoData && (
+              <Image src={logoData} style={{ width: 90, objectFit: 'contain', marginRight: 20 }} />
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={s.headerParty}>PARTIDO NUEVO LIBERALISMO</Text>
+              <Text style={s.headerTitle}>{sesion.nombre}</Text>
+              <Text style={s.headerDoc}>Informe oficial de resultados</Text>
+            </View>
+            <Text style={{ fontSize: 7.5, color: '#ffb3b3', textAlign: 'right' }}>Generado el{'\n'}{hoy}</Text>
+          </View>
         </View>
 
         <View style={s.body}>

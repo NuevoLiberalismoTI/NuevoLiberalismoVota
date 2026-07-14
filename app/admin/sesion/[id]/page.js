@@ -1630,10 +1630,16 @@ export default function AdminSesionPage() {
                           )
                         )}
                         {p.estado === 'activa' && (
-                          <button onClick={handleCerrar} disabled={cargando}
-                            className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                            <Lock size={13}/> Cerrar votación
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={handleCerrar} disabled={cargando}
+                              className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                              <Lock size={13}/> Cerrar votación
+                            </button>
+                            <button onClick={() => handleVerParticipacion(p.id)}
+                              className="flex items-center gap-1 text-xs font-bold px-2.5 py-2.5 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                              <UsersRound size={12}/> Participación
+                            </button>
+                          </div>
                         )}
                         {p.estado === 'cerrada' && (
                           <div className="flex items-center gap-2">

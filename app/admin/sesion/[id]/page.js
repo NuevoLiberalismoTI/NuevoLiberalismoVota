@@ -729,8 +729,9 @@ export default function AdminSesionPage() {
   const [tab, setTab]                     = useState('preguntas');
   const [mostrarForm, setMostrarForm]     = useState(false);
   const [mostrarVivo, setMostrarVivo]         = useState(false);
-  const [mostrarCodigo,      setMostrarCodigo]      = useState(false);
-  const [mostrarCodigoTexto, setMostrarCodigoTexto] = useState(false);
+  const [mostrarCodigo,       setMostrarCodigo]       = useState(false);
+  const [mostrarCodigoTexto,  setMostrarCodigoTexto]  = useState(false);
+  const [mostrarProyeccion,   setMostrarProyeccion]   = useState(false);
   const [exportando,         setExportando]         = useState(false);
   const [cargando, setCargando]               = useState(false);
   const [cerrandoInsc, setCerrandoInsc]       = useState(false);
@@ -1091,6 +1092,11 @@ export default function AdminSesionPage() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
               </span>
               <span className="text-xs font-bold text-green-700 uppercase tracking-wide">Pregunta activa ahora</span>
+              <button
+                onClick={() => setMostrarProyeccion(true)}
+                className="ml-auto flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg bg-white border border-green-300 text-green-700 hover:bg-green-100 transition-colors">
+                <Monitor size={12}/> Proyectar
+              </button>
             </div>
             <p className="text-sm font-semibold text-gray-800 mb-3">{preguntaActiva.texto}</p>
             <button onClick={handleCerrar} disabled={cargando}
@@ -1104,12 +1110,15 @@ export default function AdminSesionPage() {
         <div className="flex gap-2 border-b border-gray-200">
           {[
             { key: 'preinscritos',  label: 'Preinscritos',  Icon: Shield    },
+            { key: 'asistentes',    label: 'Asistentes',    Icon: Users     },
             { key: 'preguntas',     label: 'Preguntas',     Icon: Radio     },
             { key: 'resultados',    label: 'Resultados',    Icon: BarChart2 },
             { key: 'invitaciones',  label: 'Invitaciones',  Icon: Send      },
           ].map(({ key, label, Icon }) => {
+            const asistentes = preinscritos.filter((p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso');
             const badge =
               key === 'preinscritos' ? preinscritos.filter((p) => p.estado_acreditacion === 'preinscrito').length :
+              key === 'asistentes'   ? asistentes.length :
               key === 'resultados'   ? resultados.filter((r) => r.total_votos > 0).length : 0;
             return (
               <button key={key} onClick={() => setTab(key)}
@@ -1226,6 +1235,59 @@ export default function AdminSesionPage() {
             )}
           </div>
         )}
+
+        {/* Tab: Asistentes */}
+        {tab === 'asistentes' && (() => {
+          const asistentes = preinscritos.filter(
+            (p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso'
+          );
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-brand" />
+                  <span className="text-sm font-bold text-gray-800">Asistentes</span>
+                  <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">{asistentes.length}</span>
+                </div>
+              </div>
+              {asistentes.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users size={28} className="text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">Aún no hay asistentes acreditados</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">#</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Nombre</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Cédula</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Estado</th>
+                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Inscripción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {asistentes.map((a, i) => (
+                      <tr key={a.cedula} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-3 text-xs text-gray-400 font-mono">{i + 1}</td>
+                        <td className="px-5 py-3 font-semibold text-gray-800">{a.nombre}</td>
+                        <td className="px-5 py-3 font-mono text-xs text-gray-600">{a.cedula}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ACRED_CFG[a.estado_acreditacion]?.color}`}>
+                            {ACRED_CFG[a.estado_acreditacion]?.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-xs text-gray-400">
+                          {a.created_at ? new Date(a.created_at).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Tab: Resultados */}
         {tab === 'resultados' && (
@@ -1469,6 +1531,66 @@ export default function AdminSesionPage() {
         {/* Tab: Invitaciones */}
         {tab === 'invitaciones' && <TabInvitaciones sesion={sesion} />}
       </div>
+
+      {/* Modal pantalla completa: Proyección pregunta activa */}
+      {mostrarProyeccion && preguntaActiva && (() => {
+        const res = resultados.find((r) => r.id === preguntaActiva.id);
+        const opciones = res?.opciones ?? preguntaActiva.candidatos?.map((c) => ({ respuesta: c.nombre, total: 0 })) ?? [];
+        const totalVotos = opciones.reduce((s, o) => s + Number(o.total), 0);
+        const maxVotos   = Math.max(...opciones.map((o) => Number(o.total)), 1);
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-gray-950 flex flex-col items-center justify-center gap-8 px-10"
+            onClick={() => setMostrarProyeccion(false)}>
+            <button onClick={() => setMostrarProyeccion(false)}
+              className="absolute top-5 right-5 text-white/40 hover:text-white transition-colors">
+              <X size={32}/>
+            </button>
+
+            {/* Indicador en vivo */}
+            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"/>
+              </span>
+              <span className="text-green-400 text-sm font-bold uppercase tracking-widest">Votación en curso</span>
+            </div>
+
+            {/* Texto de la pregunta */}
+            <p className="text-white text-4xl font-extrabold text-center leading-tight max-w-4xl" onClick={(e) => e.stopPropagation()}>
+              {preguntaActiva.texto}
+            </p>
+
+            {/* Opciones con barras */}
+            {opciones.length > 0 && (
+              <div className="w-full max-w-2xl flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+                {opciones.map((op, i) => {
+                  const votos = Number(op.total);
+                  const pct   = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+                  const bar   = Math.round((votos / maxVotos) * 100);
+                  const color = op.respuesta === 'SI' ? 'bg-green-500'
+                    : op.respuesta === 'NO' ? 'bg-red-500'
+                    : `bg-brand`;
+                  return (
+                    <div key={i}>
+                      <div className="flex justify-between items-baseline mb-1.5">
+                        <span className="text-white text-xl font-bold">{op.respuesta}</span>
+                        <span className="text-white/60 text-lg font-semibold">{votos} voto{votos !== 1 ? 's' : ''} · {pct}%</span>
+                      </div>
+                      <div className="h-4 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-4 rounded-full transition-all duration-700 ${color}`} style={{ width: `${bar}%` }}/>
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-white/30 text-sm text-center mt-2">Total: {totalVotos} votos</p>
+              </div>
+            )}
+
+            <p className="text-white/20 text-sm absolute bottom-6">{sesion.nombre} · Toca para cerrar</p>
+          </div>
+        );
+      })()}
 
       {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (

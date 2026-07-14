@@ -98,23 +98,22 @@ function TabInvitaciones({ sesion }) {
     )?.id ?? '';
   })();
 
-  const [depto,            setDepto]            = useState(deptoInicial);
-  const [busqueda,         setBusqueda]         = useState('');
-  const [busquedaServer,   setBusquedaServer]   = useState('');
-  const [militantes,       setMilitantes]       = useState([]);
-  const [total,            setTotal]            = useState(0);
-  const [page,             setPage]             = useState(1);
-  const [cargando,         setCargando]         = useState(true);
-  const [seleccionados,    setSeleccionados]    = useState(new Map());
-  const [confirmacion,     setConfirmacion]     = useState(false);
-  const [enviando,         setEnviando]         = useState(false);
-  const [resultado,        setResultado]        = useState(null);
-  const [errorInv,         setErrorInv]         = useState('');
-  const [invitadosSet,     setInvitadosSet]     = useState(new Set());
-  const [invitadosLista,   setInvitadosLista]   = useState([]);
+  const [depto,          setDepto]          = useState(deptoInicial);
+  const [busqueda,       setBusqueda]       = useState('');
+  const [todosMil,       setTodosMil]       = useState([]);   // todos los del depto (en memoria)
+  const [militantes,     setMilitantes]     = useState([]);   // página actual (sin depto)
+  const [totalServer,    setTotalServer]    = useState(0);    // total API (sin depto)
+  const [page,           setPage]           = useState(1);
+  const [cargando,       setCargando]       = useState(true);
+  const [seleccionados,  setSeleccionados]  = useState(new Map());
+  const [confirmacion,   setConfirmacion]   = useState(false);
+  const [enviando,       setEnviando]       = useState(false);
+  const [resultado,      setResultado]      = useState(null);
+  const [errorInv,       setErrorInv]       = useState('');
+  const [invitadosSet,   setInvitadosSet]   = useState(new Set());
+  const [invitadosLista, setInvitadosLista] = useState([]);
 
-  const PER_PAGE     = 20;
-  const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
+  const PER_PAGE = 20;
 
   // Carga emails ya invitados para esta sesión
   const cargarInvitados = useCallback(async () => {
@@ -131,31 +130,27 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Debounce: envía la búsqueda al servidor 400ms después de que el usuario deja de escribir
+  // Cuando hay departamento: cargar TODOS sus militantes paginando la API (per_page=100)
   useEffect(() => {
-    const t = setTimeout(() => {
-      setBusquedaServer(busqueda.trim());
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [busqueda]);
-
-  // Carga militantes desde el servidor con filtro de departamento y búsqueda
-  useEffect(() => {
+    if (!depto) { setTodosMil([]); return; }
     let activo = true;
     setCargando(true);
     setErrorInv('');
     (async () => {
       try {
-        const params = new URLSearchParams({ page });
-        if (depto)          params.set('departamento', depto);
-        if (busquedaServer) params.set('search', busquedaServer);
-        const res  = await fetch(`/api/admin/militantes?${params}`);
-        const json = await res.json();
-        if (!activo) return;
-        if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); return; }
-        setMilitantes(json.data ?? []);
-        setTotal(json.total ?? 0);
+        let acum = []; let pg = 1; let hay = true;
+        while (hay) {
+          const p = new URLSearchParams({ page: pg, per_page: 100, departamento: depto });
+          const res  = await fetch(`/api/admin/militantes?${p}`);
+          const json = await res.json();
+          if (!activo) return;
+          if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); hay = false; break; }
+          const batch = json.data ?? [];
+          acum = [...acum, ...batch];
+          hay = acum.length < (json.total ?? 0) && batch.length > 0;
+          pg++;
+        }
+        if (activo) { setTodosMil(acum); setPage(1); }
       } catch {
         if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
       } finally {
@@ -163,15 +158,55 @@ function TabInvitaciones({ sesion }) {
       }
     })();
     return () => { activo = false; };
-  }, [depto, page, busquedaServer]);
+  }, [depto]);
 
-  const datosFiltrados = militantes;
+  // Sin departamento: paginación normal del servidor
+  useEffect(() => {
+    if (depto) return;
+    let activo = true;
+    setCargando(true);
+    setErrorInv('');
+    (async () => {
+      try {
+        const params = new URLSearchParams({ page });
+        const res  = await fetch(`/api/admin/militantes?${params}`);
+        const json = await res.json();
+        if (!activo) return;
+        if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); return; }
+        setMilitantes(json.data ?? []);
+        setTotalServer(json.total ?? 0);
+      } catch {
+        if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
+    return () => { activo = false; };
+  }, [depto, page]);
+
+  // Con depto: filtro local por nombre o documento sobre todos los cargados
+  const datosFiltrados = depto
+    ? (() => {
+        if (!busqueda.trim()) return todosMil;
+        const q = busqueda.trim().toLowerCase();
+        return todosMil.filter((m) =>
+          nombreMilitante(m).toLowerCase().includes(q) ||
+          (m.numero_documento ?? '').toLowerCase().includes(q)
+        );
+      })()
+    : militantes;
+
+  // Paginación: local (con depto) o servidor (sin depto)
+  const totalItems   = depto ? datosFiltrados.length : totalServer;
+  const totalPaginas = Math.ceil(totalItems / PER_PAGE) || 1;
+  const itemsPagina  = depto
+    ? datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+    : datosFiltrados;
 
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);
     setPage(1);
     setBusqueda('');
-    setBusquedaServer('');
     setSeleccionados(new Map());
     setResultado(null);
     setErrorInv('');
@@ -179,7 +214,7 @@ function TabInvitaciones({ sesion }) {
 
   const cambiarPagina = (nuevaPagina) => {
     setPage(nuevaPagina);
-    setSeleccionados(new Map());
+    if (!depto) setSeleccionados(new Map());
   };
 
   const toggle = (m) => {
@@ -300,11 +335,11 @@ function TabInvitaciones({ sesion }) {
           )}
         </div>
 
-        {!cargando && total > 0 && (
+        {!cargando && totalItems > 0 && (
           <span className="text-xs text-gray-400 ml-auto">
-            {busqueda.trim()
-              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''}`
-              : `${total.toLocaleString('es-CO')} militante${total !== 1 ? 's' : ''} · ${nombreDepto}`
+            {depto && busqueda.trim()
+              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} de ${todosMil.length}`
+              : `${totalItems.toLocaleString('es-CO')} militante${totalItems !== 1 ? 's' : ''}${depto ? ` · ${nombreDepto}` : ''}`
             }
           </span>
         )}
@@ -348,12 +383,12 @@ function TabInvitaciones({ sesion }) {
         {!cargando && datosFiltrados.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <Users size={28} className="mb-2 text-gray-200" />
-            <p className="text-sm">{busqueda.trim() ? 'Sin resultados en esta página' : 'No hay militantes'}</p>
+            <p className="text-sm">{busqueda.trim() ? 'Sin resultados' : 'No hay militantes'}</p>
           </div>
         )}
-        {!cargando && datosFiltrados.length > 0 && (
+        {!cargando && itemsPagina.length > 0 && (
           <div className="divide-y divide-gray-50">
-            {datosFiltrados.map((m) => {
+            {itemsPagina.map((m) => {
               const sinEmail    = !m.email;
               const marcado     = m.email ? seleccionados.has(m.email) : false;
               const yaInvitado  = m.email ? invitadosSet.has(m.email) : false;

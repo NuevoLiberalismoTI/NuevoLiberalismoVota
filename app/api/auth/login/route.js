@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '../../../lib/supabase-server';
+import { randomUUID } from 'crypto';
 
 export async function POST(request) {
   try {
@@ -22,7 +23,24 @@ export async function POST(request) {
     }
 
     const user = data[0];
-    const response = NextResponse.json({ ok: true, user });
+
+    let tokenDispositivo = null;
+    if (user.rol !== 'admin') {
+      const { data: cfg } = await supabase
+        .from('configuracion_sistema')
+        .select('valor')
+        .eq('clave', 'un_dispositivo_votante')
+        .maybeSingle();
+
+      if (cfg?.valor === 'true') {
+        tokenDispositivo = randomUUID();
+        await supabase
+          .from('tokens_dispositivo')
+          .upsert({ cedula, token: tokenDispositivo, updated_at: new Date().toISOString() });
+      }
+    }
+
+    const response = NextResponse.json({ ok: true, user, tokenDispositivo });
 
     response.cookies.set('session', JSON.stringify({ cedula: user.cedula, rol: user.rol, nombre: user.nombre }), {
       httpOnly: true,

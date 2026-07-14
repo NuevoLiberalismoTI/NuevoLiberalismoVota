@@ -1,15 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, LogIn, UserPlus, Calendar, Loader2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff, LogIn, UserPlus, Loader2, AlertTriangle } from 'lucide-react';
 export default function HomePage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm]     = useState({ usuario: '', contrasena: '' });
   const [error, setError]   = useState('');
   const [cargando, setCargando] = useState(false);
+  const [kickedMsg, setKickedMsg] = useState('');
+
+  useEffect(() => {
+    if (searchParams.get('kicked') === '1') {
+      setKickedMsg('Tu sesión fue iniciada en otro dispositivo. Inicia sesión nuevamente.');
+    }
+  }, [searchParams]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -35,7 +43,7 @@ export default function HomePage() {
         setError(json.error || 'Usuario o contraseña incorrectos');
         return;
       }
-      const user = json.user;
+      const user = { ...json.user, tokenDispositivo: json.tokenDispositivo ?? null };
       sessionStorage.setItem('usuario', JSON.stringify(user));
       const params = new URLSearchParams(window.location.search);
       const retorno = params.get('retorno');
@@ -64,6 +72,13 @@ export default function HomePage() {
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-10 gap-6">
+
+        {kickedMsg && (
+          <div className="w-full max-w-sm flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+            <AlertTriangle size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-orange-700 font-medium">{kickedMsg}</p>
+          </div>
+        )}
 
         {/* Card Login */}
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-7">

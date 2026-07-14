@@ -23,10 +23,21 @@ export default function SesionPage() {
   const [cargando, setCargando]     = useState(false);
 
   const cargarEstado = useCallback(async (cedula) => {
-    const { data } = await supabase.rpc('get_estado_sesion_usuario', {
-      p_asamblea_id: sesionId,
-      p_cedula: cedula,
-    });
+    const stored = sessionStorage.getItem('usuario');
+    const token  = stored ? (JSON.parse(stored).tokenDispositivo ?? '') : '';
+    const res = await fetch(
+      `/api/sesion/${encodeURIComponent(sesionId)}/estado?cedula=${encodeURIComponent(cedula)}`,
+      { headers: { 'x-device-token': token } },
+    );
+    if (res.status === 401) {
+      const err = await res.json();
+      if (err.error === 'dispositivo_invalido') {
+        sessionStorage.removeItem('usuario');
+        router.replace('/?kicked=1');
+        return;
+      }
+    }
+    const data = await res.json();
     if (!data?.ok) { router.replace('/dashboard'); return; }
     setEstado(data);
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Plus, Trash2, Loader2, CheckCircle, AlertCircle, Pencil, X, Save,
-  ToggleLeft, ToggleRight, Tag, ChevronUp, ChevronDown,
+  ToggleLeft, ToggleRight, Tag, ChevronUp, ChevronDown, Settings, Smartphone,
 } from 'lucide-react';
 
 export default function ParametricasPage() {
@@ -18,6 +18,9 @@ export default function ParametricasPage() {
   const [error, setError]             = useState('');
   const [exito, setExito]             = useState('');
 
+  const [config, setConfig]           = useState({});
+  const [guardandoCfg, setGuardandoCfg] = useState(false);
+
   const cargar = async () => {
     const res = await fetch('/api/admin/tipos-asamblea');
     const json = await res.json();
@@ -25,7 +28,35 @@ export default function ParametricasPage() {
     setCargando(false);
   };
 
-  useEffect(() => { cargar(); }, []);
+  const cargarConfig = async () => {
+    const res  = await fetch('/api/admin/configuracion');
+    const json = await res.json();
+    if (json.ok) {
+      const map = {};
+      (json.data ?? []).forEach((r) => { map[r.clave] = r.valor; });
+      setConfig(map);
+    }
+  };
+
+  const handleToggleConfig = async (clave, valorActual) => {
+    setGuardandoCfg(true);
+    const nuevoValor = valorActual === 'true' ? 'false' : 'true';
+    const res  = await fetch('/api/admin/configuracion', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ clave, valor: nuevoValor }),
+    });
+    const json = await res.json();
+    if (json.ok) {
+      setConfig((prev) => ({ ...prev, [clave]: nuevoValor }));
+      mostrarExito(nuevoValor === 'true' ? 'Restricción activada' : 'Restricción desactivada');
+    } else {
+      setError(json.error || 'Error al guardar');
+    }
+    setGuardandoCfg(false);
+  };
+
+  useEffect(() => { cargar(); cargarConfig(); }, []);
 
   const mostrarExito = (msg) => {
     setExito(msg); setError('');
@@ -335,6 +366,48 @@ export default function ParametricasPage() {
         <AlertCircle size={11} />
         El <strong>código</strong> se usa para generar el consecutivo de cada sesión. Una vez que hay sesiones activas, cambiarlo afectará futuros consecutivos.
       </p>
+
+      {/* ── Configuración del sistema ── */}
+      <div className="mt-8">
+        <div className="mb-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <Settings size={16} className="text-brand" /> Configuración del sistema
+          </h2>
+          <p className="text-sm text-gray-500 mt-0.5">Parámetros globales que aplican a todos los participantes</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50 last:border-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                <Smartphone size={15} className="text-brand" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Un dispositivo por votante</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Si está activo, un votante solo puede estar conectado en un dispositivo a la vez.
+                  Al iniciar sesión en otro, la sesión anterior queda invalidada.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleToggleConfig('un_dispositivo_votante', config['un_dispositivo_votante'] ?? 'false')}
+              disabled={guardandoCfg}
+              className={`ml-6 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all flex-shrink-0 ${
+                config['un_dispositivo_votante'] === 'true'
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                  : 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+              } disabled:opacity-50`}>
+              {guardandoCfg
+                ? <Loader2 size={12} className="animate-spin" />
+                : config['un_dispositivo_votante'] === 'true'
+                  ? <><ToggleRight size={14} /> Activo</>
+                  : <><ToggleLeft size={14} /> Inactivo</>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

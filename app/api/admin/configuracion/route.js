@@ -1,5 +1,5 @@
-import { requireAdmin } from '../../../../lib/session';
-import { createServerClient } from '../../../../lib/supabase-server';
+import { requireAdmin } from '../../../lib/session';
+import { createServerClient } from '../../../lib/supabase-server';
 
 export async function GET() {
   const session = await requireAdmin();

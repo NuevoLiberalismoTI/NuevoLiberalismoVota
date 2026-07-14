@@ -100,9 +100,8 @@ function TabInvitaciones({ sesion }) {
 
   const [depto,          setDepto]          = useState(deptoInicial);
   const [busqueda,       setBusqueda]       = useState('');
-  const [todosMil,       setTodosMil]       = useState([]);   // todos los del depto (en memoria)
-  const [militantes,     setMilitantes]     = useState([]);   // página actual (sin depto)
-  const [totalServer,    setTotalServer]    = useState(0);    // total API (sin depto)
+  const [todosMil,       setTodosMil]       = useState([]);
+  const [cargandoMil,    setCargandoMil]    = useState(0);   // total ya cargados (para indicador)
   const [page,           setPage]           = useState(1);
   const [cargando,       setCargando]       = useState(true);
   const [seleccionados,  setSeleccionados]  = useState(new Map());
@@ -113,7 +112,9 @@ function TabInvitaciones({ sesion }) {
   const [invitadosSet,   setInvitadosSet]   = useState(new Set());
   const [invitadosLista, setInvitadosLista] = useState([]);
 
-  const PER_PAGE = 20;
+  const PER_PAGE     = 20;
+  const PER_PAGE_API = 100;
+  const LOTE         = 8; // páginas en paralelo por ronda
 
   // Carga emails ya invitados para esta sesión
   const cargarInvitados = useCallback(async () => {
@@ -130,29 +131,42 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Cuando hay departamento: cargar TODOS sus militantes paginando la API (per_page=100)
-  // Termina cuando el batch viene incompleto (< 100 = última página)
+  // Carga todos los militantes (con o sin depto) en lotes paralelos
+  // Actualiza todosMil progresivamente para que la búsqueda funcione mientras carga
   useEffect(() => {
-    if (!depto) { setTodosMil([]); return; }
     let activo = true;
     setCargando(true);
+    setCargandoMil(0);
+    setTodosMil([]);
+    setPage(1);
     setErrorInv('');
+
     (async () => {
       try {
-        const PER_PAGE_API = 100;
-        let acum = []; let pg = 1;
-        while (true) {
-          const p = new URLSearchParams({ page: pg, per_page: PER_PAGE_API, departamento: depto });
-          const res  = await fetch(`/api/admin/militantes?${p}`);
-          const json = await res.json();
+        let pg = 1; let terminado = false;
+        while (!terminado && activo) {
+          // Lanzar LOTE páginas en paralelo
+          const paginas = Array.from({ length: LOTE }, (_, i) => pg + i);
+          const resultados = await Promise.all(
+            paginas.map((p) => {
+              const params = new URLSearchParams({ page: p, per_page: PER_PAGE_API });
+              if (depto) params.set('departamento', depto);
+              return fetch(`/api/admin/militantes?${params}`)
+                .then((r) => r.json())
+                .catch(() => ({ data: [] }));
+            })
+          );
           if (!activo) return;
-          if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); break; }
-          const batch = json.data ?? [];
-          acum = [...acum, ...batch];
-          if (batch.length < PER_PAGE_API) break; // página incompleta = última página
-          pg++;
+
+          let lote = [];
+          for (const json of resultados) {
+            const batch = json.data ?? [];
+            lote = [...lote, ...batch];
+            if (batch.length < PER_PAGE_API) { terminado = true; break; }
+          }
+          setTodosMil((prev) => { const next = [...prev, ...lote]; setCargandoMil(next.length); return next; });
+          pg += LOTE;
         }
-        if (activo) { setTodosMil(acum); setPage(1); }
       } catch {
         if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
       } finally {
@@ -162,44 +176,18 @@ function TabInvitaciones({ sesion }) {
     return () => { activo = false; };
   }, [depto]);
 
-  // Sin departamento: paginación normal del servidor
-  useEffect(() => {
-    if (depto) return;
-    let activo = true;
-    setCargando(true);
-    setErrorInv('');
-    (async () => {
-      try {
-        const params = new URLSearchParams({ page });
-        const res  = await fetch(`/api/admin/militantes?${params}`);
-        const json = await res.json();
-        if (!activo) return;
-        if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); return; }
-        setMilitantes(json.data ?? []);
-        setTotalServer(json.total ?? 0);
-      } catch {
-        if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
-      } finally {
-        if (activo) setCargando(false);
-      }
-    })();
-    return () => { activo = false; };
-  }, [depto, page]);
-
-  // Filtro local por nombre o documento (sobre todosMil si hay depto, o militantes si no)
-  const fuente = depto ? todosMil : militantes;
+  // Filtro local sobre todos los militantes cargados
   const datosFiltrados = (() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return fuente;
-    return fuente.filter((m) =>
+    if (!q) return todosMil;
+    return todosMil.filter((m) =>
       nombreMilitante(m).toLowerCase().includes(q) ||
       (m.numero_documento ?? '').toLowerCase().includes(q)
     );
   })();
 
-
-  // Paginación: siempre local sobre datosFiltrados
-  const totalItems   = depto ? datosFiltrados.length : (busqueda.trim() ? datosFiltrados.length : totalServer);
+  // Paginación local sobre datosFiltrados
+  const totalItems   = busqueda.trim() ? datosFiltrados.length : todosMil.length;
   const totalPaginas = Math.ceil(totalItems / PER_PAGE) || 1;
   const itemsPagina  = datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -324,10 +312,8 @@ function TabInvitaciones({ sesion }) {
             type="text"
             value={busqueda}
             onChange={(e) => { setBusqueda(e.target.value); setPage(1); }}
-            placeholder={depto ? 'Nombre o documento…' : 'Selecciona un departamento primero'}
-            disabled={!depto}
-            title={!depto ? 'Selecciona un departamento para habilitar la búsqueda por nombre o documento' : ''}
-            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+            placeholder="Nombre o documento…"
+            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
           />
           {busqueda && (
             <button type="button" onClick={() => setBusqueda('')}
@@ -339,9 +325,11 @@ function TabInvitaciones({ sesion }) {
 
         {!cargando && totalItems > 0 && (
           <span className="text-xs text-gray-400 ml-auto">
-            {depto && busqueda.trim()
-              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} de ${todosMil.length}`
-              : `${totalItems.toLocaleString('es-CO')} militante${totalItems !== 1 ? 's' : ''}${depto ? ` · ${nombreDepto}` : ''}`
+            {busqueda.trim()
+              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} de ${todosMil.length.toLocaleString('es-CO')} cargados`
+              : cargando
+                ? `Cargando… ${cargandoMil.toLocaleString('es-CO')} militantes`
+                : `${todosMil.length.toLocaleString('es-CO')} militante${todosMil.length !== 1 ? 's' : ''}${depto ? ` · ${nombreDepto}` : ''}`
             }
           </span>
         )}
@@ -377,18 +365,19 @@ function TabInvitaciones({ sesion }) {
 
       {/* ── Lista (scroll interno) ── */}
       <div className="flex-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
-        {cargando && (
-          <div className="flex justify-center items-center py-12">
+        {cargando && todosMil.length === 0 && (
+          <div className="flex flex-col justify-center items-center py-12 gap-2">
             <Loader2 size={24} className="text-brand animate-spin" />
+            <p className="text-xs text-gray-400">Cargando militantes…</p>
           </div>
         )}
-        {!cargando && datosFiltrados.length === 0 && (
+        {(!cargando || todosMil.length > 0) && datosFiltrados.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <Users size={28} className="mb-2 text-gray-200" />
             <p className="text-sm">{busqueda.trim() ? 'Sin resultados' : 'No hay militantes'}</p>
           </div>
         )}
-        {!cargando && itemsPagina.length > 0 && (
+        {itemsPagina.length > 0 && (
           <div className="divide-y divide-gray-50">
             {itemsPagina.map((m) => {
               const sinEmail    = !m.email;

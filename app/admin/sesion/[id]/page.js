@@ -937,6 +937,26 @@ export default function AdminSesionPage() {
     return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
   };
 
+  // Construye la tabla de cocientes D'Hondt para mostrar la explicación
+  const buildDhondtExplanation = (opciones, cupos) => {
+    if (!cupos || !opciones?.length) return null;
+    const maxDiv = Math.max(...opciones.map((o) => {
+      // ¿cuántos divisores necesita este candidato? al menos 1, hasta cupos
+      return cupos;
+    }));
+    // Calcular todos los cocientes y marcar los ganadores
+    const allQ = [];
+    opciones.forEach((op) => {
+      for (let d = 1; d <= maxDiv; d++) {
+        allQ.push({ key: `${op.respuesta}-${d}`, cociente: Number(op.total) / d });
+      }
+    });
+    const sorted = [...allQ].sort((a, b) => b.cociente - a.cociente);
+    const winners = new Set(sorted.slice(0, cupos).map((q) => q.key));
+    const divisors = Array.from({ length: maxDiv }, (_, i) => i + 1);
+    return { divisors, winners };
+  };
+
   const handleVerParticipacion = async (preguntaId) => {
     setModalPartId(preguntaId);
     setPartData(null);
@@ -1507,6 +1527,7 @@ export default function AdminSesionPage() {
                     const cuposPreg = preguntas.find((p) => p.id === preg.id)?.cupos;
                     if (!cuposPreg || !preg.opciones?.length || total === 0) return null;
                     const dhondt = calcDhondt(preg.opciones, cuposPreg);
+                    const expl   = buildDhondtExplanation(preg.opciones, cuposPreg);
                     return (
                       <div className="mt-4 border-t border-gray-100 pt-4">
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -1526,6 +1547,54 @@ export default function AdminSesionPage() {
                             </div>
                           ))}
                         </div>
+
+                        {/* Tabla de cocientes */}
+                        {expl && (
+                          <details className="mt-3">
+                            <summary className="text-[11px] font-semibold text-brand cursor-pointer select-none hover:underline">
+                              ¿Cómo se calculó? Ver tabla de cocientes
+                            </summary>
+                            <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                              <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+                                La fórmula D'Hondt divide los votos de cada candidato entre divisores sucesivos (÷1, ÷2, ÷3…). Los <strong>{cuposPreg} cocientes más altos</strong> de toda la tabla determinan quién obtiene cada cupo. Las celdas resaltadas en verde son las ganadoras.
+                              </p>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-[11px] border-collapse">
+                                  <thead>
+                                    <tr>
+                                      <th className="text-left py-1 px-2 text-gray-500 font-semibold border-b border-gray-200">Candidato</th>
+                                      <th className="text-center py-1 px-1.5 text-gray-500 font-semibold border-b border-gray-200">Votos</th>
+                                      {expl.divisors.map((d) => (
+                                        <th key={d} className="text-center py-1 px-1.5 text-gray-500 font-semibold border-b border-gray-200">÷{d}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {preg.opciones.slice().sort((a, b) => Number(b.total) - Number(a.total)).map((op, ri) => (
+                                      <tr key={ri} className="border-b border-gray-100 last:border-0">
+                                        <td className="py-1.5 px-2 font-semibold text-gray-700 max-w-[120px] truncate">{op.respuesta}</td>
+                                        <td className="py-1.5 px-1.5 text-center text-gray-500">{op.total}</td>
+                                        {expl.divisors.map((d) => {
+                                          const cociente = (Number(op.total) / d).toFixed(2);
+                                          const key      = `${op.respuesta}-${d}`;
+                                          const isWinner = expl.winners.has(key);
+                                          return (
+                                            <td key={d} className={`py-1.5 px-1.5 text-center rounded font-mono ${isWinner ? 'bg-green-100 text-green-800 font-bold' : 'text-gray-400'}`}>
+                                              {cociente}
+                                            </td>
+                                          );
+                                        })}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <p className="text-[10px] text-gray-400 mt-2">
+                                Cupos asignados: {dhondt.filter((c) => c.cupos_ganados > 0).map((c) => `${c.respuesta} (${c.cupos_ganados})`).join(' · ')}
+                              </p>
+                            </div>
+                          </details>
+                        )}
                       </div>
                     );
                   })()}

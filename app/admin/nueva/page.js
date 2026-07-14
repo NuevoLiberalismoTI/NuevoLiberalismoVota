@@ -99,10 +99,10 @@ export default function NuevaSesionPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         base_id:          consecutivoBase,
-        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento} ${form.zona}`,
+        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento === 'N/A' ? '' : form.departamento} ${form.zona}`.replace(/\s{2,}/g, ' ').trim(),
         tipo_asamblea_id: tipoObj?.id,
         colectivo_id:     colectivoObj?.id,
-        departamento:     form.tipo === 'NACIONAL' ? null : form.departamento,
+        departamento:     (form.tipo === 'NACIONAL' || form.departamento === 'N/A') ? null : form.departamento,
         zona:             form.zona,
         fecha:            form.fecha,
         hora:             form.hora,
@@ -178,6 +178,7 @@ export default function NuevaSesionPage() {
             <select name="departamento" value={form.departamento} onChange={handleChange}
               className={sel(errores.departamento)} disabled={form.tipo === 'NACIONAL'}>
               <option value="">{form.tipo === 'NACIONAL' ? 'N/A — asamblea nacional' : 'Selecciona...'}</option>
+              <option value="N/A">N/A — sin departamento específico</option>
               {DEPARTAMENTOS_CON_CODIGO.map((d) => <option key={d.codigo}>{d.nombre}</option>)}
             </select>
             {errores.departamento && <span className="text-xs text-red-500">{errores.departamento}</span>}

@@ -131,6 +131,7 @@ function TabInvitaciones({ sesion }) {
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
   // Cuando hay departamento: cargar TODOS sus militantes paginando la API (per_page=100)
+  // Termina cuando el batch viene incompleto (< 100 = última página)
   useEffect(() => {
     if (!depto) { setTodosMil([]); return; }
     let activo = true;
@@ -138,16 +139,17 @@ function TabInvitaciones({ sesion }) {
     setErrorInv('');
     (async () => {
       try {
-        let acum = []; let pg = 1; let hay = true;
-        while (hay) {
-          const p = new URLSearchParams({ page: pg, per_page: 100, departamento: depto });
+        const PER_PAGE_API = 100;
+        let acum = []; let pg = 1;
+        while (true) {
+          const p = new URLSearchParams({ page: pg, per_page: PER_PAGE_API, departamento: depto });
           const res  = await fetch(`/api/admin/militantes?${p}`);
           const json = await res.json();
           if (!activo) return;
-          if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); hay = false; break; }
+          if (!res.ok) { setErrorInv(json.error || 'Error al cargar'); break; }
           const batch = json.data ?? [];
           acum = [...acum, ...batch];
-          hay = acum.length < (json.total ?? 0) && batch.length > 0;
+          if (batch.length < PER_PAGE_API) break; // página incompleta = última página
           pg++;
         }
         if (activo) { setTodosMil(acum); setPage(1); }

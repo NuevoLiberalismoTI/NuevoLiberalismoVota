@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, UserPlus, Loader2, AlertTriangle } from 'lucide-react';
 export default function HomePage() {
-  const router       = useRouter();
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm]     = useState({ usuario: '', contrasena: '' });
   const [error, setError]   = useState('');
@@ -14,10 +13,11 @@ export default function HomePage() {
   const [kickedMsg, setKickedMsg] = useState('');
 
   useEffect(() => {
-    if (searchParams.get('kicked') === '1') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('kicked') === '1') {
       setKickedMsg('Tu sesión fue iniciada en otro dispositivo. Inicia sesión nuevamente.');
     }
-  }, [searchParams]);
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

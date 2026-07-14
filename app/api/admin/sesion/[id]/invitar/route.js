@@ -48,7 +48,7 @@ export async function POST(request, { params }) {
   if (json.ok) {
     await supabase
       .from('invitaciones_enviadas')
-      .insert(militantes.map(({ email, nombre }) => ({ sesion_id: sesionId, email, nombre })));
+      .insert(militantes.map(({ email, nombre, cedula }) => ({ sesion_id: sesionId, email, nombre, cedula: cedula || null })));
   }
 
   return Response.json(json, { status: res.ok ? 200 : 502 });

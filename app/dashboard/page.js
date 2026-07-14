@@ -23,14 +23,20 @@ export default function DashboardPage() {
   const [tab, setTab]               = useState('activas');
 
   const cargar = async (cedula) => {
-    const [{ data, error }, { data: acredData }] = await Promise.all([
+    const [{ data, error }, { data: acredData }, { data: invData }] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
       supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('usuario_cedula', cedula),
+      supabase.from('invitaciones_enviadas').select('sesion_id').eq('cedula', cedula),
     ]);
     if (!error && data) {
-      const acredMap = {};
+      const acredMap   = {};
       (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
-      setSesiones(data.map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null })));
+      const invitadas  = new Set((invData || []).map((i) => i.sesion_id));
+      setSesiones(
+        data
+          .filter((s) => invitadas.has(s.id))
+          .map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }))
+      );
     }
     setCargando(false);
   };

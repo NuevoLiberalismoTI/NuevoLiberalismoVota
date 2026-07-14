@@ -184,7 +184,7 @@ function TabInvitaciones({ sesion }) {
     setSeleccionados((prev) => {
       const next = new Map(prev);
       if (next.has(m.email)) next.delete(m.email);
-      else next.set(m.email, { email: m.email, nombre: nombreMilitante(m) });
+      else next.set(m.email, { email: m.email, nombre: nombreMilitante(m), cedula: m.numero_documento || null });
       return next;
     });
   };

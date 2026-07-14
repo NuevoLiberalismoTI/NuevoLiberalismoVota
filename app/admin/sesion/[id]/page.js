@@ -1674,13 +1674,20 @@ export default function AdminSesionPage() {
               <X size={32}/>
             </button>
 
-            {/* Indicador en vivo */}
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <span className="flex h-3 w-3 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"/>
-              </span>
-              <span className="text-green-400 text-sm font-bold uppercase tracking-widest">Votación en curso</span>
+            {/* Indicador en vivo + timer */}
+            <div className="flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-3 w-3 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"/>
+                </span>
+                <span className="text-green-400 text-sm font-bold uppercase tracking-widest">Votación en curso</span>
+              </div>
+              {timerSeg != null && (
+                <div className={`text-7xl font-extrabold tabular-nums tracking-tight ${timerSeg <= 30 ? 'text-red-400 animate-pulse' : 'text-white/80'}`}>
+                  {String(Math.floor(timerSeg / 60)).padStart(2, '0')}:{String(timerSeg % 60).padStart(2, '0')}
+                </div>
+              )}
             </div>
 
             {/* Texto de la pregunta */}

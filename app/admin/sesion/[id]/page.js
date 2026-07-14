@@ -184,24 +184,24 @@ function TabInvitaciones({ sesion }) {
     return () => { activo = false; };
   }, [depto, page]);
 
-  // Con depto: filtro local por nombre o documento sobre todos los cargados
-  const datosFiltrados = depto
-    ? (() => {
-        if (!busqueda.trim()) return todosMil;
-        const q = busqueda.trim().toLowerCase();
-        return todosMil.filter((m) =>
-          nombreMilitante(m).toLowerCase().includes(q) ||
-          (m.numero_documento ?? '').toLowerCase().includes(q)
-        );
-      })()
-    : militantes;
+  // Filtro local por nombre o documento (sobre todosMil si hay depto, o militantes si no)
+  const fuente = depto ? todosMil : militantes;
+  const datosFiltrados = (() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return fuente;
+    return fuente.filter((m) =>
+      nombreMilitante(m).toLowerCase().includes(q) ||
+      (m.numero_documento ?? '').toLowerCase().includes(q)
+    );
+  })();
 
-  // Paginación: local (con depto) o servidor (sin depto)
-  const totalItems   = depto ? datosFiltrados.length : totalServer;
+  // Resetear página cuando cambia la búsqueda
+  useEffect(() => { setPage(1); }, [busqueda]);
+
+  // Paginación: siempre local sobre datosFiltrados
+  const totalItems   = depto ? datosFiltrados.length : (busqueda.trim() ? datosFiltrados.length : totalServer);
   const totalPaginas = Math.ceil(totalItems / PER_PAGE) || 1;
-  const itemsPagina  = depto
-    ? datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-    : datosFiltrados;
+  const itemsPagina  = datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);

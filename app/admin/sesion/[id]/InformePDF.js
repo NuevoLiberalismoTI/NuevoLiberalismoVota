@@ -11,9 +11,9 @@ const RED   = '#b91c1c';
 const s = StyleSheet.create({
   page:         { fontFamily: 'Helvetica', fontSize: 10, color: DARK },
   header:       { backgroundColor: BRAND, paddingVertical: 22, paddingHorizontal: 40 },
-  headerParty:  { color: '#ffcccc', fontSize: 8, marginBottom: 6 },
-  headerTitle:  { color: '#ffffff', fontSize: 22, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
-  headerDoc:    { color: '#ffb3b3', fontSize: 9 },
+  headerParty:  { color: '#ffcccc', fontSize: 7.5, marginBottom: 4, letterSpacing: 1 },
+  headerTitle:  { color: '#ffffff', fontSize: 16, fontFamily: 'Helvetica-Bold', marginBottom: 3, lineHeight: 1.3 },
+  headerDoc:    { color: '#ffb3b3', fontSize: 8 },
   body:         { paddingHorizontal: 40, paddingTop: 24, paddingBottom: 70 },
   label:        { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: GRAY, marginTop: 18, marginBottom: 8 },
   // Info card

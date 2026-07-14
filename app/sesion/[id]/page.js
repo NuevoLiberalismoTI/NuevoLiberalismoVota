@@ -167,11 +167,17 @@ export default function SesionPage() {
   const handleVerificarCodigo = async () => {
     if (!codigo.trim()) { setErrCodigo('Ingresa el código de asistencia'); return; }
     setCargando(true); setErrCodigo('');
-    const { data } = await supabase.rpc('verificar_y_registrar_asistencia', {
-      p_asamblea_id: sesionId,
-      p_cedula:      usuario.cedula,
-      p_codigo:      codigo.trim(),
+    const res = await fetch('/api/asistencia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sesionId,
+        cedula: usuario.cedula,
+        codigo: codigo.trim(),
+        ts:     Math.floor(Date.now() / 30000),
+      }),
     });
+    const data = await res.json();
     if (!data?.ok) {
       if (data?.error === 'no_inscrito') setPaso('no_inscrito');
       else setErrCodigo(data?.error || 'Código incorrecto');

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -729,8 +729,9 @@ export default function AdminSesionPage() {
   const [tab, setTab]                     = useState('preguntas');
   const [mostrarForm, setMostrarForm]     = useState(false);
   const [mostrarVivo, setMostrarVivo]         = useState(false);
-  const [mostrarCodigo, setMostrarCodigo]     = useState(false);
-  const [exportando,   setExportando]         = useState(false);
+  const [mostrarCodigo,      setMostrarCodigo]      = useState(false);
+  const [mostrarCodigoTexto, setMostrarCodigoTexto] = useState(false);
+  const [exportando,         setExportando]         = useState(false);
   const [cargando, setCargando]               = useState(false);
   const [cerrandoInsc, setCerrandoInsc]       = useState(false);
   const [cerrandoAsist, setCerrandoAsist]     = useState(false);
@@ -810,7 +811,7 @@ export default function AdminSesionPage() {
 
   useEffect(() => {
     cargar();
-    const interval = setInterval(cargar, 2000);
+    const interval = setInterval(cargar, 10000);
     return () => clearInterval(interval);
   }, [sesionId, cargar]);
 
@@ -888,6 +889,28 @@ export default function AdminSesionPage() {
     }
   };
 
+  const handleExportExcel = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const ESTADO_LABEL = {
+      preinscrito:        'Pendiente',
+      acreditado_voto:    'Ingreso + Voto',
+      acreditado_ingreso: 'Solo Ingreso',
+      rechazado:          'Rechazado',
+    };
+    const filas = preinscritos.map((p) => ({
+      'Nombre':               p.nombre,
+      'Cédula':               p.cedula,
+      'Email':                p.email ?? '',
+      'Estado':               ESTADO_LABEL[p.estado_acreditacion] ?? p.estado_acreditacion,
+      'Fecha inscripción':    p.created_at ? new Date(p.created_at).toLocaleString('es-CO') : '',
+    }));
+    const ws = utils.json_to_sheet(filas);
+    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 22 }];
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Inscritos');
+    writeFile(wb, `inscritos-${sesion.id}.xlsx`);
+  };
+
   const handleCambiarEstado = async () => {
     if (!cfg.next) return;
     setCargando(true);
@@ -933,7 +956,14 @@ export default function AdminSesionPage() {
             <span>📍 {sesion.lugar}</span>
             <span>🏷️ {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
             <span className="flex items-center gap-2">
-              🔑 <span className="font-mono font-bold text-gray-400 tracking-widest">••••••</span>
+              🔑
+              <span className={`font-mono font-bold tracking-widest ${mostrarCodigoTexto ? 'text-gray-900 select-all' : 'text-gray-300'}`}>
+                {mostrarCodigoTexto ? sesion.codigo_asistencia : '••••••'}
+              </span>
+              <button onClick={() => setMostrarCodigoTexto((v) => !v)}
+                className="text-gray-400 hover:text-gray-700 transition-colors">
+                {mostrarCodigoTexto ? <EyeOff size={12}/> : <Eye size={12}/>}
+              </button>
               <button onClick={() => setMostrarCodigo(true)}
                 className="flex items-center gap-1 text-[10px] font-bold text-brand bg-brand-50 border border-brand px-2 py-0.5 rounded-full hover:bg-brand hover:text-white transition-colors">
                 <Monitor size={10} /> Proyectar QR
@@ -1115,6 +1145,10 @@ export default function AdminSesionPage() {
               <span className="text-xs text-gray-500 font-semibold">
                 {acredPendientes} pendiente{acredPendientes !== 1 ? 's' : ''} sin acreditar
               </span>
+              <button onClick={handleExportExcel} disabled={preinscritos.length === 0}
+                className="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-40 transition-colors">
+                <FileSpreadsheet size={13}/> Exportar Excel ({preinscritos.length})
+              </button>
               {acredPendientes > 0 && (
                 <>
                   <button onClick={() => handleAcreditarBulk('acreditado_voto')}

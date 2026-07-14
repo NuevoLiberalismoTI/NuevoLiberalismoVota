@@ -1,5 +1,7 @@
 'use client';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+
+const LOGO_URL = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
 const BRAND = '#C20A00';
 const GRAY  = '#6b7280';
@@ -69,10 +71,14 @@ export function InformePDF({ sesion, stats, resultados }) {
       <Page size="A4" style={s.page}>
 
         {/* ── Encabezado ── */}
+        <View style={{ backgroundColor: '#ffffff', paddingVertical: 14, paddingHorizontal: 40, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+          <Image src={LOGO_URL} style={{ width: 110, objectFit: 'contain' }} />
+          <Text style={{ fontSize: 8, color: '#9ca3af', marginLeft: 'auto' }}>Informe generado el {hoy}</Text>
+        </View>
         <View style={s.header}>
           <Text style={s.headerParty}>PARTIDO NUEVO LIBERALISMO</Text>
           <Text style={s.headerTitle}>{sesion.nombre}</Text>
-          <Text style={s.headerDoc}>Informe de resultados · Generado el {hoy}</Text>
+          <Text style={s.headerDoc}>Informe oficial de resultados</Text>
         </View>
 
         <View style={s.body}>

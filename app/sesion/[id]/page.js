@@ -46,8 +46,8 @@ export default function SesionPage() {
     setUsuario(u);
     cargarEstado(u.cedula);
 
-    // Polling cada 2 segundos para detectar pregunta activa, cambios de estado, etc.
-    const interval = setInterval(() => cargarEstado(u.cedula), 2000);
+    // Polling cada 10 segundos para detectar pregunta activa, cambios de estado, etc.
+    const interval = setInterval(() => cargarEstado(u.cedula), 10000);
     return () => clearInterval(interval);
   }, [sesionId, router, cargarEstado]);
 

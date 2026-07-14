@@ -1505,6 +1505,15 @@ export default function AdminSesionPage() {
             </p>
           </div>
 
+          {mostrarCodigoTexto && (
+            <div className="flex flex-col items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Código de acceso</p>
+              <p className="text-white text-4xl font-mono font-black tracking-[0.25em] select-all">
+                {sesion.codigo_asistencia}
+              </p>
+            </div>
+          )}
+
           <p className="text-white/40 text-xs font-medium">{sesion.nombre}</p>
 
           <p className="text-white/25 text-xs">Toca en cualquier lugar para cerrar</p>

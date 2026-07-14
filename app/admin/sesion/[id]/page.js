@@ -195,8 +195,6 @@ function TabInvitaciones({ sesion }) {
     );
   })();
 
-  // Resetear página cuando cambia la búsqueda
-  useEffect(() => { setPage(1); }, [busqueda]);
 
   // Paginación: siempre local sobre datosFiltrados
   const totalItems   = depto ? datosFiltrados.length : (busqueda.trim() ? datosFiltrados.length : totalServer);
@@ -323,7 +321,7 @@ function TabInvitaciones({ sesion }) {
           <input
             type="text"
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onChange={(e) => { setBusqueda(e.target.value); setPage(1); }}
             placeholder="Nombre o documento…"
             className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
           />

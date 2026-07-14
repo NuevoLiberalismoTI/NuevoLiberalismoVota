@@ -847,6 +847,27 @@ export default function AdminSesionPage() {
     return () => clearInterval(interval);
   }, [sesionId, cargar]);
 
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const activaId = sesion?.pregunta_activa_id;
+    const pa = activaId ? preguntas.find((p) => p.id === activaId) : null;
+    if (pa?.duracion_segundos && pa?.publicada_en) {
+      const rem = () => Math.max(0, pa.duracion_segundos - Math.floor((Date.now() - new Date(pa.publicada_en).getTime()) / 1000));
+      setTimerSeg(rem());
+      timerRef.current = setInterval(() => {
+        const r = rem();
+        setTimerSeg(r);
+        if (r <= 0) {
+          clearInterval(timerRef.current);
+          fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar`, { method: 'POST' }).then(() => cargar());
+        }
+      }, 1000);
+    } else {
+      setTimerSeg(null);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [sesion?.pregunta_activa_id, preguntas, sesionId, cargar]);
+
   if (!sesion) return (
     <div className="flex h-full min-h-screen items-center justify-center bg-gray-50">
       <Loader2 size={30} className="text-brand animate-spin" />
@@ -925,24 +946,6 @@ export default function AdminSesionPage() {
     if (json.ok) setPartData(json);
     setPartCargando(false);
   };
-
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    const pa = preguntaActiva ?? null;
-    if (pa?.duracion_segundos && pa?.publicada_en) {
-      const rem = () => Math.max(0, pa.duracion_segundos - Math.floor((Date.now() - new Date(pa.publicada_en).getTime()) / 1000));
-      setTimerSeg(rem());
-      timerRef.current = setInterval(() => {
-        const r = rem();
-        setTimerSeg(r);
-        if (r <= 0) { clearInterval(timerRef.current); handleCerrar(); }
-      }, 1000);
-    } else {
-      setTimerSeg(null);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preguntaActiva?.id, preguntaActiva?.duracion_segundos, preguntaActiva?.publicada_en]);
 
   const handleExportPDF = async () => {
     setExportando(true);

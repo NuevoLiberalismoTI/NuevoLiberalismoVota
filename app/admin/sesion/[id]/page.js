@@ -100,8 +100,8 @@ function TabInvitaciones({ sesion }) {
 
   const [depto,          setDepto]          = useState(deptoInicial);
   const [busqueda,       setBusqueda]       = useState('');
-  const [todosMil,       setTodosMil]       = useState([]);
-  const [cargandoMil,    setCargandoMil]    = useState(0);   // total ya cargados (para indicador)
+  const [todosMil,       setTodosMil]       = useState([]);   // todos (global, en memoria)
+  const [cargandoMil,    setCargandoMil]    = useState(0);
   const [page,           setPage]           = useState(1);
   const [cargando,       setCargando]       = useState(true);
   const [seleccionados,  setSeleccionados]  = useState(new Map());
@@ -114,7 +114,9 @@ function TabInvitaciones({ sesion }) {
 
   const PER_PAGE     = 20;
   const PER_PAGE_API = 100;
-  const LOTE         = 8; // páginas en paralelo por ronda
+  const LOTE         = 8;
+  const CACHE_KEY    = 'nl_militantes_v1';
+  const CACHE_TTL    = 8 * 60 * 60 * 1000; // 8 horas
 
   // Carga emails ya invitados para esta sesión
   const cargarInvitados = useCallback(async () => {
@@ -131,41 +133,55 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Carga todos los militantes (con o sin depto) en lotes paralelos
-  // Actualiza todosMil progresivamente para que la búsqueda funcione mientras carga
+  // Carga TODOS los militantes una vez, sin filtro de departamento.
+  // Primero busca en localStorage (cache TTL 8h). Si no hay cache válido,
+  // descarga en lotes paralelos y guarda el resultado en localStorage.
   useEffect(() => {
     let activo = true;
     setCargando(true);
     setCargandoMil(0);
-    setTodosMil([]);
     setPage(1);
     setErrorInv('');
 
     (async () => {
       try {
-        let pg = 1; let terminado = false;
+        // ── 1. Intentar leer del cache ──
+        try {
+          const raw = localStorage.getItem(CACHE_KEY);
+          if (raw) {
+            const { data, ts } = JSON.parse(raw);
+            if (Date.now() - ts < CACHE_TTL && Array.isArray(data) && data.length > 0) {
+              if (activo) { setTodosMil(data); setCargandoMil(data.length); setCargando(false); }
+              return;
+            }
+          }
+        } catch { /* localStorage no disponible, continúa con fetch */ }
+
+        // ── 2. Cache inválido o inexistente: descargar todo en paralelo ──
+        let acum = []; let pg = 1; let terminado = false;
         while (!terminado && activo) {
-          // Lanzar LOTE páginas en paralelo
           const paginas = Array.from({ length: LOTE }, (_, i) => pg + i);
           const resultados = await Promise.all(
-            paginas.map((p) => {
-              const params = new URLSearchParams({ page: p, per_page: PER_PAGE_API });
-              if (depto) params.set('departamento', depto);
-              return fetch(`/api/admin/militantes?${params}`)
+            paginas.map((p) =>
+              fetch(`/api/admin/militantes?${new URLSearchParams({ page: p, per_page: PER_PAGE_API })}`)
                 .then((r) => r.json())
-                .catch(() => ({ data: [] }));
-            })
+                .catch(() => ({ data: [] }))
+            )
           );
           if (!activo) return;
-
-          let lote = [];
           for (const json of resultados) {
             const batch = json.data ?? [];
-            lote = [...lote, ...batch];
+            acum = [...acum, ...batch];
             if (batch.length < PER_PAGE_API) { terminado = true; break; }
           }
-          setTodosMil((prev) => { const next = [...prev, ...lote]; setCargandoMil(next.length); return next; });
+          setTodosMil([...acum]);
+          setCargandoMil(acum.length);
           pg += LOTE;
+        }
+
+        // ── 3. Guardar en cache ──
+        if (activo) {
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: acum, ts: Date.now() })); } catch {}
         }
       } catch {
         if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
@@ -174,20 +190,22 @@ function TabInvitaciones({ sesion }) {
       }
     })();
     return () => { activo = false; };
-  }, [depto]);
+  }, []); // Solo una vez al montar
 
-  // Filtro local sobre todos los militantes cargados
+  // Filtro local: departamento + texto (todo en memoria, sin llamadas a la API)
+  const deptoCampo = (m) => String(m.id_departamento ?? m.departamento_id ?? m.departamento ?? '');
+  const base = depto ? todosMil.filter((m) => deptoCampo(m) === String(depto)) : todosMil;
   const datosFiltrados = (() => {
     const q = busqueda.trim().toLowerCase();
-    if (!q) return todosMil;
-    return todosMil.filter((m) =>
+    if (!q) return base;
+    return base.filter((m) =>
       nombreMilitante(m).toLowerCase().includes(q) ||
       (m.numero_documento ?? '').toLowerCase().includes(q)
     );
   })();
 
-  // Paginación local sobre datosFiltrados
-  const totalItems   = busqueda.trim() ? datosFiltrados.length : todosMil.length;
+  // Paginación local
+  const totalItems   = datosFiltrados.length;
   const totalPaginas = Math.ceil(totalItems / PER_PAGE) || 1;
   const itemsPagina  = datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
@@ -200,10 +218,7 @@ function TabInvitaciones({ sesion }) {
     setErrorInv('');
   };
 
-  const cambiarPagina = (nuevaPagina) => {
-    setPage(nuevaPagina);
-    if (!depto) setSeleccionados(new Map());
-  };
+  const cambiarPagina = (nuevaPagina) => { setPage(nuevaPagina); };
 
   const toggle = (m) => {
     if (!m.email) return;

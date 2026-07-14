@@ -492,7 +492,7 @@ export default function SesionPage() {
           <p className="text-sm text-gray-500 text-center mb-6">Gracias por participar. Tus votos han sido registrados.</p>
 
           {estado?.votos?.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-5 mb-6 flex flex-col gap-3">
+            <div className="bg-white rounded-2xl shadow-lg p-5 mb-4 flex flex-col gap-3">
               <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Resumen de tu voto</h3>
               {estado.votos.map((v, i) => (
                 <div key={i} className="border-t border-gray-100 pt-3 first:border-0 first:pt-0">
@@ -508,6 +508,22 @@ export default function SesionPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {estado?.preguntas_perdidas?.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mb-4">
+              <h3 className="text-sm font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                <AlertTriangle size={14}/> No participaste en
+              </h3>
+              <div className="flex flex-col gap-2">
+                {estado.preguntas_perdidas.map((txt, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
+                    <span className="text-sm text-orange-800 leading-snug">{txt}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

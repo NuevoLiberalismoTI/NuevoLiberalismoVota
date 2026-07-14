@@ -70,7 +70,7 @@ export default function SesionPage() {
   }, [sesionId, router, cargarEstado]);
 
   useEffect(() => {
-    setSoportaCam(typeof window !== 'undefined' && 'BarcodeDetector' in window);
+    setSoportaCam(typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia);
   }, []);
 
   const abrirCamara = async () => {
@@ -94,22 +94,45 @@ export default function SesionPage() {
     const video = videoRef.current;
     video.srcObject = streamRef.current;
     video.play();
-    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-    const scan = async () => {
-      try {
-        const codes = await detector.detect(video);
-        if (codes.length > 0) {
-          const raw = codes[0].rawValue;
-          let c = raw;
-          try { c = new URL(raw).searchParams.get('c') || raw; } catch {}
-          cerrarCamara();
-          setCodigo(c.toUpperCase().trim());
-          return;
-        }
-      } catch {}
-      scanRef.current = requestAnimationFrame(scan);
+
+    const hasBarcodeDetector = 'BarcodeDetector' in window;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const handleQR = (raw) => {
+      let c = raw;
+      try { c = new URL(raw).searchParams.get('c') || raw; } catch {}
+      cerrarCamara();
+      setCodigo(c.toUpperCase().trim());
     };
-    scanRef.current = requestAnimationFrame(scan);
+
+    if (hasBarcodeDetector) {
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      const scan = async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) { handleQR(codes[0].rawValue); return; }
+        } catch {}
+        scanRef.current = requestAnimationFrame(scan);
+      };
+      scanRef.current = requestAnimationFrame(scan);
+    } else {
+      // Fallback para Safari iOS: jsQR via canvas
+      import('jsqr').then(({ default: jsQR }) => {
+        const scan = () => {
+          if (!video.videoWidth) { scanRef.current = requestAnimationFrame(scan); return; }
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) { handleQR(code.data); return; }
+          scanRef.current = requestAnimationFrame(scan);
+        };
+        scanRef.current = requestAnimationFrame(scan);
+      });
+    }
+
     return () => { if (scanRef.current) cancelAnimationFrame(scanRef.current); };
   }, [camAbierta]);
 

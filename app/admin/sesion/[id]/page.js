@@ -98,19 +98,20 @@ function TabInvitaciones({ sesion }) {
     )?.id ?? '';
   })();
 
-  const [depto,        setDepto]        = useState(deptoInicial);
-  const [busqueda,     setBusqueda]     = useState('');
-  const [militantes,   setMilitantes]   = useState([]);
-  const [total,        setTotal]        = useState(0);
-  const [page,         setPage]         = useState(1);
-  const [cargando,     setCargando]     = useState(true);
-  const [seleccionados,setSeleccionados]= useState(new Map());
-  const [confirmacion, setConfirmacion] = useState(false);
-  const [enviando,     setEnviando]     = useState(false);
-  const [resultado,    setResultado]    = useState(null);
-  const [errorInv,     setErrorInv]     = useState('');
-  const [invitadosSet,   setInvitadosSet]   = useState(new Set());
-  const [invitadosLista, setInvitadosLista] = useState([]);
+  const [depto,            setDepto]            = useState(deptoInicial);
+  const [busqueda,         setBusqueda]         = useState('');
+  const [busquedaServer,   setBusquedaServer]   = useState('');
+  const [militantes,       setMilitantes]       = useState([]);
+  const [total,            setTotal]            = useState(0);
+  const [page,             setPage]             = useState(1);
+  const [cargando,         setCargando]         = useState(true);
+  const [seleccionados,    setSeleccionados]    = useState(new Map());
+  const [confirmacion,     setConfirmacion]     = useState(false);
+  const [enviando,         setEnviando]         = useState(false);
+  const [resultado,        setResultado]        = useState(null);
+  const [errorInv,         setErrorInv]         = useState('');
+  const [invitadosSet,     setInvitadosSet]     = useState(new Set());
+  const [invitadosLista,   setInvitadosLista]   = useState([]);
 
   const PER_PAGE     = 20;
   const totalPaginas = Math.ceil(total / PER_PAGE) || 1;
@@ -130,7 +131,16 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Carga militantes siempre (con o sin filtro de departamento)
+  // Debounce: envía la búsqueda al servidor 400ms después de que el usuario deja de escribir
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setBusquedaServer(busqueda.trim());
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+
+  // Carga militantes desde el servidor con filtro de departamento y búsqueda
   useEffect(() => {
     let activo = true;
     setCargando(true);
@@ -138,7 +148,8 @@ function TabInvitaciones({ sesion }) {
     (async () => {
       try {
         const params = new URLSearchParams({ page });
-        if (depto) params.set('departamento', depto);
+        if (depto)          params.set('departamento', depto);
+        if (busquedaServer) params.set('search', busquedaServer);
         const res  = await fetch(`/api/admin/militantes?${params}`);
         const json = await res.json();
         if (!activo) return;
@@ -152,23 +163,15 @@ function TabInvitaciones({ sesion }) {
       }
     })();
     return () => { activo = false; };
-  }, [depto, page]);
+  }, [depto, page, busquedaServer]);
 
-  // Filtrado local en tiempo real por nombre o número de documento
-  const datosFiltrados = busqueda.trim()
-    ? militantes.filter((m) => {
-        const q = busqueda.trim().toLowerCase();
-        return (
-          nombreMilitante(m).toLowerCase().includes(q) ||
-          (m.numero_documento ?? '').toLowerCase().includes(q)
-        );
-      })
-    : militantes;
+  const datosFiltrados = militantes;
 
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);
     setPage(1);
     setBusqueda('');
+    setBusquedaServer('');
     setSeleccionados(new Map());
     setResultado(null);
     setErrorInv('');

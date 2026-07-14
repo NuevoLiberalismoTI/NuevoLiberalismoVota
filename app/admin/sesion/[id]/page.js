@@ -324,8 +324,10 @@ function TabInvitaciones({ sesion }) {
             type="text"
             value={busqueda}
             onChange={(e) => { setBusqueda(e.target.value); setPage(1); }}
-            placeholder="Nombre o documento…"
-            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
+            placeholder={depto ? 'Nombre o documento…' : 'Selecciona un departamento primero'}
+            disabled={!depto}
+            title={!depto ? 'Selecciona un departamento para habilitar la búsqueda por nombre o documento' : ''}
+            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
           />
           {busqueda && (
             <button type="button" onClick={() => setBusqueda('')}

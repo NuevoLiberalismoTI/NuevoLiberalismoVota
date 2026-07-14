@@ -36,5 +36,42 @@ export async function GET(request, { params }) {
   });
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
-  return Response.json(data ?? { ok: false });
+  if (!data?.ok) return Response.json(data ?? { ok: false });
+
+  // Enriquecer pregunta activa con timer
+  if (data.pregunta_activa?.id) {
+    const { data: pregData } = await supabase
+      .from('asamblea_preguntas')
+      .select('duracion_segundos, publicada_en')
+      .eq('id', data.pregunta_activa.id)
+      .maybeSingle();
+
+    if (pregData?.duracion_segundos && pregData?.publicada_en) {
+      const elapsed = Math.floor((Date.now() - new Date(pregData.publicada_en).getTime()) / 1000);
+      data.pregunta_activa.segundos_restantes = Math.max(0, pregData.duracion_segundos - elapsed);
+    }
+  }
+
+  // Detectar preguntas cerradas donde el votante no participó
+  if (data.asistio) {
+    const [{ data: cerradas }, { data: votosUsuario }] = await Promise.all([
+      supabase
+        .from('asamblea_preguntas')
+        .select('id, texto')
+        .eq('asamblea_id', sesionId)
+        .eq('estado', 'cerrada'),
+      supabase
+        .from('votos')
+        .select('pregunta_id')
+        .eq('asamblea_id', sesionId)
+        .eq('cedula', cedula),
+    ]);
+
+    const votadoIds = new Set((votosUsuario || []).map((v) => v.pregunta_id));
+    data.preguntas_perdidas = (cerradas || [])
+      .filter((p) => !votadoIds.has(p.id))
+      .map((p) => p.texto);
+  }
+
+  return Response.json(data);
 }

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap, Camera, X, AlertTriangle, Timer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -18,9 +18,16 @@ export default function SesionPage() {
   const [paso, setPaso]             = useState('cargando'); // cargando|no_inscrito|codigo|esperando|votando|confirmado|resumen
   const [codigo, setCodigo]         = useState('');
   const [errCodigo, setErrCodigo]   = useState('');
-  const [seleccion, setSeleccion]   = useState(null);   // { respuesta, candidato_id }
+  const [seleccion, setSeleccion]   = useState(null);
   const [ultimoVoto, setUltimoVoto] = useState(null);
   const [cargando, setCargando]     = useState(false);
+  const [camAbierta, setCamAbierta] = useState(false);
+  const [soportaCam, setSoportaCam] = useState(false);
+  const [timerSeg, setTimerSeg]     = useState(null);
+  const videoRef  = useRef(null);
+  const streamRef = useRef(null);
+  const scanRef   = useRef(null);
+  const timerRef  = useRef(null);
 
   const cargarEstado = useCallback(async (cedula) => {
     const stored = sessionStorage.getItem('usuario');
@@ -61,6 +68,62 @@ export default function SesionPage() {
     const interval = setInterval(() => cargarEstado(u.cedula), 10000);
     return () => clearInterval(interval);
   }, [sesionId, router, cargarEstado]);
+
+  useEffect(() => {
+    setSoportaCam(typeof window !== 'undefined' && 'BarcodeDetector' in window);
+  }, []);
+
+  const abrirCamara = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      setCamAbierta(true);
+    } catch { alert('No se pudo acceder a la cámara'); }
+  };
+
+  const cerrarCamara = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (scanRef.current) cancelAnimationFrame(scanRef.current);
+    scanRef.current = null;
+    setCamAbierta(false);
+  };
+
+  useEffect(() => {
+    if (!camAbierta || !videoRef.current || !streamRef.current) return;
+    const video = videoRef.current;
+    video.srcObject = streamRef.current;
+    video.play();
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+    const scan = async () => {
+      try {
+        const codes = await detector.detect(video);
+        if (codes.length > 0) {
+          const raw = codes[0].rawValue;
+          let c = raw;
+          try { c = new URL(raw).searchParams.get('c') || raw; } catch {}
+          cerrarCamara();
+          setCodigo(c.toUpperCase().trim());
+          return;
+        }
+      } catch {}
+      scanRef.current = requestAnimationFrame(scan);
+    };
+    scanRef.current = requestAnimationFrame(scan);
+    return () => { if (scanRef.current) cancelAnimationFrame(scanRef.current); };
+  }, [camAbierta]);
+
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const rem = estado?.pregunta_activa?.segundos_restantes;
+    if (rem != null && rem > 0) {
+      setTimerSeg(rem);
+      timerRef.current = setInterval(() => {
+        setTimerSeg((prev) => { if (prev <= 1) { clearInterval(timerRef.current); return 0; } return prev - 1; });
+      }, 1000);
+    } else { setTimerSeg(null); }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [estado?.pregunta_activa?.id, estado?.pregunta_activa?.segundos_restantes]);
 
   // Cuando cambia el estado, reaccionar a la pregunta activa
   useEffect(() => {
@@ -182,8 +245,24 @@ export default function SesionPage() {
             {cargando ? <Loader2 size={18} className="animate-spin" /> : <ShieldCheck size={18} />}
             {cargando ? 'Verificando...' : 'Registrar asistencia'}
           </button>
+          {soportaCam && (
+            <button onClick={abrirCamara} type="button"
+              className="w-full mt-2 flex items-center justify-center gap-2 border-2 border-brand text-brand font-bold py-3 rounded-xl hover:bg-brand-50 transition-colors">
+              <Camera size={18}/> Escanear QR
+            </button>
+          )}
         </div>
       </div>
+      {camAbierta && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center gap-4">
+          <button onClick={cerrarCamara} className="absolute top-5 right-5 text-white/70 hover:text-white"><X size={28}/></button>
+          <p className="text-white text-sm font-bold uppercase tracking-widest">Apunta al código QR</p>
+          <div className="w-72 h-72 relative rounded-2xl overflow-hidden border-4 border-white/30">
+            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+          </div>
+          <p className="text-white/40 text-xs">El código se leerá automáticamente</p>
+        </div>
+      )}
       <Footer />
     </main>
   );
@@ -210,9 +289,23 @@ export default function SesionPage() {
             El moderador publicará la próxima pregunta en breve. Esta pantalla se actualiza automáticamente.
           </p>
           {estado?.votos?.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 inline-block">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 inline-block mb-4">
               <p className="text-2xl font-bold text-brand">{estado.votos.length}</p>
               <p className="text-xs text-gray-500">{estado.votos.length === 1 ? 'pregunta respondida' : 'preguntas respondidas'}</p>
+            </div>
+          )}
+          {estado?.preguntas_perdidas?.length > 0 && (
+            <div className="w-full max-w-sm bg-orange-50 border border-orange-200 rounded-2xl p-4 text-left mt-2">
+              <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <AlertTriangle size={13}/> No participaste en estas votaciones
+              </p>
+              {estado.preguntas_perdidas.map((txt, i) => (
+                <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
+                  <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
+                  <p className="text-xs text-orange-600">{txt}</p>
+                </div>
+              ))}
+              <p className="text-[10px] text-orange-400 mt-2">El tiempo de estas votaciones se agotó</p>
             </div>
           )}
         </div>
@@ -239,6 +332,17 @@ export default function SesionPage() {
               </span>
             </div>
 
+            {timerSeg !== null && (
+              <div className={`flex items-center justify-between mb-3 px-4 py-2.5 rounded-xl ${timerSeg <= 30 ? 'bg-red-100 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                <div className="flex items-center gap-1.5">
+                  <Timer size={14} className={timerSeg <= 30 ? 'text-red-500' : 'text-green-600'}/>
+                  <span className={`text-xs font-bold ${timerSeg <= 30 ? 'text-red-600' : 'text-green-700'}`}>Tiempo para votar</span>
+                </div>
+                <span className={`font-mono text-xl font-extrabold ${timerSeg <= 30 ? 'text-red-600 animate-pulse' : 'text-green-700'}`}>
+                  {Math.floor(timerSeg / 60).toString().padStart(2, '0')}:{(timerSeg % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            )}
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-5">
               <p className="text-base font-bold text-gray-900 leading-snug mb-6">{pa.texto}</p>
 

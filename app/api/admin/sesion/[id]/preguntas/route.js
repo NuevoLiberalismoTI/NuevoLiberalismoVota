@@ -7,12 +7,18 @@ export async function POST(request, { params }) {
 
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
-  const { tipo, tipo_mayoria, texto, opciones, enVivo, pregunta_base_id } = await request.json();
+  const { tipo, tipo_mayoria, texto, opciones, enVivo, pregunta_base_id, duracion_segundos, cupos } = await request.json();
 
   const supabase = createServerClient();
   const { data: preg, error } = await supabase
     .from('asamblea_preguntas')
-    .insert([{ asamblea_id: sesionId, texto, tipo, tipo_mayoria: tipo_mayoria || 'simple', en_vivo: enVivo, estado: 'pendiente', pregunta_base_id }])
+    .insert([{
+      asamblea_id: sesionId, texto, tipo,
+      tipo_mayoria: tipo_mayoria || 'simple',
+      en_vivo: enVivo, estado: 'pendiente', pregunta_base_id,
+      duracion_segundos: duracion_segundos || null,
+      cupos: cupos || null,
+    }])
     .select()
     .single();
 

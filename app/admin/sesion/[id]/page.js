@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -531,6 +531,8 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
   const [texto, setTexto]             = useState('');
   const [opciones, setOpciones]       = useState([OPCION_VACIA_INDIVIDUAL(), OPCION_VACIA_INDIVIDUAL()]);
   const [baseId, setBaseId]           = useState('');
+  const [duracion, setDuracion]       = useState('');
+  const [cupos, setCupos]             = useState('');
   const [err, setErr]                 = useState('');
 
   const selBase = (id) => {
@@ -565,7 +567,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
         setErr('Completa los nombres de todos los integrantes'); return;
       }
     }
-    onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones, enVivo, pregunta_base_id: baseId || null });
+    onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones, enVivo, pregunta_base_id: baseId || null, duracion, cupos });
   };
 
   return (
@@ -702,6 +704,30 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
         </div>
       )}
 
+      {/* Cronómetro + Cupos */}
+      <div className="flex gap-2">
+        <div className="flex-1 flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+            <Timer size={11}/> Duración (min, opcional)
+          </label>
+          <input type="number" min="1" max="120" value={duracion}
+            onChange={(e) => setDuracion(e.target.value)}
+            placeholder="Sin límite"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+        </div>
+        {tipo === 'candidatos' && (
+          <div className="flex-1 flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+              <Award size={11}/> Cupos D'Hondt
+            </label>
+            <input type="number" min="1" max="50" value={cupos}
+              onChange={(e) => setCupos(e.target.value)}
+              placeholder="Sin D'Hondt"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+          </div>
+        )}
+      </div>
+
       {err && <p className="text-xs text-red-500">{err}</p>}
 
       <div className="flex gap-2">
@@ -732,6 +758,11 @@ export default function AdminSesionPage() {
   const [mostrarCodigo,       setMostrarCodigo]       = useState(false);
   const [mostrarCodigoTexto,  setMostrarCodigoTexto]  = useState(false);
   const [mostrarProyeccion,   setMostrarProyeccion]   = useState(false);
+  const [timerSeg,            setTimerSeg]            = useState(null);
+  const [modalPartId,         setModalPartId]         = useState(null);
+  const [partData,            setPartData]            = useState(null);
+  const [partCargando,        setPartCargando]        = useState(false);
+  const timerRef = useRef(null);
   const [exportando,         setExportando]         = useState(false);
   const [cargando, setCargando]               = useState(false);
   const [cerrandoInsc, setCerrandoInsc]       = useState(false);
@@ -834,12 +865,16 @@ export default function AdminSesionPage() {
     ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100))
     : 0;
 
-  const handleGuardar = async ({ tipo, tipoMayoria, texto, opciones, enVivo, pregunta_base_id }) => {
+  const handleGuardar = async ({ tipo, tipoMayoria, texto, opciones, enVivo, pregunta_base_id, duracion, cupos }) => {
     setCargando(true);
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preguntas`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tipo, tipo_mayoria: tipoMayoria, texto, opciones, enVivo, pregunta_base_id }),
+      body: JSON.stringify({
+        tipo, tipo_mayoria: tipoMayoria, texto, opciones, enVivo, pregunta_base_id,
+        duracion_segundos: duracion ? Number(duracion) * 60 : null,
+        cupos: cupos ? Number(cupos) : null,
+      }),
     });
     setMostrarForm(false); setMostrarVivo(false);
     await cargar(); setCargando(false);
@@ -866,6 +901,48 @@ export default function AdminSesionPage() {
     await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/cerrar`, { method: 'POST' });
     await cargar(); setCargando(false);
   };
+
+  const calcDhondt = (opciones, cupos) => {
+    if (!cupos || !opciones?.length) return [];
+    const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
+    for (let i = 0; i < cupos; i++) {
+      let maxQ = -1, maxIdx = 0;
+      seats.forEach((s, idx) => {
+        const q = Number(s.total) / (s.cupos_ganados + 1);
+        if (q > maxQ) { maxQ = q; maxIdx = idx; }
+      });
+      seats[maxIdx].cupos_ganados++;
+    }
+    return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
+  };
+
+  const handleVerParticipacion = async (preguntaId) => {
+    setModalPartId(preguntaId);
+    setPartData(null);
+    setPartCargando(true);
+    const res  = await fetch(`/api/admin/pregunta/${preguntaId}/participacion?sesionId=${encodeURIComponent(sesionId)}`);
+    const json = await res.json();
+    if (json.ok) setPartData(json);
+    setPartCargando(false);
+  };
+
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const pa = preguntaActiva ?? null;
+    if (pa?.duracion_segundos && pa?.publicada_en) {
+      const rem = () => Math.max(0, pa.duracion_segundos - Math.floor((Date.now() - new Date(pa.publicada_en).getTime()) / 1000));
+      setTimerSeg(rem());
+      timerRef.current = setInterval(() => {
+        const r = rem();
+        setTimerSeg(r);
+        if (r <= 0) { clearInterval(timerRef.current); handleCerrar(); }
+      }, 1000);
+    } else {
+      setTimerSeg(null);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preguntaActiva?.id, preguntaActiva?.duracion_segundos, preguntaActiva?.publicada_en]);
 
   const handleExportPDF = async () => {
     setExportando(true);
@@ -1099,6 +1176,19 @@ export default function AdminSesionPage() {
               </button>
             </div>
             <p className="text-sm font-semibold text-gray-800 mb-3">{preguntaActiva.texto}</p>
+            {timerSeg !== null && (
+              <div className={`flex items-center justify-between mb-3 px-3 py-2 rounded-xl ${timerSeg <= 30 ? 'bg-red-100' : 'bg-white/70'}`}>
+                <div className="flex items-center gap-1.5">
+                  <Timer size={13} className={timerSeg <= 30 ? 'text-red-500' : 'text-green-600'} />
+                  <span className={`text-xs font-bold ${timerSeg <= 30 ? 'text-red-600' : 'text-green-700'}`}>
+                    Tiempo restante
+                  </span>
+                </div>
+                <span className={`font-mono text-lg font-extrabold ${timerSeg <= 30 ? 'text-red-600 animate-pulse' : 'text-green-700'}`}>
+                  {Math.floor(timerSeg / 60).toString().padStart(2, '0')}:{(timerSeg % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            )}
             <button onClick={handleCerrar} disabled={cargando}
               className="w-full flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
               <Lock size={14}/> Cerrar pregunta
@@ -1408,6 +1498,34 @@ export default function AdminSesionPage() {
                       })}
                     </div>
                   )}
+
+                  {/* D'Hondt */}
+                  {esCerrada && preg.tipo === 'candidatos' && (() => {
+                    const cuposPreg = preguntas.find((p) => p.id === preg.id)?.cupos;
+                    if (!cuposPreg || !preg.opciones?.length || total === 0) return null;
+                    const dhondt = calcDhondt(preg.opciones, cuposPreg);
+                    return (
+                      <div className="mt-4 border-t border-gray-100 pt-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                          <Award size={12}/> D'Hondt — {cuposPreg} cupo{cuposPreg !== 1 ? 's' : ''} a repartir
+                        </p>
+                        <div className="flex flex-col gap-1.5">
+                          {dhondt.map((c, i) => (
+                            <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${c.cupos_ganados > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+                              <span className={`text-sm font-bold w-5 text-center ${c.cupos_ganados > 0 ? 'text-green-700' : 'text-gray-300'}`}>{i + 1}</span>
+                              <span className={`flex-1 text-xs font-semibold ${c.cupos_ganados > 0 ? 'text-green-800' : 'text-gray-500'}`}>{c.respuesta}</span>
+                              <span className="text-xs text-gray-400">{c.total} votos</span>
+                              {c.cupos_ganados > 0 && (
+                                <span className="text-[10px] font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                  {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1515,8 +1633,14 @@ export default function AdminSesionPage() {
                           </button>
                         )}
                         {p.estado === 'cerrada' && (
-                          <div className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 py-2">
-                            <CheckCircle size={12}/> Votación cerrada
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center justify-center gap-2 text-xs text-gray-400 py-2">
+                              <CheckCircle size={12}/> Votación cerrada
+                            </div>
+                            <button onClick={() => handleVerParticipacion(p.id)}
+                              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                              <UsersRound size={12}/> Participación
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1591,6 +1715,61 @@ export default function AdminSesionPage() {
           </div>
         );
       })()}
+
+      {/* Modal: Participación por pregunta */}
+      {modalPartId && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => { setModalPartId(null); setPartData(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2"><UsersRound size={15} className="text-brand"/>Participación en votación</h3>
+              <button onClick={() => { setModalPartId(null); setPartData(null); }} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              {partCargando && <div className="flex justify-center py-8"><Loader2 size={24} className="text-brand animate-spin"/></div>}
+              {partData && !partCargando && (
+                <>
+                  <div className="flex gap-3 mb-4">
+                    <div className="flex-1 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center">
+                      <p className="text-2xl font-extrabold text-green-700">{partData.votaron.length}</p>
+                      <p className="text-xs text-green-600 font-semibold">Votaron</p>
+                    </div>
+                    <div className="flex-1 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
+                      <p className="text-2xl font-extrabold text-orange-600">{partData.no_votaron.length}</p>
+                      <p className="text-xs text-orange-500 font-semibold">No votaron</p>
+                    </div>
+                  </div>
+                  {partData.votaron.length > 0 && (
+                    <>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Votaron</p>
+                      <div className="flex flex-col gap-1 mb-4">
+                        {partData.votaron.map((v) => (
+                          <div key={v.cedula} className="flex items-center justify-between px-3 py-2 bg-green-50 rounded-lg">
+                            <span className="text-xs font-semibold text-gray-700">{v.nombre}</span>
+                            <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{v.respuesta}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {partData.no_votaron.length > 0 && (
+                    <>
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">No votaron</p>
+                      <div className="flex flex-col gap-1">
+                        {partData.no_votaron.map((v) => (
+                          <div key={v.cedula} className="flex items-center px-3 py-2 bg-orange-50 rounded-lg">
+                            <span className="text-xs font-semibold text-gray-600">{v.nombre}</span>
+                            <span className="text-xs text-gray-400 ml-auto font-mono">{v.cedula}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal pantalla completa: QR de asistencia */}
       {mostrarCodigo && (

@@ -100,10 +100,10 @@ function TabInvitaciones({ sesion }) {
 
   const [depto,          setDepto]          = useState(deptoInicial);
   const [busqueda,       setBusqueda]       = useState('');
-  const [todosMil,       setTodosMil]       = useState([]);   // todos (global, en memoria)
-  const [cargandoMil,    setCargandoMil]    = useState(0);
+  const [resultados,     setResultados]     = useState([]);   // resultados del servidor
+  const [totalServidor,  setTotalServidor]  = useState(0);    // total registros API
+  const [buscando,       setBuscando]       = useState(false);
   const [page,           setPage]           = useState(1);
-  const [cargando,       setCargando]       = useState(true);
   const [seleccionados,  setSeleccionados]  = useState(new Map());
   const [confirmacion,   setConfirmacion]   = useState(false);
   const [enviando,       setEnviando]       = useState(false);
@@ -112,11 +112,7 @@ function TabInvitaciones({ sesion }) {
   const [invitadosSet,   setInvitadosSet]   = useState(new Set());
   const [invitadosLista, setInvitadosLista] = useState([]);
 
-  const PER_PAGE     = 20;
-  const PER_PAGE_API = 100;
-  const LOTE         = 8;
-  const CACHE_KEY    = 'nl_militantes_v1';
-  const CACHE_TTL    = 8 * 60 * 60 * 1000; // 8 horas
+  const PER_PAGE = 20;  // registros por página (paginación local)
 
   // Carga emails ya invitados para esta sesión
   const cargarInvitados = useCallback(async () => {
@@ -133,81 +129,65 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Carga TODOS los militantes una vez, sin filtro de departamento.
-  // Primero busca en localStorage (cache TTL 8h). Si no hay cache válido,
-  // descarga en lotes paralelos y guarda el resultado en localStorage.
+  // Búsqueda en servidor con debounce.
+  // - Con texto ≥2 chars (nombre) o ≥3 dígitos (cédula parcial): busca en servidor.
+  // - Sin texto y con departamento: lista paginada del departamento.
+  // - Sin texto ni departamento: muestra lista vacía.
   useEffect(() => {
     let activo = true;
-    setCargando(true);
-    setCargandoMil(0);
-    setPage(1);
-    setErrorInv('');
+    let timer  = null;
 
-    (async () => {
-      try {
-        // ── 1. Intentar leer del cache ──
-        try {
-          const raw = localStorage.getItem(CACHE_KEY);
-          if (raw) {
-            const { data, ts } = JSON.parse(raw);
-            if (Date.now() - ts < CACHE_TTL && Array.isArray(data) && data.length > 0) {
-              if (activo) { setTodosMil(data); setCargandoMil(data.length); setCargando(false); }
-              return;
-            }
-          }
-        } catch { /* localStorage no disponible, continúa con fetch */ }
+    const q         = busqueda.trim();
+    const esDigitos = /^\d+$/.test(q);
+    const isSearch  = (q.length >= 2 && !esDigitos) || (q.length >= 3 && esDigitos);
 
-        // ── 2. Cache inválido o inexistente: descargar todo en paralelo ──
-        let acum = []; let pg = 1; let terminado = false;
-        while (!terminado && activo) {
-          const paginas = Array.from({ length: LOTE }, (_, i) => pg + i);
-          const resultados = await Promise.all(
-            paginas.map((p) =>
-              fetch(`/api/admin/militantes?${new URLSearchParams({ page: p, per_page: PER_PAGE_API })}`)
-                .then((r) => r.json())
-                .catch(() => ({ data: [] }))
-            )
-          );
+    const doFetch = (url) => {
+      setBuscando(true);
+      fetch(url)
+        .then((r) => r.json())
+        .then((json) => {
           if (!activo) return;
-          for (const json of resultados) {
-            const batch = json.data ?? [];
-            acum = [...acum, ...batch];
-            if (batch.length < PER_PAGE_API) { terminado = true; break; }
+          // Filtrar por departamento localmente si hay búsqueda + depto activo
+          let data = json.data ?? [];
+          if (isSearch && depto) {
+            data = data.filter((m) => String(m.id_departamento_residencia ?? '') === String(depto));
           }
-          setTodosMil([...acum]);
-          setCargandoMil(acum.length);
-          pg += LOTE;
-        }
+          setResultados(data);
+          setTotalServidor(json.total ?? 0);
+          setBuscando(false);
+        })
+        .catch(() => { if (activo) setBuscando(false); });
+    };
 
-        // ── 3. Guardar en cache ──
-        if (activo) {
-          try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: acum, ts: Date.now() })); } catch {}
-        }
-      } catch {
-        if (activo) setErrorInv('No se pudo conectar con la API de militantes.');
-      } finally {
-        if (activo) setCargando(false);
-      }
-    })();
-    return () => { activo = false; };
-  }, []); // Solo una vez al montar
+    if (isSearch) {
+      // Búsqueda con debounce
+      timer = setTimeout(() => {
+        const params = new URLSearchParams({ q, per_page: '100' });
+        doFetch(`/api/admin/militantes?${params}`);
+      }, 350);
+    } else if (depto) {
+      // Browse por departamento, paginado en servidor
+      const params = new URLSearchParams({ departamento: String(depto), page: String(page), per_page: '100' });
+      doFetch(`/api/admin/militantes?${params}`);
+    } else {
+      setResultados([]);
+      setTotalServidor(0);
+    }
 
-  // Filtro local: departamento + texto (todo en memoria, sin llamadas a la API)
-  const deptoCampo = (m) => String(m.id_departamento ?? m.departamento_id ?? m.departamento ?? '');
-  const base = depto ? todosMil.filter((m) => deptoCampo(m) === String(depto)) : todosMil;
-  const datosFiltrados = (() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((m) =>
-      nombreMilitante(m).toLowerCase().includes(q) ||
-      (m.numero_documento ?? '').toLowerCase().includes(q)
-    );
-  })();
+    return () => { activo = false; if (timer) clearTimeout(timer); };
+  }, [busqueda, depto, page]);
 
-  // Paginación local
-  const totalItems   = datosFiltrados.length;
-  const totalPaginas = Math.ceil(totalItems / PER_PAGE) || 1;
-  const itemsPagina  = datosFiltrados.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  // Paginación local sobre los resultados cargados
+  const q          = busqueda.trim();
+  const esDigitos  = /^\d+$/.test(q);
+  const isSearch   = (q.length >= 2 && !esDigitos) || (q.length >= 3 && esDigitos);
+  const totalItems   = isSearch ? resultados.length : Math.min(resultados.length, totalServidor);
+  const totalPaginas = isSearch
+    ? Math.ceil(resultados.length / PER_PAGE) || 1
+    : Math.ceil(totalServidor / 100) || 1;  // browse: 100 por página de API
+  const itemsPagina  = isSearch
+    ? resultados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+    : resultados;  // browse: el servidor ya paginó, mostramos todo
 
   const handleDeptoChange = (e) => {
     setDepto(e.target.value);
@@ -216,6 +196,7 @@ function TabInvitaciones({ sesion }) {
     setSeleccionados(new Map());
     setResultado(null);
     setErrorInv('');
+    setResultados([]);
   };
 
   const cambiarPagina = (nuevaPagina) => { setPage(nuevaPagina); };
@@ -326,8 +307,8 @@ function TabInvitaciones({ sesion }) {
           <input
             type="text"
             value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setPage(1); }}
-            placeholder="Nombre o documento…"
+            onChange={(e) => { setBusqueda(e.target.value); setPage(1); setResultados([]); }}
+            placeholder="Nombre o cédula (mín. 2 caracteres)"
             className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
           />
           {busqueda && (
@@ -338,16 +319,16 @@ function TabInvitaciones({ sesion }) {
           )}
         </div>
 
-        {!cargando && totalItems > 0 && (
-          <span className="text-xs text-gray-400 ml-auto">
-            {busqueda.trim()
-              ? `${datosFiltrados.length} resultado${datosFiltrados.length !== 1 ? 's' : ''} de ${todosMil.length.toLocaleString('es-CO')} cargados`
-              : cargando
-                ? `Cargando… ${cargandoMil.toLocaleString('es-CO')} militantes`
-                : `${todosMil.length.toLocaleString('es-CO')} militante${todosMil.length !== 1 ? 's' : ''}${depto ? ` · ${nombreDepto}` : ''}`
-            }
-          </span>
-        )}
+        <span className="text-xs text-gray-400 ml-auto">
+          {buscando
+            ? 'Buscando…'
+            : isSearch
+              ? `${resultados.length} resultado${resultados.length !== 1 ? 's' : ''}${totalServidor > resultados.length ? ` de ${totalServidor.toLocaleString('es-CO')}` : ''}`
+              : depto
+                ? `${totalServidor.toLocaleString('es-CO')} militante${totalServidor !== 1 ? 's' : ''} · ${nombreDepto}`
+                : ''
+          }
+        </span>
       </div>
 
       {/* ── Aviso pruebas ── */}
@@ -380,16 +361,22 @@ function TabInvitaciones({ sesion }) {
 
       {/* ── Lista (scroll interno) ── */}
       <div className="flex-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
-        {cargando && todosMil.length === 0 && (
+        {buscando && (
           <div className="flex flex-col justify-center items-center py-12 gap-2">
             <Loader2 size={24} className="text-brand animate-spin" />
-            <p className="text-xs text-gray-400">Cargando militantes…</p>
+            <p className="text-xs text-gray-400">Buscando…</p>
           </div>
         )}
-        {(!cargando || todosMil.length > 0) && datosFiltrados.length === 0 && (
+        {!buscando && !isSearch && !depto && (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <Search size={28} className="mb-2 text-gray-200" />
+            <p className="text-sm text-center leading-relaxed">Selecciona un departamento<br/>o escribe un nombre / cédula</p>
+          </div>
+        )}
+        {!buscando && (isSearch || depto) && itemsPagina.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <Users size={28} className="mb-2 text-gray-200" />
-            <p className="text-sm">{busqueda.trim() ? 'Sin resultados' : 'No hay militantes'}</p>
+            <p className="text-sm">{isSearch ? 'Sin resultados para esa búsqueda' : 'No hay militantes en este departamento'}</p>
           </div>
         )}
         {itemsPagina.length > 0 && (

@@ -1,13 +1,12 @@
-import { requireAdmin } from '../../../../lib/session';
+import { requireAdmin, requireSessionAccess } from '../../../../lib/session';
 import { createServerClient } from '../../../../lib/supabase-server';
 
 export async function GET(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
   const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
   const [
     { data: asm },
@@ -27,7 +26,6 @@ export async function GET(request, { params }) {
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
-  // Columnas reales: usuario_cedula, fecha_inscripcion, estado_acreditacion
   const { data: inscAll } = await supabase
     .from('inscripciones')
     .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
@@ -42,7 +40,6 @@ export async function GET(request, { params }) {
     }))
     .filter((i) => i.cedula);
 
-  // Enriquecer con nombres de usuario (falla silenciosamente si la tabla no existe)
   const cedulas = rawInsc.map((i) => i.cedula);
   let nombresMap = {};
   if (cedulas.length > 0) {
@@ -83,14 +80,13 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
-  const { estado } = await request.json();
-
   const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
+
+  const { estado } = await request.json();
   const { error } = await supabase.from('asambleas').update({ estado }).eq('id', sesionId);
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });

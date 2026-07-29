@@ -1,13 +1,12 @@
-import { requireAdmin } from '../../../../../lib/session';
+import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
 
 export async function POST(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
   const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
   const { error } = await supabase
     .from('asambleas')

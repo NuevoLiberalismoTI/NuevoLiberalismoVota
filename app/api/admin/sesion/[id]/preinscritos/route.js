@@ -1,17 +1,15 @@
-import { requireAdmin } from '../../../../../lib/session';
+import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
 
 const ESTADOS_VALIDOS = ['preinscrito', 'acreditado_voto', 'acreditado_ingreso', 'rechazado'];
 
 export async function GET(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
   const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
-  // Columnas reales: usuario_cedula, fecha_inscripcion, estado_acreditacion
   const { data, error } = await supabase
     .from('inscripciones')
     .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
@@ -45,19 +43,18 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
-  const body = await request.json();
   const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
+
+  const body = await request.json();
 
   if (!ESTADOS_VALIDOS.includes(body.estado_acreditacion)) {
     return Response.json({ ok: false, error: 'Estado inválido' }, { status: 400 });
   }
 
-  // Bulk: body.cedulas (array)
   if (body.cedulas && Array.isArray(body.cedulas) && body.cedulas.length > 0) {
     const { error } = await supabase
       .from('inscripciones')
@@ -68,7 +65,6 @@ export async function PATCH(request, { params }) {
     return Response.json({ ok: true });
   }
 
-  // Individual: body.cedula
   if (!body.cedula) return Response.json({ ok: false, error: 'Cédula requerida' }, { status: 400 });
   const { error } = await supabase
     .from('inscripciones')

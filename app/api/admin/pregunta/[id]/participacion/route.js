@@ -1,16 +1,15 @@
-import { requireAdmin } from '../../../../../lib/session';
+import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
 
 export async function GET(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id: preguntaId } = await params;
   const url      = new URL(request.url);
   const sesionId = url.searchParams.get('sesionId');
   if (!sesionId) return Response.json({ ok: false, error: 'sesionId requerido' }, { status: 400 });
 
   const supabase = createServerClient();
+  const session  = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
   const [{ data: votantes }, { data: inscripciones }] = await Promise.all([
     supabase

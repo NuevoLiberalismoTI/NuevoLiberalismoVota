@@ -47,10 +47,11 @@ export default function HomePage() {
       sessionStorage.setItem('usuario', JSON.stringify(user));
       const params = new URLSearchParams(window.location.search);
       const retorno = params.get('retorno');
-      if (retorno && user.rol !== 'admin') {
+      const esAdmin = user.rol === 'admin' || user.rol === 'coordinador';
+      if (retorno && !esAdmin) {
         router.push(retorno);
       } else {
-        router.push(user.rol === 'admin' ? '/admin' : '/dashboard');
+        router.push(esAdmin ? '/admin' : '/dashboard');
       }
     } catch {
       setError('Error al conectar. Intenta de nuevo.');

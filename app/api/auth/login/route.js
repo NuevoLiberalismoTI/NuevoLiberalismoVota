@@ -25,7 +25,7 @@ export async function POST(request) {
     const user = data[0];
 
     let tokenDispositivo = null;
-    if (user.rol !== 'admin') {
+    if (user.rol !== 'admin' && user.rol !== 'coordinador') {
       const { data: cfg } = await supabase
         .from('configuracion_sistema')
         .select('valor')

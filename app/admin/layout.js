@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users } from 'lucide-react';
+import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users, Shield } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -17,25 +17,28 @@ function getPageTitle(pathname) {
   return 'Admin';
 }
 
+// Paths coordinadores cannot visit
+const COORDINADOR_BLOQUEADOS = ['/admin/nueva', '/admin/usuarios', '/admin/parametricas', '/admin/militantes'];
+
 const NAV_ITEMS = [
   {
     group: 'PANEL',
     items: [
-      { label: 'Dashboard',    href: '/admin',        Icon: LayoutDashboard, exact: true  },
-      { label: 'Nueva sesión', href: '/admin/nueva',  Icon: Plus,            exact: false },
+      { label: 'Dashboard',    href: '/admin',        Icon: LayoutDashboard, exact: true,  soloAdmin: false },
+      { label: 'Nueva sesión', href: '/admin/nueva',  Icon: Plus,            exact: false, soloAdmin: true  },
     ],
   },
   {
     group: 'DIRECTORIO',
     items: [
-      { label: 'Militantes', href: '/admin/militantes', Icon: Users, exact: false },
+      { label: 'Militantes', href: '/admin/militantes', Icon: Users, exact: false, soloAdmin: true },
     ],
   },
   {
     group: 'CONFIGURACIÓN',
     items: [
-      { label: 'Administradores', href: '/admin/usuarios',     Icon: ShieldCheck,      exact: false },
-      { label: 'Parámetricas',    href: '/admin/parametricas', Icon: SlidersHorizontal, exact: false },
+      { label: 'Administradores', href: '/admin/usuarios',     Icon: ShieldCheck,       exact: false, soloAdmin: true },
+      { label: 'Parámetricas',    href: '/admin/parametricas', Icon: SlidersHorizontal, exact: false, soloAdmin: true },
     ],
   },
 ];
@@ -54,13 +57,21 @@ export default function AdminLayout({ children }) {
       return;
     }
     const u = JSON.parse(stored);
-    if (u.rol !== 'admin') {
+    if (u.rol !== 'admin' && u.rol !== 'coordinador') {
       router.replace('/');
       return;
     }
     setUsuario(u);
     setCargandoAuth(false);
   }, [router]);
+
+  // Guard coordinadores from restricted paths
+  useEffect(() => {
+    if (!usuario) return;
+    if (usuario.rol === 'coordinador' && COORDINADOR_BLOQUEADOS.some((p) => pathname.startsWith(p))) {
+      router.replace('/admin');
+    }
+  }, [usuario, pathname, router]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('usuario');
@@ -76,6 +87,7 @@ export default function AdminLayout({ children }) {
   }
 
   const pageTitle = getPageTitle(pathname);
+  const esAdmin   = usuario?.rol === 'admin';
 
   const isActive = (href, exact) =>
     exact ? pathname === href : pathname.startsWith(href);
@@ -100,49 +112,63 @@ export default function AdminLayout({ children }) {
           />
           <div className="mt-3 flex items-center gap-1.5">
             <span className="inline-flex h-2 w-2 rounded-full bg-brand" />
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">Panel Admin</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+              {esAdmin ? 'Panel Admin' : 'Panel Coordinador'}
+            </span>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-5">
-          {NAV_ITEMS.map(({ group, items }) => (
-            <div key={group}>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 px-2">
-                {group}
-              </p>
-              <div className="flex flex-col gap-0.5">
-                {items.map(({ label, href, Icon, exact }) => {
-                  const active = isActive(href, exact);
-                  return (
-                    <button
-                      key={href}
-                      onClick={() => router.push(href)}
-                      className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm font-semibold transition-all ${
-                        active
-                          ? 'bg-brand text-white rounded-xl'
-                          : 'text-gray-600 hover:bg-gray-50 rounded-xl'
-                      }`}
-                    >
-                      <Icon size={16} />
-                      {label}
-                    </button>
-                  );
-                })}
+          {NAV_ITEMS.map(({ group, items }) => {
+            const visibles = items.filter((item) => esAdmin || !item.soloAdmin);
+            if (visibles.length === 0) return null;
+            return (
+              <div key={group}>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 px-2">
+                  {group}
+                </p>
+                <div className="flex flex-col gap-0.5">
+                  {visibles.map(({ label, href, Icon, exact }) => {
+                    const active = isActive(href, exact);
+                    return (
+                      <button
+                        key={href}
+                        onClick={() => router.push(href)}
+                        className={`flex items-center gap-2.5 w-full px-3 py-2 text-sm font-semibold transition-all ${
+                          active
+                            ? 'bg-brand text-white rounded-xl'
+                            : 'text-gray-600 hover:bg-gray-50 rounded-xl'
+                        }`}
+                      >
+                        <Icon size={16} />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* User + Logout */}
         <div className="px-4 py-4 border-t border-gray-100">
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="flex-shrink-0 h-8 w-8 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold">
+            <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${esAdmin ? 'bg-brand' : 'bg-indigo-500'}`}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900 truncate">{usuario?.nombre}</p>
-              <p className="text-xs text-gray-400 font-mono truncate">{usuario?.cedula}</p>
+              <div className="flex items-center gap-1 mt-0.5">
+                {esAdmin
+                  ? <ShieldCheck size={10} className="text-brand flex-shrink-0" />
+                  : <Shield size={10} className="text-indigo-500 flex-shrink-0" />
+                }
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">
+                  {esAdmin ? 'Super Admin' : 'Coordinador'}
+                </p>
+              </div>
             </div>
           </div>
           <button

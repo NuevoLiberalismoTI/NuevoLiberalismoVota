@@ -1,8 +1,8 @@
-import { requireAdmin } from '../../../../lib/session';
+import { requireAdminOrCoordinador } from '../../../../lib/session';
 import { createServerClient } from '../../../../lib/supabase-server';
 
 export async function DELETE(request, { params }) {
-  const session = await requireAdmin();
+  const session = await requireAdminOrCoordinador();
   if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
   const { id } = await params;

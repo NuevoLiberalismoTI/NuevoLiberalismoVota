@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requireAdminOrCoordinador } from '../../../lib/session';
 
 const API_BASE = 'https://mcetest.com/nl/wp-json/nl/v1/militantes';
 const TOKEN    = '7TvcetUYWs0zuLMy5bX4Fx0cfYvrg2WCfbMpIOWVhCFwOQXB2WfMyWBB3kqSKIMo';
 
 export async function GET(request) {
+  const session = await requireAdminOrCoordinador();
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const page         = searchParams.get('page')         || '1';
   const per_page     = searchParams.get('per_page')     || '';

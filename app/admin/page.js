@@ -76,17 +76,21 @@ export default function AdminPage() {
       {/* Welcome + action */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Administrador</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+          {usuario?.rol === 'coordinador' ? 'Coordinador' : 'Administrador'}
+        </p>
           <h1 className="text-xl font-bold text-gray-900">
             {usuario ? `Bienvenido, ${usuario.nombre}` : 'Bienvenido'}
           </h1>
         </div>
-        <button
-          onClick={() => router.push('/admin/nueva')}
-          className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm text-sm"
-        >
-          <Plus size={16} /> Nueva sesión
-        </button>
+        {usuario?.rol !== 'coordinador' && (
+          <button
+            onClick={() => router.push('/admin/nueva')}
+            className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm text-sm"
+          >
+            <Plus size={16} /> Nueva sesión
+          </button>
+        )}
       </div>
 
       {/* Stats — 4 cols */}

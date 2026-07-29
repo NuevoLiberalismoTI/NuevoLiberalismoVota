@@ -1,15 +1,15 @@
-import { requireAdmin } from '../../../../../lib/session';
+import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
 
 export async function POST(request, { params }) {
-  const session = await requireAdmin();
-  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
-
   const { id } = await params;
   const sesionId = decodeURIComponent(id);
+  const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
+
   const { tipo, tipo_mayoria, texto, opciones, enVivo, pregunta_base_id, duracion_segundos, cupos } = await request.json();
 
-  const supabase = createServerClient();
   const { data: preg, error } = await supabase
     .from('asamblea_preguntas')
     .insert([{

@@ -1,11 +1,28 @@
-import { requireAdmin } from '../../../lib/session';
+import { requireAdmin, requireAdminOrCoordinador } from '../../../lib/session';
 import { createServerClient } from '../../../lib/supabase-server';
 
 export async function GET() {
-  const session = await requireAdmin();
+  const session = await requireAdminOrCoordinador();
   if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
   const supabase = createServerClient();
+
+  if (session.rol === 'coordinador') {
+    const { data: accesos } = await supabase
+      .from('coordinador_accesos')
+      .select('asamblea_id')
+      .eq('coordinador_cedula', session.cedula);
+    const ids = (accesos || []).map((a) => a.asamblea_id);
+    if (ids.length === 0) return Response.json({ ok: true, data: [] });
+    const { data, error } = await supabase
+      .from('asambleas')
+      .select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)')
+      .in('id', ids)
+      .order('created_at', { ascending: false });
+    if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return Response.json({ ok: true, data });
+  }
+
   const { data, error } = await supabase
     .from('asambleas')
     .select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)')
@@ -22,7 +39,6 @@ export async function POST(request) {
   const body = await request.json();
   const supabase = createServerClient();
 
-  // Si viene base_id, asignar secuencial server-side
   if (body.base_id) {
     const base = body.base_id;
     delete body.base_id;

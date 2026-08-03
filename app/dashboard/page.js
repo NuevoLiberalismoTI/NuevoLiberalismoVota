@@ -33,9 +33,7 @@ export default function DashboardPage() {
       (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
       const invitadas  = new Set((invData || []).map((i) => i.sesion_id));
       setSesiones(
-        data
-          .filter((s) => invitadas.has(s.id))
-          .map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }))
+        data.map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null, invitado: invitadas.has(s.id) }))
       );
     }
     setCargando(false);

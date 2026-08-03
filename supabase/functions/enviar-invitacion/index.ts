@@ -98,8 +98,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const resultados = await Promise.allSettled(
-      militantes.map(({ email, nombre }) =>
-        fetch('https://api.sendgrid.com/v3/mail/send', {
+      militantes.map(async ({ email, nombre }) => {
+        const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${SENDGRID_KEY}`,
@@ -111,14 +111,22 @@ Deno.serve(async (req: Request) => {
             subject: `📩 Invitación: ${sesion.nombre}`,
             content: [{ type: 'text/html', value: htmlInvitacion(nombre, sesion, plataformaUrl) }],
           }),
-        }).then((r) => ({ email, ok: r.ok }))
-      )
+        });
+        if (!r.ok) {
+          const detalle = await r.text().catch(() => '(sin detalle)');
+          console.error(`SendGrid ${r.status} para ${email}:`, detalle);
+          return { email, ok: false, sgStatus: r.status, sgError: detalle };
+        }
+        return { email, ok: true };
+      })
     );
 
-    const enviados = resultados.filter((r) => r.status === 'fulfilled' && (r.value as { ok: boolean }).ok).length;
-    const fallidos = resultados.length - enviados;
+    const results  = resultados.map((r) => r.status === 'fulfilled' ? r.value : { email: '', ok: false, sgError: String((r as PromiseRejectedResult).reason) });
+    const enviados = results.filter((r) => r.ok).length;
+    const fallidos = results.length - enviados;
+    const errores  = results.filter((r) => !r.ok);
 
-    return Response.json({ ok: true, enviados, fallidos }, { headers: CORS });
+    return Response.json({ ok: true, enviados, fallidos, errores, results }, { headers: CORS });
 
   } catch (err) {
     console.error('enviar-invitacion error:', err);

@@ -45,10 +45,14 @@ export async function POST(request, { params }) {
 
   const json = await res.json();
 
-  if (json.ok) {
-    await supabase
-      .from('invitaciones_enviadas')
-      .insert(militantes.map(({ email, nombre, cedula }) => ({ sesion_id: sesionId, email, nombre, cedula: cedula || null })));
+  if (json.ok && json.enviados > 0) {
+    const exitosos = new Set((json.results ?? []).filter((r) => r.ok).map((r) => r.email));
+    const filas    = militantes
+      .filter(({ email }) => exitosos.has(email))
+      .map(({ email, nombre, cedula }) => ({ sesion_id: sesionId, email, nombre, cedula: cedula || null }));
+    if (filas.length > 0) {
+      await supabase.from('invitaciones_enviadas').insert(filas);
+    }
   }
 
   return Response.json(json, { status: res.ok ? 200 : 502 });

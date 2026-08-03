@@ -111,6 +111,10 @@ function TabInvitaciones({ sesion }) {
   const [errorInv,       setErrorInv]       = useState('');
   const [invitadosSet,   setInvitadosSet]   = useState(new Set());
   const [invitadosLista, setInvitadosLista] = useState([]);
+  const [mostrarManual,  setMostrarManual]  = useState(false);
+  const [manualNombre,   setManualNombre]   = useState('');
+  const [manualEmail,    setManualEmail]    = useState('');
+  const [manualError,    setManualError]    = useState('');
 
   const PER_PAGE = 20;  // registros por página (paginación local)
 
@@ -200,6 +204,29 @@ function TabInvitaciones({ sesion }) {
   };
 
   const cambiarPagina = (nuevaPagina) => { setPage(nuevaPagina); };
+
+  const abrirManual = (nombreSugerido = '') => {
+    setManualNombre(nombreSugerido);
+    setManualEmail('');
+    setManualError('');
+    setMostrarManual(true);
+  };
+
+  const agregarManual = () => {
+    const nombre = manualNombre.trim();
+    const email  = manualEmail.trim().toLowerCase();
+    if (!nombre) { setManualError('El nombre es requerido.'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setManualError('Ingresa un correo electrónico válido.'); return; }
+    setSeleccionados((prev) => {
+      const next = new Map(prev);
+      next.set(email, { email, nombre, cedula: null });
+      return next;
+    });
+    setManualNombre('');
+    setManualEmail('');
+    setManualError('');
+    setMostrarManual(false);
+  };
 
   const toggle = (m) => {
     if (!m.email) return;
@@ -319,7 +346,7 @@ function TabInvitaciones({ sesion }) {
           )}
         </div>
 
-        <span className="text-xs text-gray-400 ml-auto">
+        <span className="text-xs text-gray-400">
           {buscando
             ? 'Buscando…'
             : isSearch
@@ -329,7 +356,47 @@ function TabInvitaciones({ sesion }) {
                 : ''
           }
         </span>
+        <button
+          onClick={() => abrirManual()}
+          className="ml-auto flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-brand hover:text-white transition-colors flex-shrink-0"
+        >
+          <Plus size={12} /> Manual
+        </button>
       </div>
+
+      {/* ── Formulario manual ── */}
+      {mostrarManual && (
+        <div className="px-4 py-3 border-b border-brand/20 bg-brand/5 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-brand">Agregar invitado manualmente</p>
+            <button onClick={() => setMostrarManual(false)} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+          </div>
+          <div className="flex items-start gap-2">
+            <input
+              type="text"
+              value={manualNombre}
+              onChange={(e) => { setManualNombre(e.target.value); setManualError(''); }}
+              placeholder="Nombre completo"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
+            />
+            <input
+              type="email"
+              value={manualEmail}
+              onChange={(e) => { setManualEmail(e.target.value); setManualError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && agregarManual()}
+              placeholder="correo@ejemplo.com"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
+            />
+            <button
+              onClick={agregarManual}
+              className="flex items-center gap-1 px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0"
+            >
+              <Plus size={13} /> Agregar
+            </button>
+          </div>
+          {manualError && <p className="text-xs text-red-600 font-medium">{manualError}</p>}
+        </div>
+      )}
 
       {/* ── Aviso pruebas ── */}
       <div className="px-4 py-2.5 border-b border-yellow-100 bg-yellow-50 flex items-start gap-2">
@@ -374,9 +441,17 @@ function TabInvitaciones({ sesion }) {
           </div>
         )}
         {!buscando && (isSearch || depto) && itemsPagina.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-            <Users size={28} className="mb-2 text-gray-200" />
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
+            <Users size={28} className="text-gray-200" />
             <p className="text-sm">{isSearch ? 'Sin resultados para esa búsqueda' : 'No hay militantes en este departamento'}</p>
+            {isSearch && (
+              <button
+                onClick={() => abrirManual(busqueda.trim())}
+                className="flex items-center gap-1.5 text-xs font-bold text-brand border border-brand rounded-lg px-3 py-1.5 hover:bg-brand hover:text-white transition-colors"
+              >
+                <Plus size={12} /> Agregar "{busqueda.trim()}" manualmente
+              </button>
+            )}
           </div>
         )}
         {itemsPagina.length > 0 && (

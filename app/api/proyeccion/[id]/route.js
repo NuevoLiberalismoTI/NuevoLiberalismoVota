@@ -10,7 +10,7 @@ export async function GET(request, { params }) {
   const [
     { data: asm },
     { count: asistentes },
-    { data: pregs,  error: pregsError },
+    { data: pregs },
     { data: resultados },
     { data: inscData },
   ] = await Promise.all([
@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
     // Sin join a candidatos para evitar errores de relación
     supabase
       .from('asamblea_preguntas')
-      .select('id, texto, tipo, estado, tiempo_limite, updated_at')
+      .select('id, texto, tipo, estado, duracion_segundos, publicada_en')
       .eq('asamblea_id', sesionId)
       .order('created_at'),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
@@ -70,14 +70,13 @@ export async function GET(request, { params }) {
 
   // Segundos restantes
   let segundosRestantes = null;
-  if (preguntaActiva?.tiempo_limite && preguntaActiva?.updated_at) {
-    const transcurridos = Math.floor((Date.now() - new Date(preguntaActiva.updated_at).getTime()) / 1000);
-    segundosRestantes = Math.max(0, preguntaActiva.tiempo_limite - transcurridos);
+  if (preguntaActiva?.duracion_segundos && preguntaActiva?.publicada_en) {
+    const transcurridos = Math.floor((Date.now() - new Date(preguntaActiva.publicada_en).getTime()) / 1000);
+    segundosRestantes = Math.max(0, preguntaActiva.duracion_segundos - transcurridos);
   }
 
   return Response.json({
     ok: true,
-    debug: { pregsError: pregsError?.message ?? null, pregCount: (pregs || []).length },
     sesion: {
       id:                    asm.id,
       nombre:                asm.nombre,
@@ -99,7 +98,7 @@ export async function GET(request, { params }) {
           id:                  preguntaActiva.id,
           texto:               preguntaActiva.texto,
           tipo:                preguntaActiva.tipo,
-          tiempo_limite:       preguntaActiva.tiempo_limite,
+          tiempo_limite:       preguntaActiva.duracion_segundos,
           segundos_restantes:  segundosRestantes,
           opciones,
         }

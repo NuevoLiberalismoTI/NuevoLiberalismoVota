@@ -103,7 +103,9 @@ export default function SesionPage() {
       let c = raw;
       try { c = new URL(raw).searchParams.get('c') || raw; } catch {}
       cerrarCamara();
-      setCodigo(c.toUpperCase().trim());
+      const codigoLimpio = c.toUpperCase().trim();
+      setCodigo(codigoLimpio);
+      verificarCodigo(codigoLimpio);
     };
 
     if (hasBarcodeDetector) {
@@ -134,7 +136,7 @@ export default function SesionPage() {
     }
 
     return () => { if (scanRef.current) cancelAnimationFrame(scanRef.current); };
-  }, [camAbierta]);
+  }, [camAbierta, verificarCodigo]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -164,8 +166,7 @@ export default function SesionPage() {
     }
   }, [estado]);
 
-  const handleVerificarCodigo = async () => {
-    if (!codigo.trim()) { setErrCodigo('Ingresa el código de asistencia'); return; }
+  const verificarCodigo = useCallback(async (codigoValor) => {
     setCargando(true); setErrCodigo('');
     const res = await fetch('/api/asistencia', {
       method: 'POST',
@@ -173,7 +174,7 @@ export default function SesionPage() {
       body: JSON.stringify({
         sesionId,
         cedula: usuario.cedula,
-        codigo: codigo.trim(),
+        codigo: codigoValor.trim(),
         ts:     Math.floor(Date.now() / 30000),
       }),
     });
@@ -185,6 +186,11 @@ export default function SesionPage() {
       await cargarEstado(usuario.cedula);
     }
     setCargando(false);
+  }, [sesionId, usuario, cargarEstado]);
+
+  const handleVerificarCodigo = async () => {
+    if (!codigo.trim()) { setErrCodigo('Ingresa el código de asistencia'); return; }
+    await verificarCodigo(codigo);
   };
 
   const handleConfirmarVoto = async () => {

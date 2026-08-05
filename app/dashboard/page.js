@@ -22,11 +22,17 @@ export default function DashboardPage() {
   const [accionId, setAccionId]     = useState(null);
   const [tab, setTab]               = useState('activas');
 
-  const cargar = async (cedula) => {
+  const cargar = async (cedula, email) => {
+    let invQuery = supabase.from('invitaciones_enviadas').select('sesion_id');
+    if (email) {
+      invQuery = invQuery.or(`cedula.eq.${cedula},email.eq.${email}`);
+    } else {
+      invQuery = invQuery.eq('cedula', cedula);
+    }
     const [{ data, error }, { data: acredData }, { data: invData }] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
       supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('usuario_cedula', cedula),
-      supabase.from('invitaciones_enviadas').select('sesion_id').eq('cedula', cedula),
+      invQuery,
     ]);
     if (!error && data) {
       const acredMap   = {};
@@ -46,10 +52,10 @@ export default function DashboardPage() {
     if (!stored) { router.replace('/'); return; }
     const u = JSON.parse(stored);
     setUsuario(u);
-    cargar(u.cedula);
+    cargar(u.cedula, u.email);
 
     // Polling cada 5 segundos para detectar cambios de estado en asambleas
-    const interval = setInterval(() => cargar(u.cedula), 5000);
+    const interval = setInterval(() => cargar(u.cedula, u.email), 5000);
     return () => clearInterval(interval);
   }, [router]);
 

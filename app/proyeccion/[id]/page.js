@@ -322,24 +322,25 @@ export default function ProyeccionPage() {
 
 function LogoNL() {
   const [failed, setFailed] = useState(false);
-  if (failed) {
-    return (
-      <div className="flex flex-col items-center gap-0.5">
-        <p className="text-white font-extrabold text-lg tracking-widest uppercase leading-none">Nuevo</p>
-        <p className="text-white font-extrabold text-lg tracking-widest uppercase leading-none">Liberalismo</p>
-      </div>
-    );
-  }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={LOGO}
-      alt="Nuevo Liberalismo"
-      width={140}
-      height={46}
-      className="object-contain brightness-0 invert opacity-90"
-      onError={() => setFailed(true)}
-    />
+    <div className="bg-white rounded-xl px-5 py-3 shadow-sm flex items-center justify-center" style={{ minWidth: 160, minHeight: 56 }}>
+      {failed ? (
+        <div className="flex flex-col items-center leading-none">
+          <p className="text-brand font-extrabold text-base tracking-widest uppercase">Nuevo</p>
+          <p className="text-brand font-extrabold text-base tracking-widest uppercase">Liberalismo</p>
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={LOGO}
+          alt="Nuevo Liberalismo"
+          width={140}
+          height={40}
+          className="object-contain"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
   );
 }
 

@@ -725,7 +725,8 @@ export default function AdminSesionPage() {
   const [cerrandoAsist, setCerrandoAsist]     = useState(false);
   const [qrTs, setQrTs]                   = useState(() => Math.floor(Date.now() / 30000));
   const [qrSegundos, setQrSegundos]       = useState(30);
-  const [preinscritos, setPreinscritos]   = useState([]);
+  const [preinscritos,    setPreinscritos]    = useState([]);
+  const [asistenciaList,  setAsistenciaList]  = useState([]);
   const [cargandoPreins, setCargandoPreins] = useState(false);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
 
@@ -794,6 +795,7 @@ export default function AdminSesionPage() {
     setPreguntasBase(json.preguntasBase);
     setStats(json.stats);
     setPreinscritos(json.preinscritos || []);
+    setAsistenciaList(json.asistenciaList || []);
     setResultados(json.resultados || []);
   }, [sesionId]);
 
@@ -1307,53 +1309,80 @@ export default function AdminSesionPage() {
 
         {/* Tab: Asistentes */}
         {tab === 'asistentes' && (() => {
-          const asistentes = preinscritos.filter(
-            (p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso'
+          const asistieronSet  = new Set(asistenciaList.map((a) => a.cedula));
+          const asistieronMap  = Object.fromEntries(asistenciaList.map((a) => [a.cedula, a.asistio_en]));
+          const habilitados    = preinscritos.filter((p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso');
+          const yaAsistieron   = habilitados.filter((p) => asistieronSet.has(p.cedula));
+          const faltan         = habilitados.filter((p) => !asistieronSet.has(p.cedula));
+
+          const FilaAsistente = ({ p, i, hora }) => (
+            <tr key={p.cedula} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+              <td className="px-5 py-3 text-xs text-gray-400 font-mono">{i + 1}</td>
+              <td className="px-5 py-3 font-semibold text-gray-800">{p.nombre}</td>
+              <td className="px-5 py-3 font-mono text-xs text-gray-500">{p.cedula}</td>
+              <td className="px-5 py-3">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ACRED_CFG[p.estado_acreditacion]?.color}`}>
+                  {ACRED_CFG[p.estado_acreditacion]?.label}
+                </span>
+              </td>
+              <td className="px-5 py-3 text-xs text-gray-400">
+                {hora ? new Date(hora).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+              </td>
+            </tr>
           );
+
+          const Tabla = ({ rows, hora }) => (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">#</th>
+                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Nombre</th>
+                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Cédula</th>
+                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Acreditación</th>
+                  <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">{hora ? 'Hora ingreso' : 'Inscripción'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p, i) => <FilaAsistente key={p.cedula} p={p} i={i} hora={hora ? asistieronMap[p.cedula] : null} />)}
+              </tbody>
+            </table>
+          );
+
           return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <div className="flex items-center gap-2">
-                  <Users size={14} className="text-brand" />
-                  <span className="text-sm font-bold text-gray-800">Asistentes</span>
-                  <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">{asistentes.length}</span>
+            <div className="flex flex-col gap-4">
+              {/* Ya asistieron */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-green-50">
+                  <CheckCircle size={14} className="text-green-600" />
+                  <span className="text-sm font-bold text-green-800">Ya marcaron asistencia</span>
+                  <span className="text-xs bg-green-600 text-white font-bold px-2 py-0.5 rounded-full ml-1">{yaAsistieron.length}</span>
                 </div>
+                {yaAsistieron.length === 0 ? (
+                  <div className="text-center py-10">
+                    <CheckCircle size={28} className="text-gray-200 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Nadie ha marcado asistencia aún</p>
+                  </div>
+                ) : (
+                  <Tabla rows={yaAsistieron} hora={true} />
+                )}
               </div>
-              {asistentes.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users size={28} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Aún no hay asistentes acreditados</p>
+
+              {/* Faltan */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-orange-50">
+                  <Clock size={14} className="text-orange-500" />
+                  <span className="text-sm font-bold text-orange-800">Faltan por asistir</span>
+                  <span className="text-xs bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full ml-1">{faltan.length}</span>
                 </div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50">
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">#</th>
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Nombre</th>
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Cédula</th>
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Estado</th>
-                      <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wide px-5 py-2.5">Inscripción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {asistentes.map((a, i) => (
-                      <tr key={a.cedula} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3 text-xs text-gray-400 font-mono">{i + 1}</td>
-                        <td className="px-5 py-3 font-semibold text-gray-800">{a.nombre}</td>
-                        <td className="px-5 py-3 font-mono text-xs text-gray-600">{a.cedula}</td>
-                        <td className="px-5 py-3">
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ACRED_CFG[a.estado_acreditacion]?.color}`}>
-                            {ACRED_CFG[a.estado_acreditacion]?.label}
-                          </span>
-                        </td>
-                        <td className="px-5 py-3 text-xs text-gray-400">
-                          {a.created_at ? new Date(a.created_at).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                {faltan.length === 0 ? (
+                  <div className="text-center py-10">
+                    <CheckCircle size={28} className="text-green-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">Todos los habilitados ya asistieron</p>
+                  </div>
+                ) : (
+                  <Tabla rows={faltan} hora={false} />
+                )}
+              </div>
             </div>
           );
         })()}

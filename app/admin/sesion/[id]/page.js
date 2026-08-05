@@ -729,6 +729,9 @@ export default function AdminSesionPage() {
   const [asistenciaList,  setAsistenciaList]  = useState([]);
   const [cargandoPreins, setCargandoPreins] = useState(false);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
+  const [importandoAcred, setImportandoAcred] = useState(false);
+  const [importAcredResultado, setImportAcredResultado] = useState(null);
+  const importAcredRef = useRef(null);
 
   const handleAcreditar = async (cedula, estado) => {
     setCargandoPreins(true);
@@ -970,6 +973,72 @@ export default function AdminSesionPage() {
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Inscritos');
     writeFile(wb, `inscritos-${sesion.id}.xlsx`);
+  };
+
+  const descargarPlantillaAcred = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const ws = utils.aoa_to_sheet([
+      ['cedula', 'estado_acreditacion', 'nombre'],
+      ['1012345678', 'acreditado_voto',    'María García López'],
+      ['79654321',   'acreditado_ingreso', 'Carlos Rodríguez Pérez'],
+      ['52891234',   'rechazado',          'Ana Martínez Torres'],
+    ]);
+    ws['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 35 }];
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Acreditacion');
+    writeFile(wb, 'plantilla_acreditacion.xlsx');
+  };
+
+  const importarExcelAcred = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportandoAcred(true);
+    setImportAcredResultado(null);
+
+    try {
+      const { read, utils } = await import('xlsx');
+      const buffer = await file.arrayBuffer();
+      const wb     = read(buffer, { type: 'array' });
+      const ws     = wb.Sheets[wb.SheetNames[0]];
+      const filas  = utils.sheet_to_json(ws, { defval: '' });
+
+      const ESTADOS = ['acreditado_voto', 'acreditado_ingreso', 'rechazado'];
+      const validas = filas
+        .map((f) => ({
+          cedula: String(f['cedula'] || f['Cedula'] || f['CEDULA'] || '').trim(),
+          estado: String(f['estado_acreditacion'] || f['Estado'] || f['estado'] || '').trim(),
+        }))
+        .filter((f) => f.cedula && ESTADOS.includes(f.estado));
+
+      if (validas.length === 0) {
+        setImportAcredResultado({ ok: false, error: 'No se encontraron filas válidas. Revisa que las columnas sean "cedula" y "estado_acreditacion".' });
+        return;
+      }
+
+      const byEstado = {};
+      validas.forEach(({ cedula, estado }) => {
+        if (!byEstado[estado]) byEstado[estado] = [];
+        byEstado[estado].push(cedula);
+      });
+
+      await Promise.all(
+        Object.entries(byEstado).map(([estado, cedulas]) =>
+          fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preinscritos`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cedulas, estado_acreditacion: estado }),
+          })
+        )
+      );
+
+      await cargar();
+      setImportAcredResultado({ ok: true, total: validas.length });
+    } catch (err) {
+      setImportAcredResultado({ ok: false, error: err.message });
+    } finally {
+      setImportandoAcred(false);
+    }
   };
 
   const handleCambiarEstado = async () => {
@@ -1248,6 +1317,32 @@ export default function AdminSesionPage() {
                 <RefreshCw size={13} className={cargandoPreins ? 'animate-spin' : ''} />
               </button>
             </div>
+
+            {/* Importar acreditación desde Excel */}
+            <div className="flex items-center gap-2 border border-dashed border-gray-200 rounded-xl px-4 py-3 bg-gray-50">
+              <FileSpreadsheet size={14} className="text-gray-400 flex-shrink-0" />
+              <span className="text-xs text-gray-500 flex-1">Importar acreditación masiva desde Excel</span>
+              <button onClick={descargarPlantillaAcred}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 bg-white hover:bg-gray-100 transition-colors flex-shrink-0">
+                Plantilla
+              </button>
+              <input ref={importAcredRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={importarExcelAcred} />
+              <button onClick={() => importAcredRef.current?.click()} disabled={importandoAcred}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-hover disabled:opacity-50 transition-colors flex-shrink-0">
+                {importandoAcred ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} />}
+                {importandoAcred ? 'Procesando...' : 'Importar Excel'}
+              </button>
+            </div>
+
+            {importAcredResultado && (
+              <div className={`flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl border ${importAcredResultado.ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                {importAcredResultado.ok
+                  ? <><CheckCircle size={13}/> {importAcredResultado.total} registro{importAcredResultado.total !== 1 ? 's' : ''} actualizados correctamente</>
+                  : <><AlertTriangle size={13}/> {importAcredResultado.error}</>
+                }
+                <button onClick={() => setImportAcredResultado(null)} className="ml-auto text-current opacity-50 hover:opacity-100"><X size={12}/></button>
+              </div>
+            )}
 
             {/* Filtro activo */}
             {filtroAcred !== 'todos' && (

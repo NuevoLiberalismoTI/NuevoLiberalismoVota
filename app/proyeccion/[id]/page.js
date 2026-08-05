@@ -323,7 +323,7 @@ export default function ProyeccionPage() {
 function LogoNL() {
   const [failed, setFailed] = useState(false);
   return (
-    <div className="bg-white rounded-xl px-5 py-3 shadow-sm flex items-center justify-center" style={{ minWidth: 160, minHeight: 56 }}>
+    <div className="bg-white rounded-lg px-3 py-1.5 shadow-sm flex items-center justify-center" style={{ minWidth: 140, minHeight: 44 }}>
       {failed ? (
         <div className="flex flex-col items-center leading-none">
           <p className="text-brand font-extrabold text-base tracking-widest uppercase">Nuevo</p>

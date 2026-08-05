@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -412,8 +412,8 @@ function TabInvitaciones({ sesion }) {
             </div>
             <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
               <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
-              <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
-              <p>📍 {sesion.lugar}</p>
+              <p className="flex items-center gap-1"><Calendar size={11} className="flex-shrink-0" /> {sesion.fecha} · <Clock size={11} className="flex-shrink-0" /> {sesion.hora}</p>
+              <p className="flex items-center gap-1"><MapPin size={11} className="flex-shrink-0" /> {sesion.lugar}</p>
             </div>
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
@@ -671,7 +671,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
           Cancelar
         </button>
         <button onClick={guardar} className={`flex-1 py-2 rounded-lg text-sm font-bold text-white ${enVivo ? 'bg-orange-500 hover:bg-orange-600' : 'bg-brand hover:bg-brand-hover'}`}>
-          {enVivo ? '⚡ Publicar en vivo' : 'Guardar'}
+          {enVivo ? <><Zap size={13} className="inline mr-1" />Publicar en vivo</> : 'Guardar'}
         </button>
       </div>
     </div>
@@ -991,11 +991,11 @@ export default function AdminSesionPage() {
 
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-            <span>📅 {sesion.fecha} · {sesion.hora}</span>
-            <span>📍 {sesion.lugar}</span>
-            <span>🏷️ {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
+            <span className="flex items-center gap-1"><Calendar size={11} className="flex-shrink-0" /> {sesion.fecha} · {sesion.hora}</span>
+            <span className="flex items-center gap-1"><MapPin size={11} className="flex-shrink-0" /> {sesion.lugar}</span>
+            <span className="flex items-center gap-1"><Tag size={11} className="flex-shrink-0" /> {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
             <span className="flex items-center gap-2">
-              🔑
+              <Key size={11} className="flex-shrink-0" />
               <span className={`font-mono font-bold tracking-widest ${mostrarCodigoTexto ? 'text-gray-900 select-all' : 'text-gray-300'}`}>
                 {mostrarCodigoTexto ? sesion.codigo_asistencia : '••••••'}
               </span>
@@ -1022,7 +1022,7 @@ export default function AdminSesionPage() {
                     ⚠ {stats.pendientes} pendiente{stats.pendientes !== 1 ? 's' : ''}
                   </button>
                 )}
-                <span>✅ <strong>{stats.asistentes}</strong> asistentes</span>
+                <span className="flex items-center gap-1"><CheckCircle size={11} className="inline text-gray-400" /> <strong>{stats.asistentes}</strong> asistentes</span>
               </div>
 
               <div>

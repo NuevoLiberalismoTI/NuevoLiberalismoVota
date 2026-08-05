@@ -29,21 +29,46 @@ export default function DashboardPage() {
     } else {
       invQuery = invQuery.eq('cedula', cedula);
     }
-    const [{ data, error }, { data: acredData }, { data: invData }] = await Promise.all([
+
+    const [{ data: rpcData, error }, { data: acredData }, { data: invData }] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
       supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('usuario_cedula', cedula),
       invQuery,
     ]);
-    if (!error && data) {
-      const acredMap   = {};
-      (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
-      const invitadas  = new Set((invData || []).map((i) => i.sesion_id));
-      setSesiones(
-        data
-          .filter((s) => invitadas.has(s.id))
-          .map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }))
-      );
+
+    if (error) { setCargando(false); return; }
+
+    const acredMap    = {};
+    (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
+
+    const invitadasIds = new Set((invData || []).map((i) => i.sesion_id));
+    const rpcIds       = new Set((rpcData || []).map((s) => s.id));
+
+    // Sesiones invitadas que el RPC no devolvió (usuario aún no inscrito)
+    const faltantes = [...invitadasIds].filter((id) => !rpcIds.has(id));
+    let extra = [];
+    if (faltantes.length > 0) {
+      const { data: extData } = await supabase
+        .from('asambleas')
+        .select('*, tipos_asamblea(nombre), colectivos(nombre)')
+        .in('id', faltantes)
+        .neq('estado', 'borrador');
+      extra = (extData || []).map((s) => ({
+        ...s,
+        tipo_nombre:      s.tipos_asamblea?.nombre ?? '',
+        colectivo_nombre: s.colectivos?.nombre ?? '',
+        esta_inscrito:    false,
+        ya_asistio:       false,
+        total_inscritos:  0,
+      }));
     }
+
+    const todas = [
+      ...(rpcData || []).filter((s) => invitadasIds.has(s.id)),
+      ...extra,
+    ].map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }));
+
+    setSesiones(todas);
     setCargando(false);
   };
 
@@ -68,7 +93,7 @@ export default function DashboardPage() {
     });
     const data = await res.json();
     if (!data.ok) alert(data.error || 'Error al inscribirse');
-    await cargar(usuario.cedula);
+    await cargar(usuario.cedula, usuario.email);
     setAccionId(null);
   };
 
@@ -76,7 +101,7 @@ export default function DashboardPage() {
     setAccionId(id);
     const { data } = await supabase.rpc('cancelar_inscripcion', { p_asamblea_id: id, p_cedula: usuario.cedula });
     if (!data?.ok) alert(data?.error || 'Error al cancelar');
-    await cargar(usuario.cedula);
+    await cargar(usuario.cedula, usuario.email);
     setAccionId(null);
   };
 

@@ -5,14 +5,13 @@ export async function GET(request) {
   const cedula = searchParams.get('cedula')?.trim();
   if (!cedula) return Response.json({ ok: false, error: 'Número de identificación requerido' }, { status: 400 });
 
-  const token = process.env.MILITANTES_API_TOKEN;
-  if (!token) return Response.json({ ok: false, error: 'Servicio no disponible' }, { status: 500 });
+  const token = process.env.MILITANTES_API_TOKEN || '7TvcetUYWs0zuLMy5bX4Fx0cfYvrg2WCfbMpIOWVhCFwOQXB2WfMyWBB3kqSKIMo';
 
   // Consultar API externa de militantes
   let militante = null;
   try {
     const res = await fetch(
-      `https://mcetest.com/nl/wp-json/nl/v1/militantes/cedula/${encodeURIComponent(cedula)}?token=${token}`,
+      `https://www.nuevoliberalismo.org/wp-json/nl/v1/militantes/cedula/${encodeURIComponent(cedula)}?token=${token}`,
       { cache: 'no-store' }
     );
     if (res.status === 404) {

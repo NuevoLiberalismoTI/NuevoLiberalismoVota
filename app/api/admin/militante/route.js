@@ -13,7 +13,7 @@ export async function GET(request) {
 
   try {
     const res = await fetch(
-      `https://mcetest.com/nl/wp-json/nl/v1/militantes/cedula/${encodeURIComponent(cedula)}?token=${token}`,
+      `https://www.nuevoliberalismo.org/wp-json/nl/v1/militantes/cedula/${encodeURIComponent(cedula)}?token=${token}`,
       { cache: 'no-store' }
     );
 

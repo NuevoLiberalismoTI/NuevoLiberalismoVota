@@ -977,16 +977,44 @@ export default function AdminSesionPage() {
 
   const descargarPlantillaAcred = async () => {
     const { utils, writeFile } = await import('xlsx');
-    const ws = utils.aoa_to_sheet([
-      ['cedula', 'estado_acreditacion', 'nombre'],
-      ['1012345678', 'acreditado_voto',    'María García López'],
-      ['79654321',   'acreditado_ingreso', 'Carlos Rodríguez Pérez'],
-      ['52891234',   'rechazado',          'Ana Martínez Torres'],
+
+    const header = [['cedula', 'nombre', 'email', 'estado_acreditacion']];
+    const rows   = preinscritos.map((p) => [
+      p.cedula,
+      p.nombre,
+      p.email || '',
+      p.estado_acreditacion || 'preinscrito',
     ]);
-    ws['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 35 }];
+
+    const ws = utils.aoa_to_sheet([...header, ...rows]);
+    ws['!cols'] = [{ wch: 16 }, { wch: 38 }, { wch: 34 }, { wch: 22 }];
+
+    if (rows.length > 0) {
+      ws['!dataValidations'] = [{
+        ref:            `D2:D${rows.length + 1}`,
+        type:           'list',
+        formula1:       '"acreditado_voto,acreditado_ingreso,rechazado,preinscrito"',
+        showDropDown:   false,
+        showErrorMessage: true,
+        errorTitle:     'Estado inválido',
+        error:          'Use: acreditado_voto · acreditado_ingreso · rechazado · preinscrito',
+      }];
+    }
+
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Acreditacion');
-    writeFile(wb, 'plantilla_acreditacion.xlsx');
+
+    const wsRef = utils.aoa_to_sheet([
+      ['Valor',               'Descripción'],
+      ['acreditado_voto',     'Aprobado — Ingreso y Voto'],
+      ['acreditado_ingreso',  'Aprobado — Solo Ingreso (sin voto)'],
+      ['rechazado',           'Acceso denegado'],
+      ['preinscrito',         'Pendiente de revisión (sin cambio)'],
+    ]);
+    wsRef['!cols'] = [{ wch: 22 }, { wch: 38 }];
+    utils.book_append_sheet(wb, wsRef, 'Referencia');
+
+    writeFile(wb, `acreditacion-${sesionId}.xlsx`);
   };
 
   const importarExcelAcred = async (e) => {

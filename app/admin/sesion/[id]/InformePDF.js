@@ -59,8 +59,9 @@ const s = StyleSheet.create({
 });
 
 export function InformePDF({ sesion, stats, resultados, logoData }) {
-  const quorumReq      = stats ? Math.floor(stats.inscritos / 2) + 1 : 0;
-  const pctAsist       = stats?.inscritos > 0 ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100)) : 0;
+  const baseQuorum     = stats?.acreditados_voto ?? stats?.inscritos ?? 0;
+  const quorumReq      = baseQuorum > 0 ? Math.floor(baseQuorum / 2) + 1 : 0;
+  const pctAsist       = baseQuorum > 0 ? Math.min(100, Math.round((stats.asistentes / baseQuorum) * 100)) : 0;
   const quorumAlcanzado = stats ? stats.asistentes >= quorumReq : false;
   const hoy            = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -144,7 +145,7 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
               </View>
               <View style={s.quorumRow}>
                 <Text style={s.quorumLabel}>
-                  Quórum: {quorumReq} asistentes requeridos (50%+1 de {stats.inscritos})
+                  Quórum: {quorumReq} asistentes requeridos (50%+1 de {baseQuorum} acreditados con voto)
                 </Text>
                 <Text style={{ ...s.quorumStatus, color: quorumAlcanzado ? GREEN : RED }}>
                   {quorumAlcanzado ? 'Alcanzado' : 'No alcanzado'}
@@ -168,11 +169,10 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
           {resultados.map((preg, idx) => {
             const total   = (preg.opciones || []).reduce((acc, o) => acc + Number(o.total), 0);
             const maxVotos = Math.max(...(preg.opciones || []).map((o) => Number(o.total)), 1);
-            const umbral  = preg.tipo_mayoria === 'absoluta'
-              ? Math.floor((stats?.inscritos || 0) / 2) + 1
-              : Math.floor((stats?.asistentes || 0) / 2) + 1;
-            const base      = preg.tipo_mayoria === 'absoluta' ? stats?.inscritos : stats?.asistentes;
-            const baseLabel = preg.tipo_mayoria === 'absoluta' ? 'inscritos' : 'asistentes';
+            const baseAcred = stats?.acreditados_voto ?? 0;
+            const umbral    = Math.floor(baseAcred / 2) + 1;
+            const base      = baseAcred;
+            const baseLabel = 'acreditados con voto';
             const esValida  = preg.estado === 'cerrada' && total >= umbral;
             const ganador   = preg.estado === 'cerrada' && total > 0
               ? [...(preg.opciones || [])].sort((a, b) => Number(b.total) - Number(a.total))[0]?.respuesta

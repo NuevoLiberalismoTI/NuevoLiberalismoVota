@@ -840,11 +840,12 @@ export default function AdminSesionPage() {
   const activaId = sesion.pregunta_activa_id;
   const hayActiva= !!activaId;
 
-  const quorumRequerido  = stats ? Math.floor(stats.inscritos / 2) + 1 : 0;
+  const quorumRequerido  = stats ? Math.floor((stats.acreditados_voto ?? stats.inscritos) / 2) + 1 : 0;
   const quorumAlcanzado  = stats ? stats.asistentes >= quorumRequerido : false;
   const faltanParaQuorum = stats ? Math.max(0, quorumRequerido - stats.asistentes) : 0;
-  const pctAsistencia    = stats?.inscritos > 0
-    ? Math.min(100, Math.round((stats.asistentes / stats.inscritos) * 100))
+  const baseQuorum       = stats?.acreditados_voto ?? stats?.inscritos ?? 0;
+  const pctAsistencia    = baseQuorum > 0
+    ? Math.min(100, Math.round((stats.asistentes / baseQuorum) * 100))
     : 0;
 
   const handleGuardar = async ({ tipo, tipoMayoria, texto, opciones, enVivo, pregunta_base_id, duracion, cupos }) => {
@@ -1161,10 +1162,10 @@ export default function AdminSesionPage() {
                     className={`h-2.5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
                     style={{ width: `${pctAsistencia}%` }}
                   />
-                  {stats.inscritos > 0 && (
+                  {baseQuorum > 0 && (
                     <div
                       className="absolute top-0 h-2.5 w-0.5 bg-brand"
-                      style={{ left: `${Math.min(100, Math.round((quorumRequerido / stats.inscritos) * 100))}%` }}
+                      style={{ left: `${Math.min(100, Math.round((quorumRequerido / baseQuorum) * 100))}%` }}
                     />
                   )}
                 </div>
@@ -1525,9 +1526,9 @@ export default function AdminSesionPage() {
             )}
             {resultados.map((preg) => {
               const total      = Number(preg.total_votos) || 0;
-              const umbral     = Number(preg.umbral) || 0;
-              const baseUmbral = Number(preg.base_umbral) || 0;
-              const esValida   = preg.es_valida;
+              const baseUmbral = stats?.acreditados_voto ?? 0;
+              const umbral     = baseUmbral > 0 ? Math.floor(baseUmbral / 2) + 1 : (Number(preg.umbral) || 0);
+              const esValida   = total >= umbral && umbral > 0;
               const ganador    = preg.ganador;
               const esCerrada  = preg.estado === 'cerrada';
               const maxVotos   = preg.opciones?.length
@@ -1536,7 +1537,7 @@ export default function AdminSesionPage() {
 
               const pctParticipacion = baseUmbral > 0 ? Math.min(100, Math.round((total / baseUmbral) * 100)) : 0;
               const pctUmbral        = baseUmbral > 0 ? Math.min(100, Math.round((umbral / baseUmbral) * 100)) : 50;
-              const baseLabel        = preg.tipo_mayoria === 'absoluta' ? 'inscritos' : 'asistentes';
+              const baseLabel        = 'acreditados';
 
               return (
                 <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 transition-colors ${

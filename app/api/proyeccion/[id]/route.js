@@ -1,5 +1,7 @@
 import { createServerClient } from '../../../lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
   const { id } = await params;
   const sesionId = decodeURIComponent(id);

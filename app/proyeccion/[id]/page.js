@@ -57,13 +57,13 @@ export default function ProyeccionPage() {
   }, [datos?.preguntaActiva?.id]);
 
   if (error) return (
-    <div className="h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-white/50 text-xl">{error}</p>
+    <div className="h-screen flex items-center justify-center" style={{ background: '#0e0505' }}>
+      <p className="text-xl" style={{ color: 'rgba(255,180,180,0.5)' }}>{error}</p>
     </div>
   );
 
   if (!datos) return (
-    <div className="h-screen bg-gray-950 flex items-center justify-center">
+    <div className="h-screen flex items-center justify-center" style={{ background: '#0e0505' }}>
       <div className="w-12 h-12 rounded-full border-4 border-brand border-t-transparent animate-spin" />
     </div>
   );
@@ -77,7 +77,7 @@ export default function ProyeccionPage() {
   const quorumAlcanzado = quorumPct >= 50;
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden bg-gray-950 select-none">
+    <div className="h-screen w-screen flex overflow-hidden select-none" style={{ background: '#0e0505' }}>
 
       {/* ── Panel izquierdo: QR + quórum ────────────────────── */}
       <div className="w-[38%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-6">
@@ -151,15 +151,17 @@ export default function ProyeccionPage() {
       </div>
 
       {/* ── Panel derecho: contenido dinámico ───────────────── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ background: '#160808' }}>
 
-        {/* Header siempre visible */}
-        <div className="flex items-center justify-between px-10 py-5 border-b border-white/5">
+        {/* Header */}
+        <div className="flex items-center justify-between px-10 py-5 border-b" style={{ borderColor: 'rgba(220,50,50,0.15)' }}>
           <div>
-            <p className="text-white/40 text-xs font-bold uppercase tracking-widest">{sesion.estado === 'en_curso' ? 'En curso' : sesion.estado === 'finalizada' ? 'Finalizada' : 'Próxima'}</p>
-            <h1 className="text-white text-xl font-extrabold leading-tight">{sesion.nombre}</h1>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(255,180,180,0.5)' }}>
+              {sesion.estado === 'en_curso' ? '● En curso' : sesion.estado === 'finalizada' ? 'Finalizada' : 'Próxima'}
+            </p>
+            <h1 className="text-white text-2xl font-extrabold leading-tight">{sesion.nombre}</h1>
           </div>
-          <div className="flex items-center gap-5 text-white/40 text-sm">
+          <div className="flex items-center gap-5 text-sm" style={{ color: 'rgba(255,180,180,0.4)' }}>
             {sesion.fecha && <span className="flex items-center gap-1.5"><Calendar size={13}/>{sesion.fecha} · {sesion.hora}</span>}
             {sesion.lugar && <span className="flex items-center gap-1.5"><MapPin size={13}/>{sesion.lugar}</span>}
           </div>
@@ -177,59 +179,59 @@ export default function ProyeccionPage() {
             </div>
           )}
 
-          {/* Sin pregunta activa → stats grandes */}
-          {sesion.estado !== 'finalizada' && !preguntaActiva && (
-            <div className="flex flex-col items-center gap-8 w-full max-w-xl text-center">
+          {/* Sin pregunta activa → stats + quórum */}
+          {!preguntaActiva && sesion.estado !== 'finalizada' && (
+            <div className="flex flex-col items-center gap-8 w-full max-w-2xl text-center">
               <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-center gap-2">
-                  <span className="flex h-3 w-3 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-50" />
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-brand" />
+                <div className="flex items-center justify-center gap-2.5">
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ background: '#e53535' }} />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: '#e53535' }} />
                   </span>
-                  <span className="text-brand text-sm font-bold uppercase tracking-widest">Esperando votación</span>
+                  <span className="text-sm font-bold uppercase tracking-widest" style={{ color: '#e88888' }}>Esperando votación</span>
                 </div>
-                <p className="text-white/20 text-sm">El moderador publicará la primera pregunta en breve</p>
+                <p className="text-sm" style={{ color: 'rgba(255,180,180,0.3)' }}>El moderador publicará la primera pregunta en breve</p>
               </div>
 
-              {/* Tarjetas de métricas grandes */}
-              <div className="grid grid-cols-3 gap-4 w-full">
-                <BigStat value={quorum.inscritos} label="Inscritos" color="text-white/60" />
-                <BigStat value={quorum.acreditados_voto} label="Habilitados para votar" color="text-green-400" />
-                <BigStat value={quorum.asistentes} label="Asistentes" color="text-brand" />
+              {/* Métricas grandes */}
+              <div className="grid grid-cols-3 gap-5 w-full">
+                <BigStat value={quorum.inscritos}        label="Inscritos"              color="text-white/50"  bg="rgba(255,255,255,0.04)" border="rgba(220,80,80,0.12)" />
+                <BigStat value={quorum.acreditados_voto} label="Habilitados para votar" color="text-green-400" bg="rgba(0,200,80,0.06)"     border="rgba(0,180,60,0.2)"  />
+                <BigStat value={quorum.asistentes}       label="Asistentes presentes"   color="#ff6666"        bg="rgba(220,30,30,0.1)"     border="rgba(220,50,50,0.25)" />
               </div>
 
               {/* Quórum grande */}
-              <div className="w-full bg-white/5 border border-white/10 rounded-3xl p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-white/50 text-sm font-bold uppercase tracking-wide">Quórum deliberativo</span>
-                  <span className={`text-2xl font-extrabold tabular-nums ${quorumAlcanzado ? 'text-green-400' : 'text-orange-400'}`}>{quorumPct}%</span>
+              <div className="w-full rounded-3xl p-6" style={{ background: 'rgba(220,30,30,0.08)', border: '1px solid rgba(220,60,60,0.2)' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm font-bold uppercase tracking-wide" style={{ color: 'rgba(255,180,180,0.6)' }}>Quórum deliberativo</span>
+                  <span className={`text-3xl font-extrabold tabular-nums ${quorumAlcanzado ? 'text-green-400' : 'text-orange-400'}`}>{quorumPct}%</span>
                 </div>
-                <div className="h-5 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-6 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
                   <div
-                    className={`h-5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
+                    className={`h-6 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
                     style={{ width: `${Math.min(100, quorumPct)}%` }}
                   />
                 </div>
-                <p className={`text-sm font-bold mt-2 ${quorumAlcanzado ? 'text-green-400' : 'text-orange-400'}`}>
+                <p className={`text-sm font-bold mt-3 ${quorumAlcanzado ? 'text-green-400' : 'text-orange-400'}`}>
                   {quorumAlcanzado
                     ? `✓ Quórum alcanzado — ${quorum.asistentes} de ${quorum.acreditados_voto} habilitados presentes`
-                    : `Faltan ${Math.max(0, Math.ceil(quorum.acreditados_voto * 0.5) - quorum.asistentes)} asistentes para alcanzar quórum (50%)`
+                    : `Faltan ${Math.max(0, Math.ceil(quorum.acreditados_voto * 0.5) - quorum.asistentes)} asistentes para quórum (50%)`
                   }
                 </p>
               </div>
             </div>
           )}
 
-          {/* Pregunta activa */}
+          {/* ── Pregunta activa ── */}
           {preguntaActiva && (() => {
             const opciones   = preguntaActiva.opciones ?? [];
             const totalVotos = opciones.reduce((s, o) => s + Number(o.total), 0);
             const maxVotos   = Math.max(...opciones.map((o) => Number(o.total)), 1);
             return (
-              <div className="flex flex-col gap-6 w-full max-w-3xl">
+              <div className="flex flex-col gap-7 w-full max-w-3xl">
                 {/* Indicador + timer */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span className="flex h-3 w-3 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                       <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
@@ -239,46 +241,49 @@ export default function ProyeccionPage() {
                     </span>
                   </div>
                   {timer != null && (
-                    <span className={`text-5xl font-extrabold tabular-nums tracking-tight ${timer <= 30 ? 'text-red-400 animate-pulse' : 'text-white/60'}`}>
+                    <span className={`font-extrabold tabular-nums tracking-tight ${timer <= 30 ? 'text-red-400 animate-pulse text-6xl' : 'text-white text-5xl'}`}>
                       {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
                     </span>
                   )}
                 </div>
 
                 {/* Texto pregunta */}
-                <p className="text-white font-extrabold leading-tight" style={{ fontSize: 'clamp(1.5rem, 3.5vw, 3rem)' }}>
+                <p className="text-white font-extrabold leading-snug" style={{ fontSize: 'clamp(1.6rem, 3.8vw, 3.2rem)', textShadow: '0 2px 20px rgba(220,50,50,0.3)' }}>
                   {preguntaActiva.texto}
                 </p>
 
-                {/* Barras */}
+                {/* Barras de resultados */}
                 {opciones.length > 0 && (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-5">
                     {opciones.map((op, i) => {
                       const votos = Number(op.total);
                       const pct   = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
                       const bar   = Math.round((votos / maxVotos) * 100);
                       const esSI  = op.respuesta === 'SI';
                       const esNO  = op.respuesta === 'NO';
-                      const color = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
+                      const barColor = esSI ? '#22c55e' : esNO ? '#ef4444' : '#c41e1e';
                       return (
                         <div key={i}>
                           <div className="flex justify-between items-baseline mb-2">
-                            <span className="text-white text-xl font-bold flex items-center gap-2">
-                              {esSI && <ThumbsUp size={18} className="text-green-400" />}
-                              {esNO && <ThumbsDown size={18} className="text-red-400" />}
+                            <span className="text-white text-2xl font-bold flex items-center gap-2">
+                              {esSI && <ThumbsUp size={20} className="text-green-400" />}
+                              {esNO && <ThumbsDown size={20} className="text-red-400" />}
                               {op.respuesta}
                             </span>
-                            <span className="text-white/50 text-lg font-semibold tabular-nums">
+                            <span className="text-lg font-semibold tabular-nums" style={{ color: 'rgba(255,200,200,0.7)' }}>
                               {votos} voto{votos !== 1 ? 's' : ''} · {pct}%
                             </span>
                           </div>
-                          <div className="h-7 bg-white/10 rounded-full overflow-hidden">
-                            <div className={`h-7 rounded-full transition-all duration-700 ease-out ${color}`} style={{ width: `${bar}%` }} />
+                          <div className="h-8 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                            <div
+                              className="h-8 rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${bar}%`, background: barColor, boxShadow: `0 0 20px ${barColor}55` }}
+                            />
                           </div>
                         </div>
                       );
                     })}
-                    <p className="text-white/20 text-sm text-right">Total emitidos: {totalVotos} votos</p>
+                    <p className="text-sm text-right" style={{ color: 'rgba(255,180,180,0.3)' }}>Total emitidos: {totalVotos} votos</p>
                   </div>
                 )}
               </div>
@@ -302,11 +307,11 @@ function StatBox({ icon, label, value }) {
   );
 }
 
-function BigStat({ value, label, color }) {
+function BigStat({ value, label, color, bg = 'rgba(255,255,255,0.04)', border = 'rgba(255,255,255,0.08)' }) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col items-center gap-1">
-      <p className={`text-5xl font-extrabold tabular-nums ${color}`}>{value}</p>
-      <p className="text-white/40 text-xs font-semibold text-center leading-tight">{label}</p>
+    <div className="rounded-2xl p-6 flex flex-col items-center gap-2" style={{ background: bg, border: `1px solid ${border}` }}>
+      <p className={`text-6xl font-extrabold tabular-nums ${color}`} style={typeof color === 'string' && color.startsWith('#') ? { color } : {}}>{value}</p>
+      <p className="text-xs font-semibold text-center leading-tight" style={{ color: 'rgba(255,200,200,0.45)' }}>{label}</p>
     </div>
   );
 }

@@ -90,35 +90,22 @@ function nombreMilitante(m) {
 }
 
 function TabInvitaciones({ sesion }) {
-  // Deriva el ID de departamento del API a partir del nombre guardado en la sesión
-  const deptoInicial = (() => {
-    if (!sesion.departamento) return ''; // NACIONAL u otro sin departamento → sin filtro
-    return DEPARTAMENTOS_API.find(
-      (d) => d.nombre.toLowerCase() === (sesion.departamento || '').toLowerCase()
-    )?.id ?? '';
-  })();
-
-  const [depto,          setDepto]          = useState(deptoInicial);
-  const [busqueda,       setBusqueda]       = useState('');
-  const [resultados,     setResultados]     = useState([]);   // resultados del servidor
-  const [totalServidor,  setTotalServidor]  = useState(0);    // total registros API
-  const [buscando,       setBuscando]       = useState(false);
-  const [page,           setPage]           = useState(1);
+  const [modo,           setModo]           = useState('manual');
   const [seleccionados,  setSeleccionados]  = useState(new Map());
   const [confirmacion,   setConfirmacion]   = useState(false);
   const [enviando,       setEnviando]       = useState(false);
   const [resultado,      setResultado]      = useState(null);
-  const [errorInv,       setErrorInv]       = useState('');
   const [invitadosSet,   setInvitadosSet]   = useState(new Set());
   const [invitadosLista, setInvitadosLista] = useState([]);
-  const [mostrarManual,  setMostrarManual]  = useState(false);
-  const [manualNombre,   setManualNombre]   = useState('');
-  const [manualEmail,    setManualEmail]    = useState('');
-  const [manualError,    setManualError]    = useState('');
+  const [mNombre, setMNombre] = useState('');
+  const [mEmail,  setMEmail]  = useState('');
+  const [mCedula, setMCedula] = useState('');
+  const [mError,  setMError]  = useState('');
+  const [xlsFile,    setXlsFile]    = useState(null);
+  const [xlsPreview, setXlsPreview] = useState([]);
+  const [xlsError,   setXlsError]   = useState('');
+  const fileRef = useRef(null);
 
-  const PER_PAGE = 20;  // registros por página (paginación local)
-
-  // Carga emails ya invitados para esta sesión
   const cargarInvitados = useCallback(async () => {
     try {
       const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitados`);
@@ -133,152 +120,89 @@ function TabInvitaciones({ sesion }) {
 
   useEffect(() => { cargarInvitados(); }, [cargarInvitados]);
 
-  // Búsqueda en servidor con debounce.
-  // - Con texto ≥2 chars (nombre) o ≥3 dígitos (cédula parcial): busca en servidor.
-  // - Sin texto y con departamento: lista paginada del departamento.
-  // - Sin texto ni departamento: muestra lista vacía.
-  useEffect(() => {
-    let activo = true;
-    let timer  = null;
-
-    const q         = busqueda.trim();
-    const esDigitos = /^\d+$/.test(q);
-    const isSearch  = (q.length >= 2 && !esDigitos) || (q.length >= 3 && esDigitos);
-
-    const doFetch = (url) => {
-      setBuscando(true);
-      fetch(url)
-        .then((r) => r.json())
-        .then((json) => {
-          if (!activo) return;
-          // Filtrar por departamento localmente si hay búsqueda + depto activo
-          let data = json.data ?? [];
-          if (isSearch && depto) {
-            data = data.filter((m) => String(m.id_departamento_residencia ?? '') === String(depto));
-          }
-          setResultados(data);
-          setTotalServidor(json.total ?? 0);
-          setBuscando(false);
-        })
-        .catch(() => { if (activo) setBuscando(false); });
-    };
-
-    if (isSearch) {
-      // Búsqueda con debounce
-      timer = setTimeout(() => {
-        const params = new URLSearchParams({ q, per_page: '100' });
-        doFetch(`/api/admin/militantes?${params}`);
-      }, 350);
-    } else if (depto) {
-      // Browse por departamento, paginado en servidor
-      const params = new URLSearchParams({ departamento: String(depto), page: String(page), per_page: '100' });
-      doFetch(`/api/admin/militantes?${params}`);
-    } else {
-      setResultados([]);
-      setTotalServidor(0);
-    }
-
-    return () => { activo = false; if (timer) clearTimeout(timer); };
-  }, [busqueda, depto, page]);
-
-  // Paginación local sobre los resultados cargados
-  const q          = busqueda.trim();
-  const esDigitos  = /^\d+$/.test(q);
-  const isSearch   = (q.length >= 2 && !esDigitos) || (q.length >= 3 && esDigitos);
-  const totalItems   = isSearch ? resultados.length : Math.min(resultados.length, totalServidor);
-  const totalPaginas = isSearch
-    ? Math.ceil(resultados.length / PER_PAGE) || 1
-    : Math.ceil(totalServidor / 100) || 1;  // browse: 100 por página de API
-  const itemsPagina  = isSearch
-    ? resultados.slice((page - 1) * PER_PAGE, page * PER_PAGE)
-    : resultados;  // browse: el servidor ya paginó, mostramos todo
-
-  const handleDeptoChange = (e) => {
-    setDepto(e.target.value);
-    setPage(1);
-    setBusqueda('');
-    setSeleccionados(new Map());
-    setResultado(null);
-    setErrorInv('');
-    setResultados([]);
-  };
-
-  const cambiarPagina = (nuevaPagina) => { setPage(nuevaPagina); };
-
-  const abrirManual = (nombreSugerido = '') => {
-    setManualNombre(nombreSugerido);
-    setManualEmail('');
-    setManualError('');
-    setMostrarManual(true);
-  };
+  const listaSeleccionada = Array.from(seleccionados.values());
 
   const agregarManual = () => {
-    const nombre = manualNombre.trim();
-    const email  = manualEmail.trim().toLowerCase();
-    if (!nombre) { setManualError('El nombre es requerido.'); return; }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setManualError('Ingresa un correo electrónico válido.'); return; }
-    setSeleccionados((prev) => {
-      const next = new Map(prev);
-      next.set(email, { email, nombre, cedula: null });
-      return next;
-    });
-    setManualNombre('');
-    setManualEmail('');
-    setManualError('');
-    setMostrarManual(false);
+    const nombre = mNombre.trim();
+    const email  = mEmail.trim().toLowerCase();
+    const cedula = mCedula.trim() || null;
+    if (!nombre) { setMError('El nombre es requerido.'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setMError('Ingresa un correo válido.'); return; }
+    setSeleccionados((prev) => { const next = new Map(prev); next.set(email, { email, nombre, cedula }); return next; });
+    setMNombre(''); setMEmail(''); setMCedula(''); setMError('');
   };
 
-  const toggle = (m) => {
-    if (!m.email) return;
-    setSeleccionados((prev) => {
-      const next = new Map(prev);
-      if (next.has(m.email)) next.delete(m.email);
-      else next.set(m.email, { email: m.email, nombre: nombreMilitante(m), cedula: m.numero_documento || null });
-      return next;
-    });
+  const parsearExcel = async (file) => {
+    setXlsError(''); setXlsPreview([]); setXlsFile(file);
+    try {
+      const { read, utils } = await import('xlsx');
+      const buffer = await file.arrayBuffer();
+      const wb   = read(buffer, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = utils.sheet_to_json(ws, { defval: '' });
+      const norm = (s) => String(s ?? '').toLowerCase().trim().replace(/[^a-z]/g, '');
+      const COLS_NOMBRE = ['nombre', 'nombres', 'name', 'fullname'];
+      const COLS_EMAIL  = ['email', 'correo', 'mail', 'correoelectronico'];
+      const COLS_CEDULA = ['cedula', 'documento', 'cc', 'numerodocumento', 'numdoc', 'id'];
+      const findCol = (keys, candidates) => keys.find((k) => candidates.includes(norm(k)));
+      if (rows.length === 0) { setXlsError('El archivo está vacío.'); return; }
+      const keys      = Object.keys(rows[0]);
+      const colNombre = findCol(keys, COLS_NOMBRE);
+      const colEmail  = findCol(keys, COLS_EMAIL);
+      const colCedula = findCol(keys, COLS_CEDULA);
+      if (!colNombre || !colEmail) { setXlsError('El archivo debe tener columnas "nombre" y "correo" (o email).'); return; }
+      const parsed = rows
+        .map((r) => ({
+          nombre: String(r[colNombre] ?? '').trim(),
+          email:  String(r[colEmail]  ?? '').trim().toLowerCase(),
+          cedula: colCedula ? (String(r[colCedula] ?? '').trim() || null) : null,
+        }))
+        .filter((r) => r.nombre && r.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email));
+      if (parsed.length === 0) { setXlsError('No se encontraron filas válidas con nombre y correo.'); return; }
+      setXlsPreview(parsed);
+    } catch { setXlsError('Error al leer el archivo. Asegúrate de que sea .xlsx o .csv válido.'); }
   };
 
-  const listaSeleccionada = Array.from(seleccionados.values());
+  const agregarDesdeExcel = () => {
+    setSeleccionados((prev) => {
+      const next = new Map(prev);
+      xlsPreview.forEach(({ email, nombre, cedula }) => next.set(email, { email, nombre, cedula }));
+      return next;
+    });
+    setXlsPreview([]); setXlsFile(null);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const quitarDeQueue = (email) => {
+    setSeleccionados((prev) => { const next = new Map(prev); next.delete(email); return next; });
+  };
 
   const handleEnviar = async () => {
     if (listaSeleccionada.length === 0) return;
-    setEnviando(true);
-    setResultado(null);
+    setEnviando(true); setResultado(null);
     try {
       const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitar`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ militantes: listaSeleccionada }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body:   JSON.stringify({ militantes: listaSeleccionada }),
       });
       const json = await res.json();
       setResultado(json);
-      if (json.ok) {
-        setSeleccionados(new Map());
-        cargarInvitados();
-      }
-    } catch {
-      setResultado({ ok: false, error: 'Error de red al enviar.' });
-    } finally {
-      setEnviando(false);
-      setConfirmacion(false);
-    }
+      if (json.ok) { setSeleccionados(new Map()); cargarInvitados(); }
+    } catch { setResultado({ ok: false, error: 'Error de red al enviar.' }); }
+    finally   { setEnviando(false); setConfirmacion(false); }
   };
-
-  const nombreDepto = depto
-    ? (DEPARTAMENTOS_API.find((d) => d.id === depto)?.nombre ?? depto)
-    : 'todos los departamentos';
 
   return (
     <>
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex">
+    <div className="flex gap-4">
 
-      {/* ── Panel izquierdo: ya invitados ── */}
-      <div className="w-64 flex-shrink-0 border-r border-gray-100 flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+      {/* Panel izquierdo: ya invitados */}
+      <div className="w-64 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2 rounded-t-2xl">
           <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
           <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
         </div>
-        <div className="overflow-y-auto" style={{ maxHeight: '520px' }}>
+        <div className="overflow-y-auto flex-1" style={{ maxHeight: '520px' }}>
           {invitadosLista.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <Send size={24} className="mb-2 text-gray-200" />
@@ -308,248 +232,163 @@ function TabInvitaciones({ sesion }) {
         </div>
       </div>
 
-      {/* ── Panel derecho: selección ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Panel derecho */}
+      <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
 
-      {/* ── Cabecera: filtros ── */}
-      <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center bg-gray-50 rounded-t-2xl">
-        {/* Departamento */}
-        <div className="relative">
-          <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <select
-            value={depto}
-            onChange={handleDeptoChange}
-            className="pl-8 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white appearance-none text-gray-700 w-48"
-          >
-            <option value="">Todos los departamentos</option>
-            {DEPARTAMENTOS_API.map((d) => (
-              <option key={d.id} value={d.id}>{d.nombre}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Búsqueda */}
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setPage(1); setResultados([]); }}
-            placeholder="Nombre o cédula (mín. 2 caracteres)"
-            className="pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand bg-white w-52"
-          />
-          {busqueda && (
-            <button type="button" onClick={() => setBusqueda('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X size={12} />
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 bg-gray-50 rounded-t-2xl overflow-hidden">
+          {[
+            { key: 'manual', label: 'Agregar manual',  Icon: Plus            },
+            { key: 'excel',  label: 'Cargar Excel',    Icon: FileSpreadsheet },
+          ].map(({ key, label, Icon }) => (
+            <button key={key} onClick={() => setModo(key)}
+              className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-colors ${
+                modo === key ? 'border-brand text-brand bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}>
+              <Icon size={13} /> {label}
             </button>
-          )}
+          ))}
         </div>
 
-        <span className="text-xs text-gray-400">
-          {buscando
-            ? 'Buscando…'
-            : isSearch
-              ? `${resultados.length} resultado${resultados.length !== 1 ? 's' : ''}${totalServidor > resultados.length ? ` de ${totalServidor.toLocaleString('es-CO')}` : ''}`
-              : depto
-                ? `${totalServidor.toLocaleString('es-CO')} militante${totalServidor !== 1 ? 's' : ''} · ${nombreDepto}`
-                : ''
-          }
-        </span>
-        <button
-          onClick={() => abrirManual()}
-          className="ml-auto flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-brand hover:text-white transition-colors flex-shrink-0"
-        >
-          <Plus size={12} /> Manual
-        </button>
-      </div>
-
-      {/* ── Formulario manual ── */}
-      {mostrarManual && (
-        <div className="px-4 py-3 border-b border-brand/20 bg-brand/5 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-brand">Agregar invitado manualmente</p>
-            <button onClick={() => setMostrarManual(false)} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
-          </div>
-          <div className="flex items-start gap-2">
-            <input
-              type="text"
-              value={manualNombre}
-              onChange={(e) => { setManualNombre(e.target.value); setManualError(''); }}
-              placeholder="Nombre completo"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-            />
-            <input
-              type="email"
-              value={manualEmail}
-              onChange={(e) => { setManualEmail(e.target.value); setManualError(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && agregarManual()}
-              placeholder="correo@ejemplo.com"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand bg-white"
-            />
-            <button
-              onClick={agregarManual}
-              className="flex items-center gap-1 px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0"
-            >
-              <Plus size={13} /> Agregar
-            </button>
-          </div>
-          {manualError && <p className="text-xs text-red-600 font-medium">{manualError}</p>}
-        </div>
-      )}
-
-      {/* ── Aviso pruebas ── */}
-      <div className="px-4 py-2.5 border-b border-yellow-100 bg-yellow-50 flex items-start gap-2">
-        <AlertTriangle size={13} className="text-yellow-600 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-yellow-700 font-medium leading-relaxed">
-          <strong>Fase de pruebas:</strong> selecciona destinatarios uno por uno. Se mostrará un resumen antes de enviar.
-        </p>
-      </div>
-
-      {/* ── Mensajes ── */}
-      {resultado && (
-        <div className={`px-4 py-2.5 border-b text-sm font-semibold flex items-center gap-2 ${
-          resultado.ok ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-600'
-        }`}>
-          {resultado.ok
-            ? <><CheckCircle size={14} className="flex-shrink-0" />
-                {resultado.enviados} invitación{resultado.enviados !== 1 ? 'es' : ''} enviada{resultado.enviados !== 1 ? 's' : ''}.
-                {resultado.fallidos > 0 && <span className="text-orange-600 ml-1">{resultado.fallidos} fallida{resultado.fallidos !== 1 ? 's' : ''}.</span>}
-              </>
-            : <><AlertTriangle size={14} className="flex-shrink-0" />{resultado.error || 'Error al enviar'}</>
-          }
-        </div>
-      )}
-      {errorInv && (
-        <div className="px-4 py-2.5 border-b border-red-100 bg-red-50 flex items-center gap-2 text-sm text-red-600">
-          <AlertTriangle size={14} className="flex-shrink-0" />{errorInv}
-        </div>
-      )}
-
-      {/* ── Lista (scroll interno) ── */}
-      <div className="flex-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
-        {buscando && (
-          <div className="flex flex-col justify-center items-center py-12 gap-2">
-            <Loader2 size={24} className="text-brand animate-spin" />
-            <p className="text-xs text-gray-400">Buscando…</p>
+        {/* Formulario manual */}
+        {modo === 'manual' && (
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div className="grid grid-cols-3 gap-3 mb-2">
+              <input type="text" value={mNombre} onChange={(e) => { setMNombre(e.target.value); setMError(''); }}
+                placeholder="Nombre completo *"
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <input type="email" value={mEmail} onChange={(e) => { setMEmail(e.target.value); setMError(''); }}
+                onKeyDown={(e) => e.key === 'Enter' && agregarManual()}
+                placeholder="Correo electrónico *"
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <div className="flex gap-2">
+                <input type="text" value={mCedula} onChange={(e) => setMCedula(e.target.value)}
+                  placeholder="Núm. documento"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                <button onClick={agregarManual}
+                  className="flex items-center gap-1 px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
+                  <Plus size={13} /> Agregar
+                </button>
+              </div>
+            </div>
+            {mError && <p className="text-xs text-red-600 font-medium">{mError}</p>}
+            <p className="text-xs text-gray-400 mt-1">* El número de documento permite que la sesión aparezca en el dashboard del invitado.</p>
           </div>
         )}
-        {!buscando && !isSearch && !depto && (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-            <Search size={28} className="mb-2 text-gray-200" />
-            <p className="text-sm text-center leading-relaxed">Selecciona un departamento<br/>o escribe un nombre / cédula</p>
-          </div>
-        )}
-        {!buscando && (isSearch || depto) && itemsPagina.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-            <Users size={28} className="text-gray-200" />
-            <p className="text-sm">{isSearch ? 'Sin resultados para esa búsqueda' : 'No hay militantes en este departamento'}</p>
-            {isSearch && (
-              <button
-                onClick={() => abrirManual(busqueda.trim())}
-                className="flex items-center gap-1.5 text-xs font-bold text-brand border border-brand rounded-lg px-3 py-1.5 hover:bg-brand hover:text-white transition-colors"
-              >
-                <Plus size={12} /> Agregar "{busqueda.trim()}" manualmente
-              </button>
+
+        {/* Carga Excel */}
+        {modo === 'excel' && (
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div
+              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center hover:border-brand transition-colors cursor-pointer"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) parsearExcel(f); }}>
+              <FileSpreadsheet size={28} className="mx-auto mb-2 text-gray-300" />
+              <p className="text-sm font-semibold text-gray-600">Arrastra un archivo o haz clic para seleccionar</p>
+              <p className="text-xs text-gray-400 mt-1">Formato .xlsx o .csv &middot; Columnas: <strong>nombre</strong>, <strong>correo</strong>, cédula (opcional)</p>
+              {xlsFile && <p className="text-xs text-brand font-semibold mt-2">{xlsFile.name}</p>}
+            </div>
+            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+              onChange={(e) => { const f = e.target.files[0]; if (f) parsearExcel(f); }} />
+            {xlsError && <p className="text-xs text-red-600 font-medium mt-2">{xlsError}</p>}
+            {xlsPreview.length > 0 && (
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-gray-700">{xlsPreview.length} fila{xlsPreview.length !== 1 ? 's' : ''} válida{xlsPreview.length !== 1 ? 's' : ''}</p>
+                  <button onClick={agregarDesdeExcel}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors">
+                    <Plus size={12} /> Agregar todos a la cola
+                  </button>
+                </div>
+                <div className="border border-gray-200 rounded-xl overflow-hidden max-h-44 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-gray-500 font-bold">Nombre</th>
+                        <th className="text-left px-3 py-2 text-gray-500 font-bold">Correo</th>
+                        <th className="text-left px-3 py-2 text-gray-500 font-bold">Cédula</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {xlsPreview.map((r, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-1.5 text-gray-800">{r.nombre}</td>
+                          <td className="px-3 py-1.5 text-gray-500">{r.email}</td>
+                          <td className="px-3 py-1.5 text-gray-400">{r.cedula || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
         )}
-        {itemsPagina.length > 0 && (
-          <div className="divide-y divide-gray-50">
-            {itemsPagina.map((m) => {
-              const sinEmail    = !m.email;
-              const marcado     = m.email ? seleccionados.has(m.email) : false;
-              const yaInvitado  = m.email ? invitadosSet.has(m.email) : false;
-              const initials    = ((m.primer_nombre?.[0] ?? '') + (m.primer_apellido?.[0] ?? '')).toUpperCase() || '?';
-              return (
-                <div
-                  key={m.id_militante}
-                  onClick={() => toggle(m)}
-                  className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-                    sinEmail
-                      ? 'opacity-40 cursor-not-allowed'
-                      : marcado
-                        ? 'bg-brand-50 cursor-pointer'
-                        : 'hover:bg-gray-50 cursor-pointer'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={marcado}
-                    disabled={sinEmail}
-                    readOnly
-                    className="h-4 w-4 rounded border-gray-300 text-brand flex-shrink-0 pointer-events-none"
-                  />
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${marcado ? 'bg-brand text-white' : 'bg-brand-50 text-brand'}`}>
-                    {initials}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{nombreMilitante(m)}</p>
-                      {yaInvitado && (
-                        <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
-                          <AlertTriangle size={9} /> Ya invitado
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 font-mono">{m.tipo_documento} {m.numero_documento}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    {m.email
-                      ? <p className="text-xs text-gray-500 truncate max-w-[180px]">{m.email}</p>
-                      : <p className="text-xs text-gray-300 italic">Sin email</p>
-                    }
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* ── Footer: paginación + acciones ── */}
-      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex items-center justify-between gap-3 flex-wrap">
-        {/* Paginación */}
-        <div className="flex items-center gap-2">
-          {totalPaginas > 1 && (
-            <>
-              <button disabled={page === 1} onClick={() => cambiarPagina(page - 1)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed">
-                <ChevronLeft size={12} /> Anterior
-              </button>
-              <span className="text-xs text-gray-400">Pág. {page}/{totalPaginas}</span>
-              <button disabled={page >= totalPaginas} onClick={() => cambiarPagina(page + 1)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed">
-                Siguiente <ChevronRight size={12} />
-              </button>
-            </>
+        {/* Cola de envio */}
+        <div className="flex-1 overflow-y-auto" style={{ maxHeight: '280px' }}>
+          {seleccionados.size === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+              <Users size={28} className="mb-2 text-gray-200" />
+              <p className="text-sm">La cola está vacía. Agrega destinatarios arriba.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {listaSeleccionada.map(({ email, nombre, cedula }) => {
+                const initials   = nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+                const reinvitado = invitadosSet.has(email);
+                return (
+                  <div key={email} className={`flex items-center gap-3 px-4 py-3 ${reinvitado ? 'bg-yellow-50' : ''}`}>
+                    <div className="h-8 w-8 rounded-full bg-brand/10 flex items-center justify-center text-xs font-bold text-brand flex-shrink-0">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{nombre}</p>
+                        {reinvitado && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold border border-yellow-200">
+                            <AlertTriangle size={9} /> Re-envío
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 truncate">{email}{cedula ? ` · ${cedula}` : ''}</p>
+                    </div>
+                    <button onClick={() => quitarDeQueue(email)} className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
+                      <X size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        {/* Selección + envío */}
-        <div className="flex items-center gap-3 ml-auto">
-          {seleccionados.size > 0 && (
-            <span className="text-xs font-semibold text-brand">
-              {seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''}
-              <button onClick={() => setSeleccionados(new Map())}
-                className="ml-2 text-gray-400 hover:text-red-500">× limpiar</button>
+        {/* Footer */}
+        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex items-center gap-3 flex-wrap">
+          {resultado && (
+            <span className={`flex items-center gap-1.5 text-xs font-semibold ${resultado.ok ? 'text-green-600' : 'text-red-600'}`}>
+              {resultado.ok
+                ? <><CheckCircle size={13} />{resultado.enviados} enviada{resultado.enviados !== 1 ? 's' : ''}{resultado.fallidos > 0 ? `, ${resultado.fallidos} fallida${resultado.fallidos !== 1 ? 's' : ''}` : ''}</>
+                : <><AlertTriangle size={13} />{resultado.error || 'Error al enviar'}</>
+              }
             </span>
           )}
-          <button
-            onClick={() => setConfirmacion(true)}
-            disabled={seleccionados.size === 0}
-            className="flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors"
-          >
+          {seleccionados.size > 0 && (
+            <button onClick={() => setSeleccionados(new Map())} className="text-xs text-gray-400 hover:text-red-500 font-semibold">
+              × limpiar cola
+            </button>
+          )}
+          <button onClick={() => setConfirmacion(true)} disabled={seleccionados.size === 0}
+            className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition-colors">
             <Send size={13} />
             Revisar y enviar {seleccionados.size > 0 ? `(${seleccionados.size})` : ''}
           </button>
         </div>
       </div>
+    </div>
 
-      </div>{/* fin panel derecho */}
-    </div>{/* fin tarjeta única */}
-
-    {/* Modal de confirmación */}
+    {/* Modal confirmacion */}
     {confirmacion && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
         onClick={() => !enviando && setConfirmacion(false)}>
@@ -561,26 +400,21 @@ function TabInvitaciones({ sesion }) {
               <h3 className="font-bold text-gray-900 text-sm">Confirmar envío de invitaciones</h3>
             </div>
             {!enviando && (
-              <button onClick={() => setConfirmacion(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={18} />
-              </button>
+              <button onClick={() => setConfirmacion(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             )}
           </div>
-
           <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
             <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-300 rounded-xl px-4 py-3">
               <AlertTriangle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-yellow-800 font-medium leading-relaxed">
-                Estás a punto de enviar correos electrónicos <strong>reales</strong> a militantes activos. Esta acción no se puede deshacer. Revisa bien la lista antes de confirmar.
+                Estás a punto de enviar correos electrónicos <strong>reales</strong>. Esta acción no se puede deshacer.
               </p>
             </div>
-
             <div className="bg-gray-50 rounded-xl px-4 py-3 text-xs text-gray-700">
               <p className="font-bold text-gray-900 mb-1">{sesion.nombre}</p>
               <p>📅 {sesion.fecha} · 🕐 {sesion.hora}</p>
               <p>📍 {sesion.lugar}</p>
             </div>
-
             <div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                 Se enviará a {listaSeleccionada.length} destinatario{listaSeleccionada.length !== 1 ? 's' : ''}:
@@ -610,7 +444,6 @@ function TabInvitaciones({ sesion }) {
               </div>
             </div>
           </div>
-
           <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
             <button onClick={() => setConfirmacion(false)} disabled={enviando}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
@@ -618,10 +451,7 @@ function TabInvitaciones({ sesion }) {
             </button>
             <button onClick={handleEnviar} disabled={enviando}
               className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white disabled:opacity-60 transition-colors">
-              {enviando
-                ? <><Loader2 size={14} className="animate-spin" /> Enviando…</>
-                : <><Send size={14} /> Confirmar envío</>
-              }
+              {enviando ? <><Loader2 size={14} className="animate-spin" /> Enviando…</> : <><Send size={14} /> Confirmar envío</>}
             </button>
           </div>
         </div>

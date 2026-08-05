@@ -10,10 +10,11 @@ export async function GET(request, { params }) {
     { count: asistentes },
     { data: pregs },
     { data: resultados },
+    { data: inscData },
   ] = await Promise.all([
     supabase
       .from('asambleas')
-      .select('id, nombre, estado, fecha, hora, lugar, codigo_asistencia')
+      .select('id, nombre, estado, fecha, hora, lugar, codigo_asistencia, asistencias_cerradas')
       .eq('id', sesionId)
       .single(),
     supabase
@@ -26,11 +27,20 @@ export async function GET(request, { params }) {
       .eq('asamblea_id', sesionId)
       .order('created_at'),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
+    supabase
+      .from('inscripciones')
+      .select('estado_acreditacion')
+      .eq('asamblea_id', sesionId),
   ]);
 
   if (!asm || asm.estado === 'borrador') {
     return Response.json({ ok: false, error: 'Sesión no disponible' }, { status: 404 });
   }
+
+  const insc = inscData || [];
+  const acreditadosVoto    = insc.filter((i) => i.estado_acreditacion === 'acreditado_voto').length;
+  const acreditadosIngreso = insc.filter((i) => i.estado_acreditacion === 'acreditado_ingreso').length;
+  const totalInscritos     = insc.length;
 
   const preguntaActiva = (pregs || []).find((p) => p.estado === 'activa') ?? null;
   const resActivo = preguntaActiva
@@ -52,29 +62,34 @@ export async function GET(request, { params }) {
 
   let segundosRestantes = null;
   if (preguntaActiva?.tiempo_limite && preguntaActiva?.updated_at) {
-    const inicioMs    = new Date(preguntaActiva.updated_at).getTime();
-    const transcurridos = Math.floor((Date.now() - inicioMs) / 1000);
+    const transcurridos = Math.floor((Date.now() - new Date(preguntaActiva.updated_at).getTime()) / 1000);
     segundosRestantes = Math.max(0, preguntaActiva.tiempo_limite - transcurridos);
   }
 
   return Response.json({
     ok: true,
     sesion: {
-      id:                asm.id,
-      nombre:            asm.nombre,
-      estado:            asm.estado,
-      fecha:             asm.fecha,
-      hora:              asm.hora,
-      lugar:             asm.lugar,
-      codigo_asistencia: asm.codigo_asistencia,
+      id:                    asm.id,
+      nombre:                asm.nombre,
+      estado:                asm.estado,
+      fecha:                 asm.fecha,
+      hora:                  asm.hora,
+      lugar:                 asm.lugar,
+      codigo_asistencia:     asm.codigo_asistencia,
+      asistencias_cerradas:  asm.asistencias_cerradas ?? false,
     },
-    asistentes: asistentes ?? 0,
+    quorum: {
+      inscritos:          totalInscritos,
+      acreditados_voto:   acreditadosVoto,
+      acreditados_ingreso: acreditadosIngreso,
+      asistentes:         asistentes ?? 0,
+    },
     preguntaActiva: preguntaActiva
       ? {
-          id:         preguntaActiva.id,
-          texto:      preguntaActiva.texto,
-          tipo:       preguntaActiva.tipo,
-          tiempo_limite: preguntaActiva.tiempo_limite,
+          id:                 preguntaActiva.id,
+          texto:              preguntaActiva.texto,
+          tipo:               preguntaActiva.tipo,
+          tiempo_limite:      preguntaActiva.tiempo_limite,
           segundos_restantes: segundosRestantes,
           opciones,
         }

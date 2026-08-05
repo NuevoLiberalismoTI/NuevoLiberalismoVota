@@ -219,9 +219,15 @@ export default function ProyeccionPage() {
 
           {/* ── Pregunta activa ── */}
           {preguntaActiva && (() => {
-            const opciones   = preguntaActiva.opciones ?? [];
-            const totalVotos = opciones.reduce((s, o) => s + Number(o.total), 0);
-            const maxVotos   = Math.max(...opciones.map((o) => Number(o.total)), 1);
+            const opciones      = preguntaActiva.opciones ?? [];
+            const totalVotos    = opciones.reduce((s, o) => s + Number(o.total), 0);
+            const maxVotos      = Math.max(...opciones.map((o) => Number(o.total)), 1);
+            const tipoMayoria   = preguntaActiva.tipo_mayoria ?? 'simple';
+            const baseM         = tipoMayoria === 'absoluta' ? quorum.inscritos : quorum.asistentes;
+            const baseLabel     = tipoMayoria === 'absoluta' ? 'inscritos' : 'asistentes';
+            const umbral        = Math.floor(baseM / 2) + 1;
+            const mayorPct      = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
+            const mayorAlcanzada = totalVotos >= umbral && umbral > 0;
             return (
               <div className="flex flex-col gap-6 w-full max-w-3xl">
                 {/* Indicador + timer */}
@@ -279,7 +285,31 @@ export default function ProyeccionPage() {
                         </div>
                       );
                     })}
-                    <p className="text-gray-400 text-sm text-right">Total emitidos: {totalVotos} votos</p>
+                    {/* Indicador de mayoría */}
+                    <div className={`rounded-2xl border shadow-sm px-6 py-4 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+                            {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+                          </span>
+                          <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
+                        </div>
+                        <span className={`text-2xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
+                          {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
+                        </span>
+                      </div>
+                      <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-4 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
+                          style={{ width: `${mayorPct}%` }}
+                        />
+                      </div>
+                      <p className={`text-sm font-semibold mt-2 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
+                        {mayorAlcanzada
+                          ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                          : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>

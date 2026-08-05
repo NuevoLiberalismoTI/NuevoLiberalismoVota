@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
     // Sin join a candidatos para evitar errores de relación
     supabase
       .from('asamblea_preguntas')
-      .select('id, texto, tipo, estado, duracion_segundos, publicada_en')
+      .select('id, texto, tipo, estado, duracion_segundos, publicada_en, tipo_mayoria')
       .eq('asamblea_id', sesionId)
       .order('created_at'),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
@@ -98,6 +98,7 @@ export async function GET(request, { params }) {
           id:                  preguntaActiva.id,
           texto:               preguntaActiva.texto,
           tipo:                preguntaActiva.tipo,
+          tipo_mayoria:        preguntaActiva.tipo_mayoria ?? 'simple',
           tiempo_limite:       preguntaActiva.duracion_segundos,
           segundos_restantes:  segundosRestantes,
           opciones,

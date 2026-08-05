@@ -23,50 +23,30 @@ export default function DashboardPage() {
   const [tab, setTab]               = useState('activas');
 
   const cargar = async (cedula, email) => {
-    let invQuery = supabase.from('invitaciones_enviadas').select('sesion_id');
-    if (email) {
-      invQuery = invQuery.or(`cedula.eq.${cedula},email.eq.${email}`);
-    } else {
-      invQuery = invQuery.eq('cedula', cedula);
-    }
+    const params = new URLSearchParams({ cedula });
+    if (email) params.set('email', email);
 
-    const [{ data: rpcData, error }, { data: acredData }, { data: invData }] = await Promise.all([
+    const [{ data: rpcData, error }, { data: acredData }, invJson] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
       supabase.from('inscripciones').select('asamblea_id, estado_acreditacion').eq('usuario_cedula', cedula),
-      invQuery,
+      fetch(`/api/sesiones-invitadas?${params}`).then((r) => r.json()).catch(() => ({ ok: false, data: [], ids: [] })),
     ]);
 
     if (error) { setCargando(false); return; }
 
-    const acredMap    = {};
+    const acredMap     = {};
     (acredData || []).forEach((i) => { acredMap[i.asamblea_id] = i.estado_acreditacion; });
 
-    const invitadasIds = new Set((invData || []).map((i) => i.sesion_id));
+    const invitadasIds = new Set(invJson.ids ?? []);
     const rpcIds       = new Set((rpcData || []).map((s) => s.id));
 
-    // Sesiones invitadas que el RPC no devolvió (usuario aún no inscrito)
-    const faltantes = [...invitadasIds].filter((id) => !rpcIds.has(id));
-    let extra = [];
-    if (faltantes.length > 0) {
-      const { data: extData } = await supabase
-        .from('asambleas')
-        .select('*, tipos_asamblea(nombre), colectivos(nombre)')
-        .in('id', faltantes)
-        .neq('estado', 'borrador');
-      extra = (extData || []).map((s) => ({
-        ...s,
-        tipo_nombre:      s.tipos_asamblea?.nombre ?? '',
-        colectivo_nombre: s.colectivos?.nombre ?? '',
-        esta_inscrito:    false,
-        ya_asistio:       false,
-        total_inscritos:  0,
-      }));
-    }
+    // Sesiones del RPC que están en la lista de invitadas
+    const deRpc  = (rpcData || []).filter((s) => invitadasIds.has(s.id));
+    // Sesiones invitadas que el RPC no devolvió (usuario aún no inscrito) — vienen del API server-side
+    const extra  = (invJson.data ?? []).filter((s) => !rpcIds.has(s.id));
 
-    const todas = [
-      ...(rpcData || []).filter((s) => invitadasIds.has(s.id)),
-      ...extra,
-    ].map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }));
+    const todas = [...deRpc, ...extra]
+      .map((s) => ({ ...s, estado_acreditacion: acredMap[s.id] || null }));
 
     setSesiones(todas);
     setCargando(false);

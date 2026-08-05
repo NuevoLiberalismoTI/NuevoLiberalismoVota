@@ -1126,12 +1126,15 @@ export default function AdminSesionPage() {
                 className="flex items-center gap-1 text-[10px] font-bold text-brand bg-brand-50 border border-brand px-2 py-0.5 rounded-full hover:bg-brand hover:text-white transition-colors">
                 <Monitor size={10} /> Proyectar QR
               </button>
-              <button onClick={() => window.open(`/proyeccion/${encodeURIComponent(sesionId)}`, '_blank')}
-                className="flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-300 px-2 py-0.5 rounded-full hover:bg-purple-600 hover:text-white transition-colors">
-                <Monitor size={10} /> Modo Proyección
-              </button>
             </span>
           </div>
+
+          {/* Botón proyección pública — fila propia */}
+          <button
+            onClick={() => window.open(`/proyeccion/${encodeURIComponent(sesionId)}`, '_blank')}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold text-purple-700 bg-purple-50 border border-purple-300 px-3 py-2 rounded-xl hover:bg-purple-600 hover:text-white transition-colors">
+            <Monitor size={14} /> Proyección al público
+          </button>
 
           {/* Stats */}
           {stats && (

@@ -125,9 +125,10 @@ function TabInvitaciones({ sesion }) {
   const agregarManual = () => {
     const nombre = mNombre.trim();
     const email  = mEmail.trim().toLowerCase();
-    const cedula = mCedula.trim() || null;
+    const cedula = mCedula.trim();
     if (!nombre) { setMError('El nombre es requerido.'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setMError('Ingresa un correo válido.'); return; }
+    if (!cedula) { setMError('El número de documento es requerido.'); return; }
     setSeleccionados((prev) => { const next = new Map(prev); next.set(email, { email, nombre, cedula }); return next; });
     setMNombre(''); setMEmail(''); setMCedula(''); setMError('');
   };
@@ -161,6 +162,19 @@ function TabInvitaciones({ sesion }) {
       if (parsed.length === 0) { setXlsError('No se encontraron filas válidas con nombre y correo.'); return; }
       setXlsPreview(parsed);
     } catch { setXlsError('Error al leer el archivo. Asegúrate de que sea .xlsx o .csv válido.'); }
+  };
+
+  const descargarPlantilla = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const ws = utils.aoa_to_sheet([
+      ['nombre', 'correo', 'cedula'],
+      ['María García López', 'maria.garcia@correo.com', '1012345678'],
+      ['Carlos Rodríguez Pérez', 'carlos.rodriguez@correo.com', '79654321'],
+    ]);
+    ws['!cols'] = [{ wch: 30 }, { wch: 32 }, { wch: 16 }];
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Invitados');
+    writeFile(wb, 'plantilla_invitados.xlsx');
   };
 
   const agregarDesdeExcel = () => {
@@ -262,8 +276,8 @@ function TabInvitaciones({ sesion }) {
                 placeholder="Correo electrónico *"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
               <div className="flex gap-2">
-                <input type="text" value={mCedula} onChange={(e) => setMCedula(e.target.value)}
-                  placeholder="Núm. documento"
+                <input type="text" value={mCedula} onChange={(e) => { setMCedula(e.target.value); setMError(''); }}
+                  placeholder="Núm. documento *"
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 <button onClick={agregarManual}
                   className="flex items-center gap-1 px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
@@ -272,7 +286,7 @@ function TabInvitaciones({ sesion }) {
               </div>
             </div>
             {mError && <p className="text-xs text-red-600 font-medium">{mError}</p>}
-            <p className="text-xs text-gray-400 mt-1">* El número de documento permite que la sesión aparezca en el dashboard del invitado.</p>
+            <p className="text-xs text-gray-400 mt-1">* Todos los campos son obligatorios. El número de documento vincula la invitación con el acceso del invitado.</p>
           </div>
         )}
 
@@ -286,12 +300,18 @@ function TabInvitaciones({ sesion }) {
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) parsearExcel(f); }}>
               <FileSpreadsheet size={28} className="mx-auto mb-2 text-gray-300" />
               <p className="text-sm font-semibold text-gray-600">Arrastra un archivo o haz clic para seleccionar</p>
-              <p className="text-xs text-gray-400 mt-1">Formato .xlsx o .csv &middot; Columnas: <strong>nombre</strong>, <strong>correo</strong>, cédula (opcional)</p>
+              <p className="text-xs text-gray-400 mt-1">Formato .xlsx o .csv &middot; Columnas requeridas: <strong>nombre</strong>, <strong>correo</strong>, <strong>cedula</strong></p>
               {xlsFile && <p className="text-xs text-brand font-semibold mt-2">{xlsFile.name}</p>}
             </div>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
               onChange={(e) => { const f = e.target.files[0]; if (f) parsearExcel(f); }} />
-            {xlsError && <p className="text-xs text-red-600 font-medium mt-2">{xlsError}</p>}
+            <div className="mt-2 flex items-center justify-end">
+              <button onClick={descargarPlantilla}
+                className="flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline">
+                <FileSpreadsheet size={12} /> Descargar plantilla de ejemplo
+              </button>
+            </div>
+            {xlsError && <p className="text-xs text-red-600 font-medium mt-1">{xlsError}</p>}
             {xlsPreview.length > 0 && (
               <div className="mt-3">
                 <div className="flex items-center justify-between mb-2">

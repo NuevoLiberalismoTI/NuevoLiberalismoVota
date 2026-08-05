@@ -4,7 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio } from 'lucide-react';
-import Image from 'next/image';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -81,7 +80,7 @@ export default function ProyeccionPage() {
 
       {/* ── Panel izquierdo: QR + quórum — rojo marca ─────── */}
       <div className="w-[36%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-6">
-        <Image src={LOGO} alt="Nuevo Liberalismo" width={140} height={46} className="object-contain brightness-0 invert opacity-90" />
+        <LogoNL />
 
         {/* QR o cerrado */}
         <div className="flex flex-col items-center gap-4 w-full">
@@ -242,22 +241,22 @@ export default function ProyeccionPage() {
                     </span>
                   </div>
                   {timer != null && (
-                    <span className={`font-extrabold tabular-nums tracking-tight ${timer <= 30 ? 'text-brand animate-pulse text-6xl' : 'text-gray-700 text-5xl'}`}>
+                    <span className={`font-extrabold tabular-nums tracking-tight ${timer <= 30 ? 'text-brand animate-pulse text-4xl' : 'text-gray-700 text-3xl'}`}>
                       {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
                     </span>
                   )}
                 </div>
 
                 {/* Pregunta */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-8 py-6">
-                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1.5rem, 3.5vw, 3rem)' }}>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-7 py-5">
+                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.7rem)' }}>
                     {preguntaActiva.texto}
                   </p>
                 </div>
 
                 {/* Barras */}
                 {opciones.length > 0 && (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-2.5">
                     {opciones.map((op, i) => {
                       const votos  = Number(op.total);
                       const pct    = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
@@ -267,19 +266,19 @@ export default function ProyeccionPage() {
                       const barBg  = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
                       const textColor = esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-900';
                       return (
-                        <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm px-6 py-4">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className={`text-2xl font-extrabold flex items-center gap-2 ${textColor}`}>
-                              {esSI && <ThumbsUp size={20} className="text-green-500" />}
-                              {esNO && <ThumbsDown size={20} className="text-red-500" />}
+                        <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className={`text-base font-bold flex items-center gap-1.5 ${textColor}`}>
+                              {esSI && <ThumbsUp size={15} className="text-green-500" />}
+                              {esNO && <ThumbsDown size={15} className="text-red-500" />}
                               {op.respuesta}
                             </span>
-                            <span className="text-lg font-bold text-gray-500 tabular-nums">
-                              {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800 font-extrabold">{pct}%</span>
+                            <span className="text-sm font-semibold text-gray-500 tabular-nums">
+                              {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800 font-bold">{pct}%</span>
                             </span>
                           </div>
-                          <div className="h-6 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-6 rounded-full transition-all duration-700 ease-out ${barBg}`}
+                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-4 rounded-full transition-all duration-700 ease-out ${barBg}`}
                               style={{ width: `${bar}%` }} />
                           </div>
                         </div>
@@ -318,6 +317,29 @@ export default function ProyeccionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LogoNL() {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <p className="text-white font-extrabold text-lg tracking-widest uppercase leading-none">Nuevo</p>
+        <p className="text-white font-extrabold text-lg tracking-widest uppercase leading-none">Liberalismo</p>
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={LOGO}
+      alt="Nuevo Liberalismo"
+      width={140}
+      height={46}
+      className="object-contain brightness-0 invert opacity-90"
+      onError={() => setFailed(true)}
+    />
   );
 }
 

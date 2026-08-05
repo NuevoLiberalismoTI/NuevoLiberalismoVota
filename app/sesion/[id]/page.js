@@ -24,10 +24,11 @@ export default function SesionPage() {
   const [camAbierta, setCamAbierta] = useState(false);
   const [soportaCam, setSoportaCam] = useState(false);
   const [timerSeg, setTimerSeg]     = useState(null);
-  const videoRef  = useRef(null);
-  const streamRef = useRef(null);
-  const scanRef   = useRef(null);
-  const timerRef  = useRef(null);
+  const videoRef          = useRef(null);
+  const streamRef         = useRef(null);
+  const scanRef           = useRef(null);
+  const timerRef          = useRef(null);
+  const verificarCodigoRef = useRef(null);
 
   const cargarEstado = useCallback(async (cedula) => {
     const stored = sessionStorage.getItem('usuario');
@@ -105,7 +106,7 @@ export default function SesionPage() {
       cerrarCamara();
       const codigoLimpio = c.toUpperCase().trim();
       setCodigo(codigoLimpio);
-      verificarCodigo(codigoLimpio);
+      verificarCodigoRef.current?.(codigoLimpio);
     };
 
     if (hasBarcodeDetector) {
@@ -136,7 +137,7 @@ export default function SesionPage() {
     }
 
     return () => { if (scanRef.current) cancelAnimationFrame(scanRef.current); };
-  }, [camAbierta, verificarCodigo]);
+  }, [camAbierta]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -166,7 +167,8 @@ export default function SesionPage() {
     }
   }, [estado]);
 
-  const verificarCodigo = useCallback(async (codigoValor) => {
+  const verificarCodigo = async (codigoValor) => {
+    if (!usuario) return;
     setCargando(true); setErrCodigo('');
     const res = await fetch('/api/asistencia', {
       method: 'POST',
@@ -186,7 +188,8 @@ export default function SesionPage() {
       await cargarEstado(usuario.cedula);
     }
     setCargando(false);
-  }, [sesionId, usuario, cargarEstado]);
+  };
+  verificarCodigoRef.current = verificarCodigo;
 
   const handleVerificarCodigo = async () => {
     if (!codigo.trim()) { setErrCodigo('Ingresa el código de asistencia'); return; }

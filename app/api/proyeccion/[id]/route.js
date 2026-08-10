@@ -49,22 +49,43 @@ export async function GET(request, { params }) {
   // Pregunta activa
   const preguntaActiva = (pregs || []).find((p) => p.estado === 'activa') ?? null;
 
-  // Opciones para la pregunta activa: primero intentar del RPC, luego construir vacías
+  // Opciones para la pregunta activa
   let opciones = [];
   if (preguntaActiva) {
     const resActivo = (resultados?.preguntas ?? []).find((r) => r.id === preguntaActiva.id);
-    if (resActivo?.opciones?.length) {
-      opciones = resActivo.opciones;
-    } else if (preguntaActiva.tipo === 'sino') {
+
+    if (preguntaActiva.tipo === 'sino') {
       opciones = [{ respuesta: 'SI', total: 0 }, { respuesta: 'NO', total: 0 }];
     } else {
-      // Candidatos por separado solo si es pregunta de candidatos y el RPC no los devolvió
+      // Siempre traer candidatos con sus integrantes de plancha
       const { data: cands } = await supabase
         .from('candidatos')
-        .select('id, nombre, orden')
+        .select('id, nombre, orden, es_plancha, miembros_plancha(id, nombre, cargo, orden)')
         .eq('pregunta_id', preguntaActiva.id)
         .order('orden');
-      opciones = (cands || []).map((c) => ({ respuesta: c.nombre, total: 0 }));
+
+      const candsMap = {};
+      (cands || []).forEach((c) => {
+        candsMap[c.nombre] = {
+          es_plancha: c.es_plancha ?? false,
+          miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+        };
+      });
+
+      if (resActivo?.opciones?.length) {
+        opciones = resActivo.opciones.map((op) => ({
+          ...op,
+          es_plancha: candsMap[op.respuesta]?.es_plancha ?? false,
+          miembros:   candsMap[op.respuesta]?.miembros   ?? [],
+        }));
+      } else {
+        opciones = (cands || []).map((c) => ({
+          respuesta:  c.nombre,
+          total:      0,
+          es_plancha: c.es_plancha ?? false,
+          miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+        }));
+      }
     }
   }
 

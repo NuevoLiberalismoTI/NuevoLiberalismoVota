@@ -258,22 +258,36 @@ export default function ProyeccionPage() {
                 {opciones.length > 0 && (
                   <div className="flex flex-col gap-2.5">
                     {opciones.map((op, i) => {
-                      const votos  = Number(op.total);
-                      const pct    = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
-                      const bar    = Math.round((votos / maxVotos) * 100);
-                      const esSI   = op.respuesta === 'SI';
-                      const esNO   = op.respuesta === 'NO';
-                      const barBg  = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
+                      const votos     = Number(op.total);
+                      const pct       = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+                      const bar       = Math.round((votos / maxVotos) * 100);
+                      const esSI      = op.respuesta === 'SI';
+                      const esNO      = op.respuesta === 'NO';
+                      const esPlancha = op.es_plancha && op.miembros?.length > 0;
+                      const barBg     = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
                       const textColor = esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-900';
                       return (
                         <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className={`text-base font-bold flex items-center gap-1.5 ${textColor}`}>
-                              {esSI && <ThumbsUp size={15} className="text-green-500" />}
-                              {esNO && <ThumbsDown size={15} className="text-red-500" />}
-                              {op.respuesta}
-                            </span>
-                            <span className="text-sm font-semibold text-gray-500 tabular-nums">
+                          <div className="flex justify-between items-start mb-2 gap-3">
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-base font-bold flex items-center gap-1.5 ${textColor}`}>
+                                {esSI && <ThumbsUp size={15} className="text-green-500" />}
+                                {esNO && <ThumbsDown size={15} className="text-red-500" />}
+                                {op.respuesta}
+                              </span>
+                              {esPlancha && (
+                                <div className="mt-1.5 flex flex-col gap-0.5">
+                                  {op.miembros.map((m, mi) => (
+                                    <div key={mi} className="flex items-center gap-1.5 text-xs text-gray-500">
+                                      <span className="text-gray-300 font-bold">{mi === op.miembros.length - 1 ? '└' : '├'}</span>
+                                      <span className="font-semibold text-gray-700">{m.nombre}</span>
+                                      {m.cargo && <span className="text-gray-400">— {m.cargo}</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-500 tabular-nums flex-shrink-0">
                               {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800 font-bold">{pct}%</span>
                             </span>
                           </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -490,6 +490,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
   const [duracion, setDuracion]       = useState('');
   const [cupos, setCupos]             = useState('');
   const [err, setErr]                 = useState('');
+  const [corrector, setCorrector]     = useState({ cargando: false, errores: [], revisado: false });
 
   const selBase = (id) => {
     const pb = preguntasBase.find((p) => p.id === id);
@@ -524,6 +525,28 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
       }
     }
     onGuardar({ tipo, tipoMayoria, texto: texto.trim(), opciones, enVivo, pregunta_base_id: baseId || null, duracion, cupos });
+  };
+
+  const revisarOrtografia = async () => {
+    if (!texto.trim()) return;
+    setCorrector({ cargando: true, errores: [], revisado: false });
+    try {
+      const res  = await fetch('https://api.languagetool.org/v2/check', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    new URLSearchParams({ text: texto, language: 'es' }),
+      });
+      const data = await res.json();
+      setCorrector({ cargando: false, errores: data.matches ?? [], revisado: true });
+    } catch {
+      setCorrector({ cargando: false, errores: [], revisado: true });
+    }
+  };
+
+  const aplicarCorreccion = (match, valor) => {
+    const nuevo = texto.slice(0, match.offset) + valor + texto.slice(match.offset + match.length);
+    setTexto(nuevo);
+    setCorrector((prev) => ({ ...prev, errores: [], revisado: false }));
   };
 
   return (
@@ -573,9 +596,45 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
         </div>
       </div>
 
-      <textarea value={texto} onChange={(e) => { setTexto(e.target.value); setErr(''); }}
-        placeholder="Escribe la pregunta..." rows={2}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
+      <div className="flex flex-col gap-1.5">
+        <textarea value={texto} onChange={(e) => { setTexto(e.target.value); setErr(''); setCorrector({ cargando: false, errores: [], revisado: false }); }}
+          placeholder="Escribe la pregunta..." rows={2} spellCheck lang="es"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={revisarOrtografia} disabled={corrector.cargando || !texto.trim()}
+            className="flex items-center gap-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2.5 py-1 rounded-lg hover:bg-purple-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            {corrector.cargando
+              ? <><Loader2 size={11} className="animate-spin" /> Revisando...</>
+              : <><SpellCheck size={11} /> Revisar ortografía</>}
+          </button>
+          {corrector.revisado && (
+            <span className={`text-[11px] font-semibold ${corrector.errores.length === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+              {corrector.errores.length === 0 ? '✓ Sin errores detectados' : `${corrector.errores.length} sugerencia${corrector.errores.length !== 1 ? 's' : ''}`}
+            </span>
+          )}
+        </div>
+        {corrector.errores.length > 0 && (
+          <div className="flex flex-col gap-2 bg-orange-50 border border-orange-200 rounded-lg p-3">
+            {corrector.errores.map((m, i) => (
+              <div key={i} className="flex flex-col gap-1">
+                <p className="text-[11px] text-orange-700 font-semibold">
+                  «{texto.slice(m.offset, m.offset + m.length)}» — {m.message}
+                </p>
+                {m.replacements.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {m.replacements.slice(0, 4).map((r, j) => (
+                      <button key={j} type="button" onClick={() => aplicarCorreccion(m, r.value)}
+                        className="text-[11px] font-bold bg-white border border-orange-300 text-orange-700 px-2 py-0.5 rounded hover:bg-orange-100 transition-colors">
+                        {r.value}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {tipo === 'candidatos' && (
         <div className="flex flex-col gap-3">

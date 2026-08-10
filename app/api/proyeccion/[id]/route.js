@@ -57,35 +57,26 @@ export async function GET(request, { params }) {
     if (preguntaActiva.tipo === 'sino') {
       opciones = [{ respuesta: 'SI', total: 0 }, { respuesta: 'NO', total: 0 }];
     } else {
-      // Siempre traer candidatos con sus integrantes de plancha
+      // Siempre traer TODOS los candidatos con sus integrantes de plancha
       const { data: cands } = await supabase
         .from('candidatos')
         .select('id, nombre, orden, es_plancha, miembros_plancha(id, nombre, cargo, orden)')
         .eq('pregunta_id', preguntaActiva.id)
         .order('orden');
 
-      const candsMap = {};
-      (cands || []).forEach((c) => {
-        candsMap[c.nombre] = {
-          es_plancha: c.es_plancha ?? false,
-          miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
-        };
+      // Votos del RPC indexados por nombre de opción
+      const votosPorNombre = {};
+      (resActivo?.opciones ?? []).forEach((op) => {
+        votosPorNombre[op.respuesta] = Number(op.total) || 0;
       });
 
-      if (resActivo?.opciones?.length) {
-        opciones = resActivo.opciones.map((op) => ({
-          ...op,
-          es_plancha: candsMap[op.respuesta]?.es_plancha ?? false,
-          miembros:   candsMap[op.respuesta]?.miembros   ?? [],
-        }));
-      } else {
-        opciones = (cands || []).map((c) => ({
-          respuesta:  c.nombre,
-          total:      0,
-          es_plancha: c.es_plancha ?? false,
-          miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
-        }));
-      }
+      // Siempre mostrar todas las opciones; mezclar votos reales del RPC
+      opciones = (cands || []).map((c) => ({
+        respuesta:  c.nombre,
+        total:      votosPorNombre[c.nombre] ?? 0,
+        es_plancha: c.es_plancha ?? false,
+        miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+      }));
     }
   }
 

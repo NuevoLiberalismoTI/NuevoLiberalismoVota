@@ -99,7 +99,7 @@ export default function NuevaSesionPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         base_id:          consecutivoBase,
-        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento === 'N/A' ? '' : form.departamento} ${form.zona}`.replace(/\s{2,}/g, ' ').trim(),
+        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento === 'N/A' ? '' : form.departamento} ${form.zona}`.replace(/\s{2,}/g, ' ').trim().toUpperCase(),
         tipo_asamblea_id: tipoObj?.id,
         colectivo_id:     colectivoObj?.id,
         departamento:     (form.tipo === 'NACIONAL' || form.departamento === 'N/A') ? null : form.departamento,

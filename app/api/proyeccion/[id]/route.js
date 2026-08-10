@@ -55,7 +55,9 @@ export async function GET(request, { params }) {
     const resActivo = (resultados?.preguntas ?? []).find((r) => r.id === preguntaActiva.id);
 
     if (preguntaActiva.tipo === 'sino') {
-      opciones = [{ respuesta: 'SI', total: 0 }, { respuesta: 'NO', total: 0 }];
+      const votosSI = resActivo?.opciones?.find((o) => o.respuesta === 'SI')?.total ?? 0;
+      const votosNO = resActivo?.opciones?.find((o) => o.respuesta === 'NO')?.total ?? 0;
+      opciones = [{ respuesta: 'SI', total: Number(votosSI) }, { respuesta: 'NO', total: Number(votosNO) }];
     } else {
       // Siempre traer TODOS los candidatos con sus integrantes de plancha
       const { data: cands } = await supabase

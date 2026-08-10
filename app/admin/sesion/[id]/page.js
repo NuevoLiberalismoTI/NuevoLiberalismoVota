@@ -101,9 +101,10 @@ function TabInvitaciones({ sesion }) {
   const [mEmail,  setMEmail]  = useState('');
   const [mCedula, setMCedula] = useState('');
   const [mError,  setMError]  = useState('');
-  const [xlsFile,    setXlsFile]    = useState(null);
-  const [xlsPreview, setXlsPreview] = useState([]);
-  const [xlsError,   setXlsError]   = useState('');
+  const [xlsFile,          setXlsFile]          = useState(null);
+  const [xlsPreview,       setXlsPreview]       = useState([]);
+  const [xlsError,         setXlsError]         = useState('');
+  const [filtroInvitados,  setFiltroInvitados]  = useState('todos');
   const fileRef = useRef(null);
 
   const cargarInvitados = useCallback(async () => {
@@ -210,13 +211,52 @@ function TabInvitaciones({ sesion }) {
     <>
     <div className="flex gap-4">
 
-      {/* Panel izquierdo: ya invitados */}
-      <div className="w-64 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
-        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2 rounded-t-2xl">
-          <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
-          <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
+      {/* Panel izquierdo: invitados con estado de preinscripción */}
+      <div className="w-72 flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+        {/* Header con contadores */}
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
+            <button onClick={cargarInvitados} className="text-gray-400 hover:text-brand transition-colors">
+              <RefreshCw size={12} />
+            </button>
+          </div>
+          {invitadosLista.length > 0 && (() => {
+            const inscritos  = invitadosLista.filter((i) => i.preinscrito).length;
+            const pendientes = invitadosLista.length - inscritos;
+            return (
+              <div className="flex gap-2">
+                <span className="flex-1 text-center text-[11px] font-bold bg-green-50 text-green-700 border border-green-200 rounded-lg py-1">
+                  ✓ {inscritos} inscritos
+                </span>
+                <span className="flex-1 text-center text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200 rounded-lg py-1">
+                  ⏳ {pendientes} pendientes
+                </span>
+              </div>
+            );
+          })()}
         </div>
-        <div className="overflow-y-auto flex-1" style={{ maxHeight: '520px' }}>
+
+        {/* Filtros */}
+        {invitadosLista.length > 0 && (
+          <div className="px-3 py-2 border-b border-gray-50 flex gap-1">
+            {[
+              { key: 'todos',      label: 'Todos'      },
+              { key: 'inscritos',  label: 'Inscritos'  },
+              { key: 'pendientes', label: 'Pendientes' },
+            ].map(({ key, label }) => (
+              <button key={key}
+                onClick={() => setFiltroInvitados(key)}
+                className={`flex-1 text-[10px] font-bold py-1 rounded-md transition-colors ${
+                  filtroInvitados === key ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-600'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="overflow-y-auto flex-1" style={{ maxHeight: '460px' }}>
           {invitadosLista.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <Send size={24} className="mb-2 text-gray-200" />
@@ -224,23 +264,34 @@ function TabInvitaciones({ sesion }) {
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {invitadosLista.map((inv, i) => {
-                const initials = inv.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
-                return (
-                  <div key={i} className="flex items-center gap-3 px-4 py-3">
-                    <div className="h-8 w-8 rounded-full bg-green-50 flex items-center justify-center text-xs font-bold text-green-700 flex-shrink-0">
-                      {initials}
+              {invitadosLista
+                .filter((inv) =>
+                  filtroInvitados === 'inscritos'  ? inv.preinscrito  :
+                  filtroInvitados === 'pendientes' ? !inv.preinscrito :
+                  true
+                )
+                .map((inv, i) => {
+                  const initials = inv.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+                  return (
+                    <div key={i} className={`flex items-center gap-3 px-4 py-3 ${inv.preinscrito ? 'bg-green-50/40' : ''}`}>
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        inv.preinscrito ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{inv.nombre}</p>
+                          {inv.preinscrito
+                            ? <CheckCircle size={12} className="text-green-500 flex-shrink-0" />
+                            : <span className="text-[9px] font-bold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full flex-shrink-0">PENDIENTE</span>
+                          }
+                        </div>
+                        <p className="text-xs text-gray-400 truncate">{inv.email}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{inv.nombre}</p>
-                      <p className="text-xs text-gray-400 truncate">{inv.email}</p>
-                      <p className="text-[10px] text-gray-300 mt-0.5">
-                        {new Date(inv.enviado_en).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>

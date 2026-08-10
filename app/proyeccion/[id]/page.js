@@ -227,8 +227,12 @@ export default function ProyeccionPage() {
             const umbral        = Math.floor(baseM / 2) + 1;
             const mayorPct      = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
             const mayorAlcanzada = totalVotos >= umbral && umbral > 0;
+            const hayPlanchas = opciones.some((o) => o.es_plancha);
+            const colsCls = hayPlanchas
+              ? opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'
+              : '';
             return (
-              <div className="flex flex-col gap-6 w-full max-w-3xl">
+              <div className="flex flex-col gap-4 w-full" style={{ maxWidth: hayPlanchas ? '100%' : '48rem' }}>
                 {/* Indicador + timer */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
@@ -248,15 +252,15 @@ export default function ProyeccionPage() {
                 </div>
 
                 {/* Pregunta */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-7 py-5">
-                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1.1rem, 2vw, 1.7rem)' }}>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-7 py-4">
+                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.5rem)' }}>
                     {preguntaActiva.texto}
                   </p>
                 </div>
 
-                {/* Barras */}
+                {/* Opciones */}
                 {opciones.length > 0 && (
-                  <div className="flex flex-col gap-2.5">
+                  <div className={hayPlanchas ? `grid ${colsCls} gap-3` : 'flex flex-col gap-2.5'}>
                     {opciones.map((op, i) => {
                       const votos     = Number(op.total);
                       const pct       = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
@@ -267,62 +271,67 @@ export default function ProyeccionPage() {
                       const barBg     = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
                       const textColor = esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-900';
                       return (
-                        <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3">
-                          <div className="flex justify-between items-start mb-2 gap-3">
-                            <div className="flex-1 min-w-0">
-                              <span className={`text-base font-bold flex items-center gap-1.5 ${textColor}`}>
-                                {esSI && <ThumbsUp size={15} className="text-green-500" />}
-                                {esNO && <ThumbsDown size={15} className="text-red-500" />}
-                                {op.respuesta}
-                              </span>
-                              {esPlancha && (
-                                <div className="mt-1.5 flex flex-col gap-0.5">
-                                  {op.miembros.map((m, mi) => (
-                                    <div key={mi} className="flex items-center gap-1.5 text-xs text-gray-500">
-                                      <span className="text-gray-300 font-bold">{mi === op.miembros.length - 1 ? '└' : '├'}</span>
-                                      <span className="font-semibold text-gray-700">{m.nombre}</span>
-                                      {m.cargo && <span className="text-gray-400">— {m.cargo}</span>}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-sm font-semibold text-gray-500 tabular-nums flex-shrink-0">
-                              {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800 font-bold">{pct}%</span>
+                        <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
+                          {/* Header plancha: nombre + votos */}
+                          <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-2">
+                            <span className={`font-extrabold text-sm flex items-center gap-1.5 ${textColor}`}>
+                              {esSI && <ThumbsUp size={14} className="text-green-500" />}
+                              {esNO && <ThumbsDown size={14} className="text-red-500" />}
+                              {op.respuesta}
+                            </span>
+                            <span className="text-xs font-bold text-gray-500 tabular-nums flex-shrink-0">
+                              {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800">{pct}%</span>
                             </span>
                           </div>
-                          <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-4 rounded-full transition-all duration-700 ease-out ${barBg}`}
-                              style={{ width: `${bar}%` }} />
+
+                          {/* Miembros en grid compacto */}
+                          {esPlancha && (
+                            <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                              {op.miembros.map((m, mi) => (
+                                <div key={mi} className="flex items-baseline gap-1 min-w-0">
+                                  <span className="text-brand text-[9px] font-black flex-shrink-0">▸</span>
+                                  <span className="text-[11px] font-semibold text-gray-700 truncate">{m.nombre}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Barra de votos */}
+                          <div className="px-4 pb-3 mt-auto">
+                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-3 rounded-full transition-all duration-700 ease-out ${barBg}`}
+                                style={{ width: `${bar}%` }} />
+                            </div>
                           </div>
                         </div>
                       );
                     })}
-                    {/* Indicador de mayoría */}
-                    <div className={`rounded-2xl border shadow-sm px-6 py-4 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
-                            {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
-                          </span>
-                          <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
-                        </div>
-                        <span className={`text-2xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
-                          {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
+                  </div>
+                )}
+
+                {/* Indicador de mayoría — siempre ancho completo fuera del grid */}
+                {opciones.length > 0 && (
+                  <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+                          {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
                         </span>
+                        <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
                       </div>
-                      <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-4 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
-                          style={{ width: `${mayorPct}%` }}
-                        />
-                      </div>
-                      <p className={`text-sm font-semibold mt-2 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
-                        {mayorAlcanzada
-                          ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
-                          : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
-                      </p>
+                      <span className={`text-xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
+                        {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
+                      </span>
                     </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-3 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
+                        style={{ width: `${mayorPct}%` }} />
+                    </div>
+                    <p className={`text-xs font-semibold mt-1.5 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
+                      {mayorAlcanzada
+                        ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                        : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
+                    </p>
                   </div>
                 )}
               </div>

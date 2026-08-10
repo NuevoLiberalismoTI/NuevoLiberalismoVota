@@ -40,8 +40,8 @@ export default function DashboardPage() {
     const invitadasIds = new Set(invJson.ids ?? []);
     const rpcIds       = new Set((rpcData || []).map((s) => s.id));
 
-    // Solo sesiones donde el usuario fue invitado O tiene inscripción directa
-    const deRpc = (rpcData || []).filter((s) => invitadasIds.has(s.id) || (s.id in acredMap));
+    // Solo sesiones donde el usuario fue invitado formalmente
+    const deRpc = (rpcData || []).filter((s) => invitadasIds.has(s.id));
     // Sesiones invitadas que el RPC no devolvió
     const extra = (invJson.data ?? []).filter((s) => !rpcIds.has(s.id));
 

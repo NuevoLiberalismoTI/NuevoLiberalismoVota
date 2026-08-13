@@ -23,7 +23,6 @@ export async function GET(request, { params }) {
       .from('asistencia')
       .select('*', { count: 'exact', head: true })
       .eq('asamblea_id', sesionId),
-    // Sin join a candidatos para evitar errores de relación
     supabase
       .from('asamblea_preguntas')
       .select('id, texto, tipo, estado, duracion_segundos, publicada_en, tipo_mayoria')
@@ -49,6 +48,23 @@ export async function GET(request, { params }) {
   // Pregunta activa
   const preguntaActiva = (pregs || []).find((p) => p.estado === 'activa') ?? null;
 
+  // Batch: fetch candidatos for active question + all closed candidatos questions in one query
+  const cerradas     = (pregs || []).filter((p) => p.estado === 'cerrada');
+  const idsConCands  = [
+    ...(preguntaActiva && preguntaActiva.tipo !== 'sino' ? [preguntaActiva.id] : []),
+    ...cerradas.filter((p) => p.tipo !== 'sino').map((p) => p.id),
+  ];
+
+  let allCands = [];
+  if (idsConCands.length > 0) {
+    const { data: candsData } = await supabase
+      .from('candidatos')
+      .select('id, nombre, orden, es_plancha, pregunta_id, miembros_plancha(id, nombre, cargo, orden)')
+      .in('pregunta_id', idsConCands)
+      .order('orden');
+    allCands = candsData || [];
+  }
+
   // Opciones para la pregunta activa
   let opciones = [];
   if (preguntaActiva) {
@@ -59,21 +75,10 @@ export async function GET(request, { params }) {
       const votosNO = resActivo?.opciones?.find((o) => o.respuesta === 'NO')?.total ?? 0;
       opciones = [{ respuesta: 'SI', total: Number(votosSI) }, { respuesta: 'NO', total: Number(votosNO) }];
     } else {
-      // Siempre traer TODOS los candidatos con sus integrantes de plancha
-      const { data: cands } = await supabase
-        .from('candidatos')
-        .select('id, nombre, orden, es_plancha, miembros_plancha(id, nombre, cargo, orden)')
-        .eq('pregunta_id', preguntaActiva.id)
-        .order('orden');
-
-      // Votos del RPC indexados por nombre de opción
+      const cands = allCands.filter((c) => c.pregunta_id === preguntaActiva.id);
       const votosPorNombre = {};
-      (resActivo?.opciones ?? []).forEach((op) => {
-        votosPorNombre[op.respuesta] = Number(op.total) || 0;
-      });
-
-      // Siempre mostrar todas las opciones; mezclar votos reales del RPC
-      opciones = (cands || []).map((c) => ({
+      (resActivo?.opciones ?? []).forEach((op) => { votosPorNombre[op.respuesta] = Number(op.total) || 0; });
+      opciones = cands.map((c) => ({
         respuesta:  c.nombre,
         total:      votosPorNombre[c.nombre] ?? 0,
         es_plancha: c.es_plancha ?? false,
@@ -88,6 +93,36 @@ export async function GET(request, { params }) {
     const transcurridos = Math.floor((Date.now() - new Date(preguntaActiva.publicada_en).getTime()) / 1000);
     segundosRestantes = Math.max(0, preguntaActiva.duracion_segundos - transcurridos);
   }
+
+  // Historial: todas las preguntas cerradas con sus resultados completos
+  const historial = cerradas.map((p) => {
+    const resP = (resultados?.preguntas ?? []).find((r) => r.id === p.id);
+    let opcionesH = [];
+    if (p.tipo === 'sino') {
+      const vSI = resP?.opciones?.find((o) => o.respuesta === 'SI')?.total ?? 0;
+      const vNO = resP?.opciones?.find((o) => o.respuesta === 'NO')?.total ?? 0;
+      opcionesH = [{ respuesta: 'SI', total: Number(vSI) }, { respuesta: 'NO', total: Number(vNO) }];
+    } else {
+      const candsH        = allCands.filter((c) => c.pregunta_id === p.id);
+      const votosPorNombreH = {};
+      (resP?.opciones ?? []).forEach((op) => { votosPorNombreH[op.respuesta] = Number(op.total) || 0; });
+      opcionesH = candsH.map((c) => ({
+        respuesta:  c.nombre,
+        total:      votosPorNombreH[c.nombre] ?? 0,
+        es_plancha: c.es_plancha ?? false,
+        miembros:   (c.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+      }));
+    }
+    return {
+      id:           p.id,
+      texto:        p.texto,
+      tipo:         p.tipo,
+      tipo_mayoria: p.tipo_mayoria ?? 'simple',
+      ganador:      resP?.ganador ?? null,
+      total_votos:  Number(resP?.total_votos) || 0,
+      opciones:     opcionesH,
+    };
+  });
 
   return Response.json({
     ok: true,
@@ -118,5 +153,6 @@ export async function GET(request, { params }) {
           opciones,
         }
       : null,
+    historial,
   });
 }

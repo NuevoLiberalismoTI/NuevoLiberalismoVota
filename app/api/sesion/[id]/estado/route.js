@@ -52,25 +52,40 @@ export async function GET(request, { params }) {
     }
   }
 
-  // Detectar preguntas cerradas donde el votante no participó
+  // Detectar preguntas cerradas donde el votante no participó + resultados
   if (data.asistio) {
-    const [{ data: cerradas }, { data: votosUsuario }] = await Promise.all([
+    const [{ data: cerradas }, { data: votosUsuario }, { data: resultadosSesion }] = await Promise.all([
       supabase
         .from('asamblea_preguntas')
-        .select('id, texto')
+        .select('id, texto, tipo, tipo_mayoria')
         .eq('asamblea_id', sesionId)
-        .eq('estado', 'cerrada'),
+        .eq('estado', 'cerrada')
+        .order('created_at'),
       supabase
         .from('votos')
         .select('pregunta_id')
         .eq('asamblea_id', sesionId)
         .eq('cedula', cedula),
+      supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
     ]);
 
     const votadoIds = new Set((votosUsuario || []).map((v) => v.pregunta_id));
     data.preguntas_perdidas = (cerradas || [])
       .filter((p) => !votadoIds.has(p.id))
       .map((p) => p.texto);
+
+    const pregResultados = resultadosSesion?.preguntas ?? [];
+    data.preguntas_cerradas = (cerradas || []).map((p) => {
+      const res = pregResultados.find((r) => r.id === p.id);
+      return {
+        id:           p.id,
+        texto:        p.texto,
+        tipo_mayoria: p.tipo_mayoria ?? 'simple',
+        ganador:      res?.ganador ?? null,
+        total_votos:  Number(res?.total_votos) || 0,
+        yo_vote:      votadoIds.has(p.id),
+      };
+    });
   }
 
   return Response.json(data);

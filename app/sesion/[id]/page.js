@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap, Camera, X, AlertTriangle, Timer } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap, Camera, X, AlertTriangle, Timer, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -346,6 +346,38 @@ export default function SesionPage() {
               <p className="text-[10px] text-orange-400 mt-2">El tiempo de estas votaciones se agotó</p>
             </div>
           )}
+          {estado?.preguntas_cerradas?.length > 0 && (
+            <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-4 text-left mt-2 shadow-sm">
+              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <Award size={13}/> Resultados de votaciones cerradas
+              </p>
+              {estado.preguntas_cerradas.map((pc, i) => (
+                <div key={pc.id} className={`${i > 0 ? 'border-t border-gray-100 pt-2.5 mt-2.5' : ''}`}>
+                  <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
+                  {pc.ganador ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                        pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
+                        pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
+                      }`}>
+                        {pc.ganador === 'SI' && <ThumbsUp size={11}/>}
+                        {pc.ganador === 'NO' && <ThumbsDown size={11}/>}
+                        {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
+                        {pc.ganador}
+                      </span>
+                      {pc.yo_vote ? (
+                        <span className="text-[10px] text-green-600 font-semibold">· Votaste en esta</span>
+                      ) : (
+                        <span className="text-[10px] text-orange-400 font-semibold">· No participaste</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Sin votos suficientes</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <Footer />
@@ -533,6 +565,39 @@ export default function SesionPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {estado?.preguntas_cerradas?.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-lg p-5 mb-4 flex flex-col gap-3">
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
+                <Award size={14}/> Resultados de la sesión
+              </h3>
+              {estado.preguntas_cerradas.map((pc, i) => (
+                <div key={pc.id} className="border-t border-gray-100 pt-3 first:border-0 first:pt-0">
+                  <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
+                  {pc.ganador ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                        pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
+                        pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
+                      }`}>
+                        {pc.ganador === 'SI' && <ThumbsUp size={11}/>}
+                        {pc.ganador === 'NO' && <ThumbsDown size={11}/>}
+                        {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
+                        {pc.ganador}
+                      </span>
+                      {pc.yo_vote ? (
+                        <span className="text-[10px] text-green-600 font-semibold">Participaste</span>
+                      ) : (
+                        <span className="text-[10px] text-orange-400 font-semibold">No participaste</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Sin resultado</span>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 

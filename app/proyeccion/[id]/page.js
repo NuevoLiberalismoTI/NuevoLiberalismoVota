@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio } from 'lucide-react';
+import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -11,11 +11,12 @@ export default function ProyeccionPage() {
   const { id } = useParams();
   const sesionId = decodeURIComponent(id);
 
-  const [datos, setDatos]   = useState(null);
-  const [error, setError]   = useState(null);
-  const [qrTs,  setQrTs]   = useState(() => Math.floor(Date.now() / 30000));
-  const [qrSeg, setQrSeg]  = useState(30);
-  const [timer, setTimer]  = useState(null);
+  const [datos, setDatos]     = useState(null);
+  const [error, setError]     = useState(null);
+  const [qrTs,  setQrTs]     = useState(() => Math.floor(Date.now() / 30000));
+  const [qrSeg, setQrSeg]    = useState(30);
+  const [timer, setTimer]    = useState(null);
+  const [histIdx, setHistIdx] = useState(-1); // -1 = most recent auto
   const timerRef   = useRef(null);
   const prevPregId = useRef(null);
 
@@ -29,6 +30,8 @@ export default function ProyeccionPage() {
       if (pa?.id !== prevPregId.current) {
         prevPregId.current = pa?.id ?? null;
         setTimer(pa?.segundos_restantes ?? null);
+        // Reset history navigation when a new active question appears
+        if (pa) setHistIdx(-1);
       }
     } catch { setError('Error de conexión'); }
   }, [sesionId]);
@@ -67,7 +70,7 @@ export default function ProyeccionPage() {
     </div>
   );
 
-  const { sesion, quorum, preguntaActiva } = datos;
+  const { sesion, quorum, preguntaActiva, historial = [] } = datos;
   const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}&ts=${qrTs}`;
 
   const quorumPct       = quorum.acreditados_voto > 0
@@ -75,10 +78,17 @@ export default function ProyeccionPage() {
     : 0;
   const quorumAlcanzado = quorumPct >= 50;
 
+  // Which historical question to display
+  const histLen       = historial.length;
+  const efectivoIdx   = histIdx === -1 ? histLen - 1 : Math.min(histIdx, histLen - 1);
+  const histActual    = histLen > 0 ? historial[efectivoIdx] : null;
+  const puedeRetro    = efectivoIdx > 0;
+  const puedeAdelantar = efectivoIdx < histLen - 1;
+
   return (
     <div className="h-screen w-screen flex overflow-hidden select-none">
 
-      {/* ── Panel izquierdo: QR + quórum — rojo marca ─────── */}
+      {/* ── Panel izquierdo: QR + quórum ─────── */}
       <div className="w-[36%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-6">
         <LogoNL />
 
@@ -139,7 +149,7 @@ export default function ProyeccionPage() {
         </div>
       </div>
 
-      {/* ── Panel derecho: blanco, estilo admin ─────────────── */}
+      {/* ── Panel derecho ─────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
 
         {/* Header */}
@@ -169,8 +179,8 @@ export default function ProyeccionPage() {
         {/* Contenido */}
         <div className="flex-1 flex flex-col items-center justify-center px-12 py-8 overflow-hidden">
 
-          {/* Finalizada */}
-          {sesion.estado === 'finalizada' && !preguntaActiva && (
+          {/* Finalizada sin historial */}
+          {sesion.estado === 'finalizada' && !preguntaActiva && histLen === 0 && (
             <div className="flex flex-col items-center gap-5 text-center">
               <CheckCircle size={72} className="text-green-500" />
               <p className="text-gray-900 text-4xl font-extrabold">Sesión finalizada</p>
@@ -178,10 +188,9 @@ export default function ProyeccionPage() {
             </div>
           )}
 
-          {/* Esperando pregunta */}
-          {!preguntaActiva && sesion.estado !== 'finalizada' && (
+          {/* Esperando pregunta — sin historial */}
+          {!preguntaActiva && sesion.estado !== 'finalizada' && histLen === 0 && (
             <div className="flex flex-col items-center gap-8 w-full max-w-2xl">
-              {/* Estado */}
               <div className="flex flex-col items-center gap-1.5">
                 <div className="flex items-center gap-2">
                   <Radio size={15} className="text-brand" />
@@ -189,15 +198,11 @@ export default function ProyeccionPage() {
                 </div>
                 <p className="text-gray-400 text-sm">El moderador publicará la primera pregunta en breve</p>
               </div>
-
-              {/* Métricas */}
               <div className="grid grid-cols-3 gap-4 w-full">
                 <BigStatRight value={quorum.inscritos}        label="Inscritos"              accent="text-gray-500"  />
                 <BigStatRight value={quorum.acreditados_voto} label="Habilitados para votar" accent="text-green-600" />
                 <BigStatRight value={quorum.asistentes}       label="Asistentes presentes"   accent="text-brand"     />
               </div>
-
-              {/* Quórum */}
               <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-gray-500 text-sm font-bold uppercase tracking-wide">Quórum deliberativo</span>
@@ -214,6 +219,20 @@ export default function ProyeccionPage() {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Resultado histórico — cuando no hay pregunta activa pero sí hay historial */}
+          {!preguntaActiva && histLen > 0 && histActual && (
+            <ResultadoCerrado
+              preg={histActual}
+              quorum={quorum}
+              idx={efectivoIdx}
+              total={histLen}
+              puedeRetro={puedeRetro}
+              puedeAdelantar={puedeAdelantar}
+              onRetro={() => setHistIdx(Math.max(0, efectivoIdx - 1))}
+              onAdelantar={() => setHistIdx(Math.min(histLen - 1, efectivoIdx + 1))}
+            />
           )}
 
           {/* ── Pregunta activa ── */}
@@ -272,7 +291,6 @@ export default function ProyeccionPage() {
                       const textColor = esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-900';
                       return (
                         <div key={i} className="bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col">
-                          {/* Header plancha: nombre + votos */}
                           <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-2">
                             <span className={`font-extrabold text-sm flex items-center gap-1.5 ${textColor}`}>
                               {esSI && <ThumbsUp size={14} className="text-green-500" />}
@@ -283,8 +301,6 @@ export default function ProyeccionPage() {
                               {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800">{pct}%</span>
                             </span>
                           </div>
-
-                          {/* Miembros en grid compacto */}
                           {esPlancha && (
                             <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
                               {op.miembros.map((m, mi) => (
@@ -295,8 +311,6 @@ export default function ProyeccionPage() {
                               ))}
                             </div>
                           )}
-
-                          {/* Barra de votos */}
                           <div className="px-4 pb-3 mt-auto">
                             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
                               <div className={`h-3 rounded-full transition-all duration-700 ease-out ${barBg}`}
@@ -309,7 +323,7 @@ export default function ProyeccionPage() {
                   </div>
                 )}
 
-                {/* Indicador de mayoría — siempre ancho completo fuera del grid */}
+                {/* Indicador de mayoría */}
                 {opciones.length > 0 && (
                   <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
@@ -339,6 +353,120 @@ export default function ProyeccionPage() {
           })()}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar, onRetro, onAdelantar }) {
+  const opciones     = preg.opciones ?? [];
+  const totalVotos   = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
+  const maxVotos     = Math.max(...opciones.map((o) => Number(o.total)), 1);
+  const ganador      = preg.ganador;
+  const hayPlanchas  = opciones.some((o) => o.es_plancha);
+  const colsCls      = hayPlanchas ? (opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3') : '';
+  const ganadorOp    = ganador ? opciones.find((o) => o.respuesta === ganador) : null;
+
+  return (
+    <div className="flex flex-col gap-4 w-full" style={{ maxWidth: hayPlanchas ? '100%' : '48rem' }}>
+
+      {/* Cabecera: badge resultado + navegación */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-full px-4 py-1.5 text-slate-600 text-xs font-bold uppercase tracking-widest">
+            <Award size={12}/> Resultado — votación {idx + 1} de {total}
+          </span>
+          {ganador && (
+            <span className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-4 py-1.5 text-green-700 text-xs font-bold">
+              ✓ {ganador}
+            </span>
+          )}
+        </div>
+        {total > 1 && (
+          <div className="flex items-center gap-1">
+            <button onClick={onRetro} disabled={!puedeRetro}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              <ChevronLeft size={14}/> Anterior
+            </button>
+            <button onClick={onAdelantar} disabled={!puedeAdelantar}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              Siguiente <ChevronRight size={14}/>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Pregunta */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-7 py-4">
+        <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.5rem)' }}>
+          {preg.texto}
+        </p>
+      </div>
+
+      {/* Opciones con resultado */}
+      {opciones.length > 0 && (
+        <div className={hayPlanchas ? `grid ${colsCls} gap-3` : 'flex flex-col gap-2.5'}>
+          {opciones.map((op, i) => {
+            const votos     = Number(op.total);
+            const pct       = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+            const bar       = Math.round((votos / maxVotos) * 100);
+            const esSI      = op.respuesta === 'SI';
+            const esNO      = op.respuesta === 'NO';
+            const esPlancha = op.es_plancha && op.miembros?.length > 0;
+            const esGanador = op.respuesta === ganador;
+            const barBg     = esGanador ? 'bg-green-500' : esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-gray-300';
+            const textColor = esGanador ? 'text-green-700' : esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-500';
+            const cardBg    = esGanador ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200';
+            return (
+              <div key={i} className={`rounded-xl border shadow-sm flex flex-col ${cardBg}`}>
+                <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-2">
+                  <span className={`font-extrabold text-sm flex items-center gap-1.5 ${textColor}`}>
+                    {esGanador && <CheckCircle size={13} className="text-green-600 flex-shrink-0"/>}
+                    {esSI && !esGanador && <span className="text-green-500">↑</span>}
+                    {esNO && !esGanador && <span className="text-red-500">↓</span>}
+                    {op.respuesta}
+                  </span>
+                  <span className={`text-xs font-bold tabular-nums flex-shrink-0 ${esGanador ? 'text-green-700' : 'text-gray-500'}`}>
+                    {votos} voto{votos !== 1 ? 's' : ''} · <span className={esGanador ? 'text-green-800 font-extrabold' : 'text-gray-800'}>{pct}%</span>
+                  </span>
+                </div>
+                {esPlancha && (
+                  <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    {op.miembros.map((m, mi) => (
+                      <div key={mi} className="flex items-baseline gap-1 min-w-0">
+                        <span className={`text-[9px] font-black flex-shrink-0 ${esGanador ? 'text-green-600' : 'text-brand'}`}>▸</span>
+                        <span className={`text-[11px] font-semibold truncate ${esGanador ? 'text-green-800' : 'text-gray-700'}`}>{m.nombre}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="px-4 pb-3 mt-auto">
+                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-3 rounded-full transition-all duration-700 ease-out ${barBg}`}
+                      style={{ width: `${bar}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Banner ganador plancha — integrantes */}
+      {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4">
+          <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Users size={12}/> Integrantes de la plancha ganadora — {ganador}
+          </p>
+          <div className="grid grid-cols-3 gap-x-6 gap-y-1.5">
+            {ganadorOp.miembros.map((m, mi) => (
+              <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                {m.cargo && <span className="font-bold text-green-700 flex-shrink-0">{m.cargo}:</span>}
+                <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

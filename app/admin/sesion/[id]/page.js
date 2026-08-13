@@ -1718,6 +1718,28 @@ export default function AdminSesionPage() {
                     </div>
                   )}
 
+                  {/* Integrantes de la plancha ganadora */}
+                  {esCerrada && ganador && preg.tipo === 'candidatos' && (() => {
+                    const pregData    = preguntas.find((p) => p.id === preg.id);
+                    const ganadorCand = pregData?.candidatos?.find((c) => c.nombre === ganador);
+                    if (!ganadorCand?.es_plancha || !ganadorCand.miembros?.length) return null;
+                    return (
+                      <div className="mb-3 bg-green-50 border border-green-200 rounded-xl p-3">
+                        <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                          <Users size={11}/> Integrantes de la plancha ganadora
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          {ganadorCand.miembros.map((m) => (
+                            <div key={m.id} className="text-xs">
+                              {m.cargo && <span className="font-bold text-green-700">{m.cargo}: </span>}
+                              <span className="text-gray-700">{m.nombre}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {total === 0 ? (
                     <p className="text-xs text-gray-300 italic">Sin votos aún</p>
                   ) : (

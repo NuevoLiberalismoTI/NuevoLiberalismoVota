@@ -516,9 +516,9 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
         const ganadoresDh = dhondt.filter((c) => c.cupos_ganados > 0);
         if (!ganadoresDh.length) return null;
         return (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-5">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
             {/* Cabecera con toggle */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
                 <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
               </p>
@@ -530,30 +530,29 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
               </button>
             </div>
 
-            {/* Asignaciones por plancha */}
-            <div className="flex flex-col gap-4 mb-4">
+            {/* Asignaciones por plancha — columnas horizontales */}
+            <div className={`grid gap-3 mb-3 ${ganadoresDh.length === 1 ? 'grid-cols-1' : ganadoresDh.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {ganadoresDh.map((c, i) => {
                 const op        = opciones.find((o) => o.respuesta === c.respuesta);
                 const miembros  = op?.miembros ?? [];
                 const elegidos  = miembros.slice(0, c.cupos_ganados);
                 const suplentes = miembros.slice(c.cupos_ganados, c.cupos_ganados * 2);
                 return (
-                  <div key={i}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-extrabold text-blue-900 text-sm">{c.respuesta}</span>
-                      <span className="text-[11px] font-bold bg-blue-600 text-white px-2.5 py-0.5 rounded-full">
+                  <div key={i} className="bg-white border border-blue-100 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                      <span className="font-extrabold text-blue-900 text-xs">{c.respuesta}</span>
+                      <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
                         {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
                       </span>
-                      <span className="text-xs text-blue-400">· {c.total} votos</span>
+                      <span className="text-[10px] text-blue-400">· {c.total} votos</span>
                     </div>
                     {elegidos.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-1 pl-2">Elegidos</p>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-green-400">
+                      <div className="mb-1.5">
+                        <p className="text-[9px] font-bold text-green-600 uppercase tracking-wide mb-0.5">Elegidos</p>
+                        <div className="border-l-2 border-green-400 pl-1.5 flex flex-col gap-0.5">
                           {elegidos.map((m, mi) => (
-                            <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                            <div key={mi} className="flex items-baseline gap-1 text-[11px] min-w-0">
                               <span className="font-bold text-green-600 flex-shrink-0 tabular-nums">#{mi + 1}</span>
-                              {m.cargo && <span className="font-semibold text-green-700 flex-shrink-0">{m.cargo}:</span>}
                               <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
                             </div>
                           ))}
@@ -562,12 +561,11 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                     )}
                     {suplentes.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1 pl-2">Suplentes</p>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-gray-300">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Suplentes</p>
+                        <div className="border-l-2 border-gray-300 pl-1.5 flex flex-col gap-0.5">
                           {suplentes.map((m, mi) => (
-                            <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                            <div key={mi} className="flex items-baseline gap-1 text-[11px] min-w-0">
                               <span className="font-bold text-gray-400 flex-shrink-0 tabular-nums">#{elegidos.length + mi + 1}</span>
-                              {m.cargo && <span className="font-semibold text-gray-400 flex-shrink-0">{m.cargo}:</span>}
                               <span className="text-gray-500 truncate">{m.nombre}</span>
                             </div>
                           ))}

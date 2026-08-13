@@ -357,6 +357,20 @@ export default function ProyeccionPage() {
   );
 }
 
+function calcDhondt(opciones, cupos) {
+  if (!cupos || !opciones?.length) return [];
+  const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
+  for (let i = 0; i < cupos; i++) {
+    let maxQ = -1, maxIdx = 0;
+    seats.forEach((s, idx) => {
+      const q = Number(s.total) / (s.cupos_ganados + 1);
+      if (q > maxQ) { maxQ = q; maxIdx = idx; }
+    });
+    seats[maxIdx].cupos_ganados++;
+  }
+  return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
+}
+
 function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar, onRetro, onAdelantar }) {
   const opciones     = preg.opciones ?? [];
   const totalVotos   = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
@@ -452,7 +466,7 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
       )}
 
       {/* Banner ganador plancha — integrantes */}
-      {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && (
+      {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && !preg.cupos && (
         <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4">
           <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
             <Users size={12}/> Integrantes de la plancha ganadora — {ganador}
@@ -467,6 +481,48 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
           </div>
         </div>
       )}
+
+      {/* D'Hondt — cupos asignados por plancha con sus integrantes */}
+      {preg.cupos && preg.tipo === 'candidatos' && (() => {
+        const dhondt = calcDhondt(opciones, preg.cupos);
+        const ganadoresDh = dhondt.filter((c) => c.cupos_ganados > 0);
+        if (!ganadoresDh.length) return null;
+        return (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-5">
+            <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-4 flex items-center gap-1.5">
+              <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
+            </p>
+            <div className="flex flex-col gap-4">
+              {ganadoresDh.map((c, i) => {
+                const op = opciones.find((o) => o.respuesta === c.respuesta);
+                const asignados = (op?.miembros ?? []).slice(0, c.cupos_ganados);
+                return (
+                  <div key={i}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-extrabold text-blue-900 text-sm">{c.respuesta}</span>
+                      <span className="text-[11px] font-bold bg-blue-600 text-white px-2.5 py-0.5 rounded-full">
+                        {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-xs text-blue-400">· {c.total} votos</span>
+                    </div>
+                    {asignados.length > 0 && (
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-blue-300">
+                        {asignados.map((m, mi) => (
+                          <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                            <span className="font-bold text-blue-500 flex-shrink-0 tabular-nums">#{mi + 1}</span>
+                            {m.cargo && <span className="font-semibold text-blue-700 flex-shrink-0">{m.cargo}:</span>}
+                            <span className="text-blue-900 font-semibold truncate">{m.nombre}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

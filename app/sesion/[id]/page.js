@@ -8,6 +8,20 @@ import { supabase } from '../../lib/supabase';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
+function calcDhondt(opciones, cupos) {
+  if (!cupos || !opciones?.length) return [];
+  const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
+  for (let i = 0; i < cupos; i++) {
+    let maxQ = -1, maxIdx = 0;
+    seats.forEach((s, idx) => {
+      const q = Number(s.total) / (s.cupos_ganados + 1);
+      if (q > maxQ) { maxQ = q; maxIdx = idx; }
+    });
+    seats[maxIdx].cupos_ganados++;
+  }
+  return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
+}
+
 export default function SesionPage() {
   const router   = useRouter();
   const { id }   = useParams();
@@ -351,31 +365,48 @@ export default function SesionPage() {
               <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                 <Award size={13}/> Resultados de votaciones cerradas
               </p>
-              {estado.preguntas_cerradas.map((pc, i) => (
-                <div key={pc.id} className={`${i > 0 ? 'border-t border-gray-100 pt-2.5 mt-2.5' : ''}`}>
-                  <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
-                  {pc.ganador ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                        pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
-                        pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
-                      }`}>
-                        {pc.ganador === 'SI' && <ThumbsUp size={11}/>}
-                        {pc.ganador === 'NO' && <ThumbsDown size={11}/>}
-                        {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
-                        {pc.ganador}
-                      </span>
-                      {pc.yo_vote ? (
-                        <span className="text-[10px] text-green-600 font-semibold">· Votaste en esta</span>
-                      ) : (
-                        <span className="text-[10px] text-orange-400 font-semibold">· No participaste</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">Sin votos suficientes</span>
-                  )}
-                </div>
-              ))}
+              {estado.preguntas_cerradas.map((pc, i) => {
+                const dhondt = pc.cupos && pc.tipo === 'candidatos' ? calcDhondt(pc.opciones, pc.cupos) : [];
+                const ganadores = dhondt.filter((c) => c.cupos_ganados > 0);
+                return (
+                  <div key={pc.id} className={`${i > 0 ? 'border-t border-gray-100 pt-2.5 mt-2.5' : ''}`}>
+                    <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
+                    {pc.yo_vote ? (
+                      <span className="text-[10px] text-green-600 font-semibold">· Votaste en esta</span>
+                    ) : (
+                      <span className="text-[10px] text-orange-400 font-semibold">· No participaste</span>
+                    )}
+                    {ganadores.length > 0 ? (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {ganadores.map((c, ci) => (
+                          <div key={ci} className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand">
+                              <User size={10}/> {c.respuesta}
+                            </span>
+                            <span className="text-[11px] font-bold text-brand bg-brand-50 px-2 py-0.5 rounded-full">
+                              {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : pc.ganador ? (
+                      <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                          pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
+                          pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
+                        }`}>
+                          {pc.ganador === 'SI' && <ThumbsUp size={11}/>}
+                          {pc.ganador === 'NO' && <ThumbsDown size={11}/>}
+                          {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
+                          {pc.ganador}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">Sin votos suficientes</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -573,11 +604,33 @@ export default function SesionPage() {
               <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
                 <Award size={14}/> Resultados de la sesión
               </h3>
-              {estado.preguntas_cerradas.map((pc, i) => (
-                <div key={pc.id} className="border-t border-gray-100 pt-3 first:border-0 first:pt-0">
-                  <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
-                  {pc.ganador ? (
-                    <div className="flex items-center gap-2 flex-wrap">
+              {estado.preguntas_cerradas.map((pc, i) => {
+                const dhondt  = pc.cupos && pc.tipo === 'candidatos' ? calcDhondt(pc.opciones, pc.cupos) : [];
+                const ganadores = dhondt.filter((c) => c.cupos_ganados > 0);
+                return (
+                  <div key={pc.id} className="border-t border-gray-100 pt-3 first:border-0 first:pt-0">
+                    <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      {pc.yo_vote ? (
+                        <span className="text-[10px] text-green-600 font-semibold">Participaste</span>
+                      ) : (
+                        <span className="text-[10px] text-orange-400 font-semibold">No participaste</span>
+                      )}
+                    </div>
+                    {ganadores.length > 0 ? (
+                      <div className="flex flex-col gap-1 mt-1">
+                        {ganadores.map((c, ci) => (
+                          <div key={ci} className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-brand-50 text-brand">
+                              <User size={11}/> {c.respuesta}
+                            </span>
+                            <span className="text-xs font-bold text-brand">
+                              {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : pc.ganador ? (
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                         pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
                         pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
@@ -587,17 +640,12 @@ export default function SesionPage() {
                         {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
                         {pc.ganador}
                       </span>
-                      {pc.yo_vote ? (
-                        <span className="text-[10px] text-green-600 font-semibold">Participaste</span>
-                      ) : (
-                        <span className="text-[10px] text-orange-400 font-semibold">No participaste</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">Sin resultado</span>
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">Sin resultado</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 

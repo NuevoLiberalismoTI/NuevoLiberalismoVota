@@ -1781,19 +1781,39 @@ export default function AdminSesionPage() {
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
                           <Award size={12}/> D'Hondt — {cuposPreg} cupo{cuposPreg !== 1 ? 's' : ''} a repartir
                         </p>
-                        <div className="flex flex-col gap-1.5">
-                          {dhondt.map((c, i) => (
-                            <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${c.cupos_ganados > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
-                              <span className={`text-sm font-bold w-5 text-center ${c.cupos_ganados > 0 ? 'text-green-700' : 'text-gray-300'}`}>{i + 1}</span>
-                              <span className={`flex-1 text-xs font-semibold ${c.cupos_ganados > 0 ? 'text-green-800' : 'text-gray-500'}`}>{c.respuesta}</span>
-                              <span className="text-xs text-gray-400">{c.total} votos</span>
-                              {c.cupos_ganados > 0 && (
-                                <span className="text-[10px] font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
-                                  {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                        <div className="flex flex-col gap-2">
+                          {dhondt.map((c, i) => {
+                            const pregData  = preguntas.find((p) => p.id === preg.id);
+                            const cand      = pregData?.candidatos?.find((ca) => ca.nombre === c.respuesta);
+                            const asignados = cand?.es_plancha && c.cupos_ganados > 0
+                              ? (cand.miembros || []).slice(0, c.cupos_ganados)
+                              : [];
+                            return (
+                              <div key={i} className={`rounded-lg border ${c.cupos_ganados > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                <div className="flex items-center gap-3 px-3 py-2">
+                                  <span className={`text-sm font-bold w-5 text-center ${c.cupos_ganados > 0 ? 'text-green-700' : 'text-gray-300'}`}>{i + 1}</span>
+                                  <span className={`flex-1 text-xs font-semibold ${c.cupos_ganados > 0 ? 'text-green-800' : 'text-gray-500'}`}>{c.respuesta}</span>
+                                  <span className="text-xs text-gray-400">{c.total} votos</span>
+                                  {c.cupos_ganados > 0 && (
+                                    <span className="text-[10px] font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                      {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                                {asignados.length > 0 && (
+                                  <div className="px-3 pb-2.5 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-green-200 pt-2 ml-8">
+                                    {asignados.map((m, mi) => (
+                                      <div key={mi} className="text-[11px] flex items-baseline gap-1">
+                                        <span className="font-bold text-green-600 tabular-nums flex-shrink-0">#{mi + 1}</span>
+                                        {m.cargo && <span className="font-semibold text-green-700 flex-shrink-0">{m.cargo}:</span>}
+                                        <span className="text-gray-700 truncate">{m.nombre}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
 
                         {/* Tabla de cocientes */}

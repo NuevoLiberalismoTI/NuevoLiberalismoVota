@@ -57,7 +57,7 @@ export async function GET(request, { params }) {
     const [{ data: cerradas }, { data: votosUsuario }, { data: resultadosSesion }] = await Promise.all([
       supabase
         .from('asamblea_preguntas')
-        .select('id, texto, tipo, tipo_mayoria')
+        .select('id, texto, tipo, tipo_mayoria, cupos')
         .eq('asamblea_id', sesionId)
         .eq('estado', 'cerrada')
         .order('created_at'),
@@ -80,9 +80,12 @@ export async function GET(request, { params }) {
       return {
         id:           p.id,
         texto:        p.texto,
+        tipo:         p.tipo,
         tipo_mayoria: p.tipo_mayoria ?? 'simple',
+        cupos:        p.cupos ?? null,
         ganador:      res?.ganador ?? null,
         total_votos:  Number(res?.total_votos) || 0,
+        opciones:     (res?.opciones ?? []).map((o) => ({ respuesta: o.respuesta, total: Number(o.total) || 0 })),
         yo_vote:      votadoIds.has(p.id),
       };
     });

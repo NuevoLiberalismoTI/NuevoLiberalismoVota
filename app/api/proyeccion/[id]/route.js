@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
       .eq('asamblea_id', sesionId),
     supabase
       .from('asamblea_preguntas')
-      .select('id, texto, tipo, estado, duracion_segundos, publicada_en, tipo_mayoria')
+      .select('id, texto, tipo, estado, duracion_segundos, publicada_en, tipo_mayoria, cupos')
       .eq('asamblea_id', sesionId)
       .order('created_at'),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
@@ -118,6 +118,7 @@ export async function GET(request, { params }) {
       texto:        p.texto,
       tipo:         p.tipo,
       tipo_mayoria: p.tipo_mayoria ?? 'simple',
+      cupos:        p.cupos ?? null,
       ganador:      resP?.ganador ?? null,
       total_votos:  Number(resP?.total_votos) || 0,
       opciones:     opcionesH,

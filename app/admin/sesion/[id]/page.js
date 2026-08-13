@@ -128,7 +128,7 @@ function TabInvitaciones({ sesion }) {
     const nombre    = mNombre.trim();
     const email     = mEmail.trim().toLowerCase();
     const cedula    = mCedula.trim();
-    const telefono  = mTelefono.trim().replace(/\D/g, '') || null;
+    const telefono  = mTelefono.trim() || null;
     if (!nombre) { setMError('El nombre es requerido.'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setMError('Ingresa un correo válido.'); return; }
     if (!cedula) { setMError('El número de documento es requerido.'); return; }

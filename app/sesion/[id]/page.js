@@ -41,6 +41,8 @@ export default function SesionPage() {
   const [camAbierta, setCamAbierta] = useState(false);
   const [soportaCam, setSoportaCam] = useState(false);
   const [timerSeg, setTimerSeg]     = useState(null);
+  const [zoomLevel, setZoomLevel]   = useState(1);
+  const [zoomCaps,  setZoomCaps]    = useState(null); // { min, max, step } o null si hw zoom no disponible
   const videoRef          = useRef(null);
   const streamRef         = useRef(null);
   const scanRef           = useRef(null);
@@ -93,8 +95,19 @@ export default function SesionPage() {
 
   const abrirCamara = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+      });
       streamRef.current = stream;
+      // Detectar zoom de hardware
+      const track = stream.getVideoTracks()[0];
+      const caps  = track?.getCapabilities?.();
+      if (caps?.zoom) {
+        setZoomCaps({ min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step ?? 0.1 });
+      } else {
+        setZoomCaps(null);
+      }
+      setZoomLevel(1);
       setCamAbierta(true);
     } catch { alert('No se pudo acceder a la cámara'); }
   };
@@ -105,6 +118,21 @@ export default function SesionPage() {
     if (scanRef.current) cancelAnimationFrame(scanRef.current);
     scanRef.current = null;
     setCamAbierta(false);
+    setZoomLevel(1);
+    setZoomCaps(null);
+  };
+
+  const aplicarZoom = (val) => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (zoomCaps && track) {
+      // Zoom de hardware
+      track.applyConstraints({ advanced: [{ zoom: val }] }).catch(() => {});
+    } else if (videoRef.current) {
+      // Zoom CSS fallback
+      videoRef.current.style.transform = `scale(${val})`;
+      videoRef.current.style.transformOrigin = 'center center';
+    }
+    setZoomLevel(val);
   };
 
   useEffect(() => {
@@ -313,7 +341,28 @@ export default function SesionPage() {
           <button onClick={cerrarCamara} className="absolute top-5 right-5 text-white/70 hover:text-white"><X size={28}/></button>
           <p className="text-white text-sm font-bold uppercase tracking-widest">Apunta al código QR</p>
           <div className="w-72 h-72 relative rounded-2xl overflow-hidden border-4 border-white/30">
-            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+            <video ref={videoRef} className="w-full h-full object-cover transition-transform duration-150" playsInline muted />
+          </div>
+          {/* Controles de zoom */}
+          <div className="flex items-center gap-3 w-72">
+            <button
+              onPointerDown={() => { const next = Math.max(zoomCaps ? zoomCaps.min : 1, parseFloat((zoomLevel - (zoomCaps?.step ?? 0.25)).toFixed(2))); aplicarZoom(next); }}
+              className="w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white text-xl font-bold flex items-center justify-center hover:bg-white/20 active:scale-95 select-none"
+            >−</button>
+            <input
+              type="range"
+              min={zoomCaps ? zoomCaps.min : 1}
+              max={zoomCaps ? zoomCaps.max : 4}
+              step={zoomCaps ? zoomCaps.step : 0.1}
+              value={zoomLevel}
+              onChange={(e) => aplicarZoom(parseFloat(e.target.value))}
+              className="flex-1 accent-white h-1.5 rounded-full cursor-pointer"
+            />
+            <button
+              onPointerDown={() => { const next = Math.min(zoomCaps ? zoomCaps.max : 4, parseFloat((zoomLevel + (zoomCaps?.step ?? 0.25)).toFixed(2))); aplicarZoom(next); }}
+              className="w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white text-xl font-bold flex items-center justify-center hover:bg-white/20 active:scale-95 select-none"
+            >+</button>
+            <span className="text-white/50 text-xs font-mono w-10 text-right">{zoomLevel.toFixed(1)}×</span>
           </div>
           <p className="text-white/40 text-xs">El código se leerá automáticamente</p>
         </div>

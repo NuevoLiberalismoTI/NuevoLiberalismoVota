@@ -49,7 +49,13 @@ export async function POST(request, { params }) {
     const exitosos = new Set((json.results ?? []).filter((r) => r.ok).map((r) => r.email));
     const filas    = militantes
       .filter(({ email }) => exitosos.has(email))
-      .map(({ email, nombre, cedula }) => ({ sesion_id: sesionId, email, nombre, cedula: cedula || null }));
+      .map(({ email, nombre, cedula, telefono }) => ({
+        sesion_id: sesionId,
+        email,
+        nombre,
+        cedula:   cedula   || null,
+        telefono: telefono || null,
+      }));
     if (filas.length > 0) {
       await supabase.from('invitaciones_enviadas').insert(filas);
     }

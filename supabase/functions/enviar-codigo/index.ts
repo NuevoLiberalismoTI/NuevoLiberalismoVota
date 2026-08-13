@@ -8,13 +8,40 @@ const CORS = {
 
 // Variables de entorno (se configuran como Secrets en Supabase)
 // @ts-ignore
-const SENDGRID_KEY = Deno.env.get('SENDGRID_API_KEY')!;
+const SENDGRID_KEY  = Deno.env.get('SENDGRID_API_KEY')!;
 // @ts-ignore
-const FROM_EMAIL   = Deno.env.get('SENDGRID_FROM_EMAIL')!;
+const FROM_EMAIL    = Deno.env.get('SENDGRID_FROM_EMAIL')!;
 // @ts-ignore
-const SUPA_URL     = Deno.env.get('SUPABASE_URL')!;
+const SUPA_URL      = Deno.env.get('SUPABASE_URL')!;
 // @ts-ignore
-const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SERVICE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+// @ts-ignore
+const TWILIO_SID    = Deno.env.get('TWILIO_ACCOUNT_SID') ?? '';
+// @ts-ignore
+const TWILIO_AUTH   = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
+// @ts-ignore
+const TWILIO_FROM   = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
+
+async function enviarWhatsApp(telefono: string, codigo: string, tipo: 'creacion' | 'cambio_password'): Promise<void> {
+  if (!TWILIO_SID || !TWILIO_AUTH) return;
+  const numero = telefono.startsWith('+') ? telefono : `+57${telefono}`;
+  const cuerpo = tipo === 'creacion'
+    ? `🔐 *Nuevo Liberalismo*\nTu código de verificación es:\n\n*${codigo}*\n\nVálido por 15 minutos. Si no solicitaste crear una cuenta, ignora este mensaje.`
+    : `🔑 *Nuevo Liberalismo*\nCódigo para recuperar tu contraseña:\n\n*${codigo}*\n\nVálido por 15 minutos. Si no solicitaste este cambio, ignora este mensaje.`;
+
+  const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
+  await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${TWILIO_SID}:${TWILIO_AUTH}`)}`,
+        'Content-Type':  'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    }
+  ).catch(() => { /* silencioso — el correo ya fue enviado */ });
+}
 
 function htmlCorreo(codigo: string, tipo: 'creacion' | 'cambio_password'): string {
   const esCreacion = tipo === 'creacion';
@@ -150,6 +177,20 @@ Deno.serve(async (req: Request) => {
         { ok: false, error: 'Error al enviar el correo. Verifica la configuración de SendGrid.' },
         { headers: CORS }
       );
+    }
+
+    // Enviar también por WhatsApp si hay teléfono registrado en invitaciones
+    const { data: invData } = await supabase
+      .from('invitaciones_enviadas')
+      .select('telefono')
+      .eq('cedula', cedula)
+      .not('telefono', 'is', null)
+      .order('enviado_en', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (invData?.telefono) {
+      await enviarWhatsApp(invData.telefono, codigo, tipo);
     }
 
     return Response.json({ ok: true, email }, { headers: CORS });

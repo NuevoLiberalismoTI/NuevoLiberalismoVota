@@ -97,9 +97,10 @@ function TabInvitaciones({ sesion }) {
   const [resultado,      setResultado]      = useState(null);
   const [invitadosSet,   setInvitadosSet]   = useState(new Set());
   const [invitadosLista, setInvitadosLista] = useState([]);
-  const [mNombre, setMNombre] = useState('');
-  const [mEmail,  setMEmail]  = useState('');
-  const [mCedula, setMCedula] = useState('');
+  const [mNombre,    setMNombre]    = useState('');
+  const [mEmail,     setMEmail]     = useState('');
+  const [mCedula,    setMCedula]    = useState('');
+  const [mTelefono,  setMTelefono]  = useState('');
   const [mError,  setMError]  = useState('');
   const [xlsFile,          setXlsFile]          = useState(null);
   const [xlsPreview,       setXlsPreview]       = useState([]);
@@ -124,14 +125,15 @@ function TabInvitaciones({ sesion }) {
   const listaSeleccionada = Array.from(seleccionados.values());
 
   const agregarManual = () => {
-    const nombre = mNombre.trim();
-    const email  = mEmail.trim().toLowerCase();
-    const cedula = mCedula.trim();
+    const nombre    = mNombre.trim();
+    const email     = mEmail.trim().toLowerCase();
+    const cedula    = mCedula.trim();
+    const telefono  = mTelefono.trim().replace(/\D/g, '') || null;
     if (!nombre) { setMError('El nombre es requerido.'); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setMError('Ingresa un correo válido.'); return; }
     if (!cedula) { setMError('El número de documento es requerido.'); return; }
-    setSeleccionados((prev) => { const next = new Map(prev); next.set(email, { email, nombre, cedula }); return next; });
-    setMNombre(''); setMEmail(''); setMCedula(''); setMError('');
+    setSeleccionados((prev) => { const next = new Map(prev); next.set(email, { email, nombre, cedula, telefono }); return next; });
+    setMNombre(''); setMEmail(''); setMCedula(''); setMTelefono(''); setMError('');
   };
 
   const parsearExcel = async (file) => {
@@ -143,21 +145,24 @@ function TabInvitaciones({ sesion }) {
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = utils.sheet_to_json(ws, { defval: '' });
       const norm = (s) => String(s ?? '').toLowerCase().trim().replace(/[^a-z]/g, '');
-      const COLS_NOMBRE = ['nombre', 'nombres', 'name', 'fullname'];
-      const COLS_EMAIL  = ['email', 'correo', 'mail', 'correoelectronico'];
-      const COLS_CEDULA = ['cedula', 'documento', 'cc', 'numerodocumento', 'numdoc', 'id'];
+      const COLS_NOMBRE    = ['nombre', 'nombres', 'name', 'fullname'];
+      const COLS_EMAIL     = ['email', 'correo', 'mail', 'correoelectronico'];
+      const COLS_CEDULA    = ['cedula', 'documento', 'cc', 'numerodocumento', 'numdoc', 'id'];
+      const COLS_TELEFONO  = ['telefono', 'celular', 'movil', 'phone', 'cel', 'whatsapp'];
       const findCol = (keys, candidates) => keys.find((k) => candidates.includes(norm(k)));
       if (rows.length === 0) { setXlsError('El archivo está vacío.'); return; }
-      const keys      = Object.keys(rows[0]);
-      const colNombre = findCol(keys, COLS_NOMBRE);
-      const colEmail  = findCol(keys, COLS_EMAIL);
-      const colCedula = findCol(keys, COLS_CEDULA);
+      const keys        = Object.keys(rows[0]);
+      const colNombre   = findCol(keys, COLS_NOMBRE);
+      const colEmail    = findCol(keys, COLS_EMAIL);
+      const colCedula   = findCol(keys, COLS_CEDULA);
+      const colTelefono = findCol(keys, COLS_TELEFONO);
       if (!colNombre || !colEmail) { setXlsError('El archivo debe tener columnas "nombre" y "correo" (o email).'); return; }
       const parsed = rows
         .map((r) => ({
-          nombre: String(r[colNombre] ?? '').trim(),
-          email:  String(r[colEmail]  ?? '').trim().toLowerCase(),
-          cedula: colCedula ? (String(r[colCedula] ?? '').trim() || null) : null,
+          nombre:   String(r[colNombre]   ?? '').trim(),
+          email:    String(r[colEmail]    ?? '').trim().toLowerCase(),
+          cedula:   colCedula   ? (String(r[colCedula]   ?? '').trim() || null) : null,
+          telefono: colTelefono ? (String(r[colTelefono] ?? '').trim().replace(/\D/g, '') || null) : null,
         }))
         .filter((r) => r.nombre && r.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email));
       if (parsed.length === 0) { setXlsError('No se encontraron filas válidas con nombre y correo.'); return; }
@@ -168,11 +173,11 @@ function TabInvitaciones({ sesion }) {
   const descargarPlantilla = async () => {
     const { utils, writeFile } = await import('xlsx');
     const ws = utils.aoa_to_sheet([
-      ['nombre', 'correo', 'cedula'],
-      ['María García López', 'maria.garcia@correo.com', '1012345678'],
-      ['Carlos Rodríguez Pérez', 'carlos.rodriguez@correo.com', '79654321'],
+      ['nombre', 'correo', 'cedula', 'telefono'],
+      ['María García López', 'maria.garcia@correo.com', '1012345678', '3001234567'],
+      ['Carlos Rodríguez Pérez', 'carlos.rodriguez@correo.com', '79654321', '3109876543'],
     ]);
-    ws['!cols'] = [{ wch: 30 }, { wch: 32 }, { wch: 16 }];
+    ws['!cols'] = [{ wch: 30 }, { wch: 32 }, { wch: 16 }, { wch: 14 }];
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Invitados');
     writeFile(wb, 'plantilla_invitados.xlsx');
@@ -181,7 +186,7 @@ function TabInvitaciones({ sesion }) {
   const agregarDesdeExcel = () => {
     setSeleccionados((prev) => {
       const next = new Map(prev);
-      xlsPreview.forEach(({ email, nombre, cedula }) => next.set(email, { email, nombre, cedula }));
+      xlsPreview.forEach(({ email, nombre, cedula, telefono }) => next.set(email, { email, nombre, cedula, telefono }));
       return next;
     });
     setXlsPreview([]); setXlsFile(null);
@@ -318,17 +323,20 @@ function TabInvitaciones({ sesion }) {
         {/* Formulario manual */}
         {modo === 'manual' && (
           <div className="px-5 py-4 border-b border-gray-100">
-            <div className="grid grid-cols-3 gap-3 mb-2">
+            <div className="grid grid-cols-4 gap-3 mb-2">
               <input type="text" value={mNombre} onChange={(e) => { setMNombre(e.target.value); setMError(''); }}
                 placeholder="Nombre completo *"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
               <input type="email" value={mEmail} onChange={(e) => { setMEmail(e.target.value); setMError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && agregarManual()}
                 placeholder="Correo electrónico *"
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              <input type="text" value={mCedula} onChange={(e) => { setMCedula(e.target.value); setMError(''); }}
+                placeholder="Núm. documento *"
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
               <div className="flex gap-2">
-                <input type="text" value={mCedula} onChange={(e) => { setMCedula(e.target.value); setMError(''); }}
-                  placeholder="Núm. documento *"
+                <input type="tel" value={mTelefono} onChange={(e) => { setMTelefono(e.target.value); setMError(''); }}
+                  onKeyDown={(e) => e.key === 'Enter' && agregarManual()}
+                  placeholder="Celular WhatsApp"
                   className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 <button onClick={agregarManual}
                   className="flex items-center gap-1 px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-lg transition-colors flex-shrink-0">
@@ -351,7 +359,7 @@ function TabInvitaciones({ sesion }) {
               onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) parsearExcel(f); }}>
               <FileSpreadsheet size={28} className="mx-auto mb-2 text-gray-300" />
               <p className="text-sm font-semibold text-gray-600">Arrastra un archivo o haz clic para seleccionar</p>
-              <p className="text-xs text-gray-400 mt-1">Formato .xlsx o .csv &middot; Columnas requeridas: <strong>nombre</strong>, <strong>correo</strong>, <strong>cedula</strong></p>
+              <p className="text-xs text-gray-400 mt-1">Formato .xlsx o .csv · Columnas: <strong>nombre</strong>, <strong>correo</strong>, <strong>cedula</strong> · Opcional: <strong>telefono</strong> (WhatsApp)</p>
               {xlsFile && <p className="text-xs text-brand font-semibold mt-2">{xlsFile.name}</p>}
             </div>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
@@ -379,6 +387,7 @@ function TabInvitaciones({ sesion }) {
                         <th className="text-left px-3 py-2 text-gray-500 font-bold">Nombre</th>
                         <th className="text-left px-3 py-2 text-gray-500 font-bold">Correo</th>
                         <th className="text-left px-3 py-2 text-gray-500 font-bold">Cédula</th>
+                        <th className="text-left px-3 py-2 text-gray-500 font-bold">WhatsApp</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -387,6 +396,7 @@ function TabInvitaciones({ sesion }) {
                           <td className="px-3 py-1.5 text-gray-800">{r.nombre}</td>
                           <td className="px-3 py-1.5 text-gray-500">{r.email}</td>
                           <td className="px-3 py-1.5 text-gray-400">{r.cedula || '-'}</td>
+                          <td className="px-3 py-1.5 text-gray-400">{r.telefono ? `+57${r.telefono}` : '-'}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -1792,7 +1792,7 @@ export default function AdminSesionPage() {
                             const cand      = pregData?.candidatos?.find((ca) => ca.nombre === c.respuesta);
                             const miembrosCand = cand?.es_plancha ? (cand.miembros || []) : [];
                             const elegidos     = c.cupos_ganados > 0 ? miembrosCand.slice(0, c.cupos_ganados) : [];
-                            const suplentes    = c.cupos_ganados > 0 ? miembrosCand.slice(c.cupos_ganados) : [];
+                            const suplentes    = c.cupos_ganados > 0 ? miembrosCand.slice(c.cupos_ganados, c.cupos_ganados * 2) : [];
                             return (
                               <div key={i} className={`rounded-lg border ${c.cupos_ganados > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                                 <div className="flex items-center gap-3 px-3 py-2">

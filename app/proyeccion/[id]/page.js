@@ -536,7 +536,7 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                 const op        = opciones.find((o) => o.respuesta === c.respuesta);
                 const miembros  = op?.miembros ?? [];
                 const elegidos  = miembros.slice(0, c.cupos_ganados);
-                const suplentes = miembros.slice(c.cupos_ganados);
+                const suplentes = miembros.slice(c.cupos_ganados, c.cupos_ganados * 2);
                 return (
                   <div key={i}>
                     <div className="flex items-center gap-2 mb-2">

@@ -496,7 +496,7 @@ export default function SesionPage() {
                             <div className="mt-2 flex flex-col gap-1 pl-1">
                               {c.miembros.map((m, idx) => (
                                 <div key={idx} className="flex items-center gap-1.5 text-xs text-gray-500">
-                                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${seleccionado ? 'bg-brand' : 'bg-gray-400'}`} />
+                                  <span className={`text-[10px] font-bold tabular-nums flex-shrink-0 ${seleccionado ? 'text-brand/70' : 'text-gray-400'}`}>#{idx + 1}</span>
                                   {m.cargo
                                     ? <><span className="font-semibold text-gray-600">{m.cargo}:</span> {m.nombre}</>
                                     : m.nombre

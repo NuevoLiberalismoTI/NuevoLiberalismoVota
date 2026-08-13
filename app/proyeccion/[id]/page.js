@@ -305,7 +305,7 @@ export default function ProyeccionPage() {
                             <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
                               {op.miembros.map((m, mi) => (
                                 <div key={mi} className="flex items-baseline gap-1 min-w-0">
-                                  <span className="text-brand text-[9px] font-black flex-shrink-0">▸</span>
+                                  <span className="text-brand/50 text-[9px] font-bold tabular-nums flex-shrink-0">#{mi + 1}</span>
                                   <span className="text-[11px] font-semibold text-gray-700 truncate">{m.nombre}</span>
                                 </div>
                               ))}
@@ -376,14 +376,22 @@ function calcDhondt(opciones, cupos) {
 
 function buildDhondtTable(opciones, cupos) {
   if (!cupos || !opciones?.length) return null;
-  const allQ = [];
-  opciones.forEach((op) => {
-    for (let d = 1; d <= cupos; d++) {
-      allQ.push({ key: `${op.respuesta}-${d}`, cociente: Number(op.total) / d });
-    }
-  });
-  const sorted  = [...allQ].sort((a, b) => b.cociente - a.cociente);
-  const winners = new Set(sorted.slice(0, cupos).map((q) => q.key));
+  // Replay the exact same algorithm as calcDhondt to get the correct winning cells
+  const seats   = opciones.map((o) => ({ respuesta: o.respuesta, total: Number(o.total), cupos_ganados: 0 }));
+  const winners = new Set();
+  for (let i = 0; i < cupos; i++) {
+    let maxQ = -1, maxTotal = -1, maxIdx = 0;
+    seats.forEach((s, idx) => {
+      const q = s.total / (s.cupos_ganados + 1);
+      const t = s.total;
+      if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+        maxQ = q; maxTotal = t; maxIdx = idx;
+      }
+    });
+    const divisor = seats[maxIdx].cupos_ganados + 1;
+    winners.add(`${seats[maxIdx].respuesta}-${divisor}`);
+    seats[maxIdx].cupos_ganados++;
+  }
   const divisors = Array.from({ length: cupos }, (_, i) => i + 1);
   return { divisors, winners };
 }
@@ -465,7 +473,7 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                   <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
                     {op.miembros.map((m, mi) => (
                       <div key={mi} className="flex items-baseline gap-1 min-w-0">
-                        <span className={`text-[9px] font-black flex-shrink-0 ${esGanador ? 'text-green-600' : 'text-brand'}`}>▸</span>
+                        <span className={`text-[9px] font-bold tabular-nums flex-shrink-0 ${esGanador ? 'text-green-600/70' : 'text-brand/50'}`}>#{mi + 1}</span>
                         <span className={`text-[11px] font-semibold truncate ${esGanador ? 'text-green-800' : 'text-gray-700'}`}>{m.nombre}</span>
                       </div>
                     ))}
@@ -492,6 +500,7 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
           <div className="grid grid-cols-3 gap-x-6 gap-y-1.5">
             {ganadorOp.miembros.map((m, mi) => (
               <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                <span className="font-bold text-green-600/60 text-xs tabular-nums flex-shrink-0">#{mi + 1}</span>
                 {m.cargo && <span className="font-bold text-green-700 flex-shrink-0">{m.cargo}:</span>}
                 <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
               </div>

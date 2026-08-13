@@ -1012,23 +1012,25 @@ export default function AdminSesionPage() {
     return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
   };
 
-  // Construye la tabla de cocientes D'Hondt para mostrar la explicación
+  // Construye la tabla de cocientes D'Hondt usando el mismo algoritmo para consistencia
   const buildDhondtExplanation = (opciones, cupos) => {
     if (!cupos || !opciones?.length) return null;
-    const maxDiv = Math.max(...opciones.map((o) => {
-      // ¿cuántos divisores necesita este candidato? al menos 1, hasta cupos
-      return cupos;
-    }));
-    // Calcular todos los cocientes y marcar los ganadores
-    const allQ = [];
-    opciones.forEach((op) => {
-      for (let d = 1; d <= maxDiv; d++) {
-        allQ.push({ key: `${op.respuesta}-${d}`, cociente: Number(op.total) / d });
-      }
-    });
-    const sorted = [...allQ].sort((a, b) => b.cociente - a.cociente);
-    const winners = new Set(sorted.slice(0, cupos).map((q) => q.key));
-    const divisors = Array.from({ length: maxDiv }, (_, i) => i + 1);
+    const seats   = opciones.map((o) => ({ respuesta: o.respuesta, total: Number(o.total), cupos_ganados: 0 }));
+    const winners = new Set();
+    for (let i = 0; i < cupos; i++) {
+      let maxQ = -1, maxTotal = -1, maxIdx = 0;
+      seats.forEach((s, idx) => {
+        const q = s.total / (s.cupos_ganados + 1);
+        const t = s.total;
+        if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+          maxQ = q; maxTotal = t; maxIdx = idx;
+        }
+      });
+      const divisor = seats[maxIdx].cupos_ganados + 1;
+      winners.add(`${seats[maxIdx].respuesta}-${divisor}`);
+      seats[maxIdx].cupos_ganados++;
+    }
+    const divisors = Array.from({ length: cupos }, (_, i) => i + 1);
     return { divisors, winners };
   };
 

@@ -25,16 +25,26 @@ async function enviarWhatsApp(
     console.error('[WhatsApp] Secrets de Twilio no configurados — TWILIO_SID:', !!TWILIO_SID, 'TWILIO_AUTH:', !!TWILIO_AUTH);
     return { ok: false, error: 'secrets_no_configurados' };
   }
-  // Soporta Contact ID de sandbox (C0.xxx) o número de teléfono normal
-  const to = telefono.startsWith('C0.')
+  const isContactId = telefono.startsWith('C0.') || telefono.startsWith('CO.');
+  const to = isContactId
     ? `whatsapp:${telefono}`
     : `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
-  const cuerpo =
-    `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
 
-  console.log(`[WhatsApp] Enviando a ${to} (from: ${TWILIO_FROM})`);
+  console.log(`[WhatsApp] Enviando a ${to} (from: ${TWILIO_FROM}, contactId: ${isContactId})`);
   try {
-    const body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
+    // Contact IDs del Sandbox de Twilio requieren contentSid (template) en lugar de Body
+    let body: URLSearchParams;
+    if (isContactId) {
+      body = new URLSearchParams({
+        From: TWILIO_FROM,
+        To: to,
+        ContentSid: 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
+        ContentVariables: JSON.stringify({ '1': sesion.nombre, '2': sesion.hora }),
+      });
+    } else {
+      const cuerpo = `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
+      body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
+    }
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
       {

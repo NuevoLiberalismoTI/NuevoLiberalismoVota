@@ -533,8 +533,10 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
             {/* Asignaciones por plancha */}
             <div className="flex flex-col gap-4 mb-4">
               {ganadoresDh.map((c, i) => {
-                const op       = opciones.find((o) => o.respuesta === c.respuesta);
-                const asignados = (op?.miembros ?? []).slice(0, c.cupos_ganados);
+                const op        = opciones.find((o) => o.respuesta === c.respuesta);
+                const miembros  = op?.miembros ?? [];
+                const elegidos  = miembros.slice(0, c.cupos_ganados);
+                const suplentes = miembros.slice(c.cupos_ganados);
                 return (
                   <div key={i}>
                     <div className="flex items-center gap-2 mb-2">
@@ -544,15 +546,32 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                       </span>
                       <span className="text-xs text-blue-400">· {c.total} votos</span>
                     </div>
-                    {asignados.length > 0 && (
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-blue-300">
-                        {asignados.map((m, mi) => (
-                          <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
-                            <span className="font-bold text-blue-500 flex-shrink-0 tabular-nums">#{mi + 1}</span>
-                            {m.cargo && <span className="font-semibold text-blue-700 flex-shrink-0">{m.cargo}:</span>}
-                            <span className="text-blue-900 font-semibold truncate">{m.nombre}</span>
-                          </div>
-                        ))}
+                    {elegidos.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-1 pl-2">Elegidos</p>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-green-400">
+                          {elegidos.map((m, mi) => (
+                            <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                              <span className="font-bold text-green-600 flex-shrink-0 tabular-nums">#{mi + 1}</span>
+                              {m.cargo && <span className="font-semibold text-green-700 flex-shrink-0">{m.cargo}:</span>}
+                              <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {suplentes.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1 pl-2">Suplentes</p>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pl-2 border-l-2 border-gray-300">
+                          {suplentes.map((m, mi) => (
+                            <div key={mi} className="flex items-baseline gap-1.5 text-sm min-w-0">
+                              <span className="font-bold text-gray-400 flex-shrink-0 tabular-nums">#{elegidos.length + mi + 1}</span>
+                              {m.cargo && <span className="font-semibold text-gray-400 flex-shrink-0">{m.cargo}:</span>}
+                              <span className="text-gray-500 truncate">{m.nombre}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

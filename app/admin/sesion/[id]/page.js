@@ -1790,9 +1790,9 @@ export default function AdminSesionPage() {
                           {dhondt.map((c, i) => {
                             const pregData  = preguntas.find((p) => p.id === preg.id);
                             const cand      = pregData?.candidatos?.find((ca) => ca.nombre === c.respuesta);
-                            const asignados = cand?.es_plancha && c.cupos_ganados > 0
-                              ? (cand.miembros || []).slice(0, c.cupos_ganados)
-                              : [];
+                            const miembrosCand = cand?.es_plancha ? (cand.miembros || []) : [];
+                            const elegidos     = c.cupos_ganados > 0 ? miembrosCand.slice(0, c.cupos_ganados) : [];
+                            const suplentes    = c.cupos_ganados > 0 ? miembrosCand.slice(c.cupos_ganados) : [];
                             return (
                               <div key={i} className={`rounded-lg border ${c.cupos_ganados > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                                 <div className="flex items-center gap-3 px-3 py-2">
@@ -1805,15 +1805,32 @@ export default function AdminSesionPage() {
                                     </span>
                                   )}
                                 </div>
-                                {asignados.length > 0 && (
-                                  <div className="px-3 pb-2.5 grid grid-cols-2 gap-x-4 gap-y-1 border-t border-green-200 pt-2 ml-8">
-                                    {asignados.map((m, mi) => (
-                                      <div key={mi} className="text-[11px] flex items-baseline gap-1">
-                                        <span className="font-bold text-green-600 tabular-nums flex-shrink-0">#{mi + 1}</span>
-                                        {m.cargo && <span className="font-semibold text-green-700 flex-shrink-0">{m.cargo}:</span>}
-                                        <span className="text-gray-700 truncate">{m.nombre}</span>
-                                      </div>
-                                    ))}
+                                {elegidos.length > 0 && (
+                                  <div className="px-3 pb-1 border-t border-green-200 pt-2 ml-8">
+                                    <p className="text-[10px] font-bold text-green-600 uppercase tracking-wide mb-1">Elegidos</p>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-1.5">
+                                      {elegidos.map((m, mi) => (
+                                        <div key={mi} className="text-[11px] flex items-baseline gap-1">
+                                          <span className="font-bold text-green-600 tabular-nums flex-shrink-0">#{mi + 1}</span>
+                                          {m.cargo && <span className="font-semibold text-green-700 flex-shrink-0">{m.cargo}:</span>}
+                                          <span className="text-gray-700 truncate">{m.nombre}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {suplentes.length > 0 && (
+                                  <div className="px-3 pb-2.5 ml-8">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Suplentes</p>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                      {suplentes.map((m, mi) => (
+                                        <div key={mi} className="text-[11px] flex items-baseline gap-1">
+                                          <span className="font-bold text-gray-400 tabular-nums flex-shrink-0">#{elegidos.length + mi + 1}</span>
+                                          {m.cargo && <span className="font-semibold text-gray-400 flex-shrink-0">{m.cargo}:</span>}
+                                          <span className="text-gray-500 truncate">{m.nombre}</span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>

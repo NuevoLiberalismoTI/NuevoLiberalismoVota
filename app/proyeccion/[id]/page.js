@@ -89,7 +89,7 @@ export default function ProyeccionPage() {
     <div className="h-screen w-screen flex overflow-hidden select-none">
 
       {/* ── Panel izquierdo: QR + quórum ─────── */}
-      <div className="w-[280px] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-5">
+      <div className="w-[28%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-5">
         <LogoNL />
 
         {/* QR o cerrado */}

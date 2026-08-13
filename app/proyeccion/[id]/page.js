@@ -361,17 +361,35 @@ function calcDhondt(opciones, cupos) {
   if (!cupos || !opciones?.length) return [];
   const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
   for (let i = 0; i < cupos; i++) {
-    let maxQ = -1, maxIdx = 0;
+    let maxQ = -1, maxTotal = -1, maxIdx = 0;
     seats.forEach((s, idx) => {
       const q = Number(s.total) / (s.cupos_ganados + 1);
-      if (q > maxQ) { maxQ = q; maxIdx = idx; }
+      const t = Number(s.total);
+      if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+        maxQ = q; maxTotal = t; maxIdx = idx;
+      }
     });
     seats[maxIdx].cupos_ganados++;
   }
   return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
 }
 
+function buildDhondtTable(opciones, cupos) {
+  if (!cupos || !opciones?.length) return null;
+  const allQ = [];
+  opciones.forEach((op) => {
+    for (let d = 1; d <= cupos; d++) {
+      allQ.push({ key: `${op.respuesta}-${d}`, cociente: Number(op.total) / d });
+    }
+  });
+  const sorted  = [...allQ].sort((a, b) => b.cociente - a.cociente);
+  const winners = new Set(sorted.slice(0, cupos).map((q) => q.key));
+  const divisors = Array.from({ length: cupos }, (_, i) => i + 1);
+  return { divisors, winners };
+}
+
 function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar, onRetro, onAdelantar }) {
+  const [verTabla, setVerTabla] = useState(false);
   const opciones     = preg.opciones ?? [];
   const totalVotos   = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
   const maxVotos     = Math.max(...opciones.map((o) => Number(o.total)), 1);
@@ -484,17 +502,29 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
 
       {/* D'Hondt — cupos asignados por plancha con sus integrantes */}
       {preg.cupos && preg.tipo === 'candidatos' && (() => {
-        const dhondt = calcDhondt(opciones, preg.cupos);
+        const dhondt      = calcDhondt(opciones, preg.cupos);
+        const tabla       = buildDhondtTable(opciones, preg.cupos);
         const ganadoresDh = dhondt.filter((c) => c.cupos_ganados > 0);
         if (!ganadoresDh.length) return null;
         return (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-5">
-            <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-4 flex items-center gap-1.5">
-              <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
-            </p>
-            <div className="flex flex-col gap-4">
+            {/* Cabecera con toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
+              </p>
+              <button
+                onClick={() => setVerTabla((v) => !v)}
+                className="text-[11px] font-bold text-blue-500 hover:text-blue-700 border border-blue-300 bg-white rounded-lg px-3 py-1 transition-colors"
+              >
+                {verTabla ? 'Ocultar cálculo' : 'Ver cálculo'}
+              </button>
+            </div>
+
+            {/* Asignaciones por plancha */}
+            <div className="flex flex-col gap-4 mb-4">
               {ganadoresDh.map((c, i) => {
-                const op = opciones.find((o) => o.respuesta === c.respuesta);
+                const op       = opciones.find((o) => o.respuesta === c.respuesta);
                 const asignados = (op?.miembros ?? []).slice(0, c.cupos_ganados);
                 return (
                   <div key={i}>
@@ -520,6 +550,48 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                 );
               })}
             </div>
+
+            {/* Tabla de cocientes (toggle) */}
+            {verTabla && tabla && (
+              <div className="mt-2 pt-4 border-t border-blue-200">
+                <p className="text-[11px] text-blue-600 mb-3 leading-relaxed">
+                  Se dividen los votos de cada plancha entre 1, 2, 3… Los <strong>{preg.cupos} cocientes más altos</strong> ganan un cupo. En caso de empate en el cociente, gana la plancha con más votos totales.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] border-collapse bg-white rounded-lg overflow-hidden">
+                    <thead>
+                      <tr className="bg-blue-100">
+                        <th className="text-left py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">Plancha</th>
+                        <th className="text-center py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">Votos</th>
+                        {tabla.divisors.map((d) => (
+                          <th key={d} className="text-center py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">÷{d}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opciones.slice().sort((a, b) => Number(b.total) - Number(a.total)).map((op, ri) => (
+                        <tr key={ri} className="border-b border-blue-100 last:border-0">
+                          <td className="py-1.5 px-2 font-semibold text-blue-900 max-w-[130px] truncate">{op.respuesta}</td>
+                          <td className="py-1.5 px-2 text-center text-blue-600 font-bold">{op.total}</td>
+                          {tabla.divisors.map((d) => {
+                            const key      = `${op.respuesta}-${d}`;
+                            const isWinner = tabla.winners.has(key);
+                            return (
+                              <td key={d} className={`py-1.5 px-2 text-center font-mono rounded ${isWinner ? 'bg-blue-600 text-white font-extrabold' : 'text-blue-400'}`}>
+                                {(Number(op.total) / d).toFixed(2)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[10px] text-blue-400 mt-2 font-semibold">
+                  Cupos asignados: {dhondt.filter((c) => c.cupos_ganados > 0).map((c) => `${c.respuesta} (${c.cupos_ganados})`).join(' · ')}
+                </p>
+              </div>
+            )}
           </div>
         );
       })()}

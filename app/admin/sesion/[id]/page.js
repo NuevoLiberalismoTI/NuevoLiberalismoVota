@@ -999,10 +999,13 @@ export default function AdminSesionPage() {
     if (!cupos || !opciones?.length) return [];
     const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
     for (let i = 0; i < cupos; i++) {
-      let maxQ = -1, maxIdx = 0;
+      let maxQ = -1, maxTotal = -1, maxIdx = 0;
       seats.forEach((s, idx) => {
         const q = Number(s.total) / (s.cupos_ganados + 1);
-        if (q > maxQ) { maxQ = q; maxIdx = idx; }
+        const t = Number(s.total);
+        if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+          maxQ = q; maxTotal = t; maxIdx = idx;
+        }
       });
       seats[maxIdx].cupos_ganados++;
     }

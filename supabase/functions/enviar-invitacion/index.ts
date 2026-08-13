@@ -25,13 +25,16 @@ async function enviarWhatsApp(
     console.error('[WhatsApp] Secrets de Twilio no configurados — TWILIO_SID:', !!TWILIO_SID, 'TWILIO_AUTH:', !!TWILIO_AUTH);
     return { ok: false, error: 'secrets_no_configurados' };
   }
-  const numero = telefono.startsWith('+') ? telefono : `+57${telefono}`;
+  // Soporta Contact ID de sandbox (C0.xxx) o número de teléfono normal
+  const to = telefono.startsWith('C0.')
+    ? `whatsapp:${telefono}`
+    : `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
   const cuerpo =
     `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
 
-  console.log(`[WhatsApp] Enviando a ${numero} (from: ${TWILIO_FROM})`);
+  console.log(`[WhatsApp] Enviando a ${to} (from: ${TWILIO_FROM})`);
   try {
-    const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
+    const body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
       {
@@ -48,7 +51,7 @@ async function enviarWhatsApp(
       console.error(`[WhatsApp] Twilio error ${res.status}:`, resBody);
       return { ok: false, error: `twilio_${res.status}: ${resBody}` };
     }
-    console.log(`[WhatsApp] Enviado OK a ${numero}:`, resBody.slice(0, 120));
+    console.log(`[WhatsApp] Enviado OK a ${to}:`, resBody.slice(0, 120));
     return { ok: true };
   } catch (err) {
     console.error('[WhatsApp] Excepción al llamar Twilio:', err);

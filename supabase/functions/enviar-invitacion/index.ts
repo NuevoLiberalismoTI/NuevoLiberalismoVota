@@ -20,24 +20,40 @@ async function enviarWhatsApp(
   nombre: string,
   sesion: { nombre: string; fecha: string; hora: string; lugar: string },
   plataformaUrl: string,
-): Promise<void> {
-  if (!TWILIO_SID || !TWILIO_AUTH) return;
+): Promise<{ ok: boolean; error?: string }> {
+  if (!TWILIO_SID || !TWILIO_AUTH) {
+    console.error('[WhatsApp] Secrets de Twilio no configurados — TWILIO_SID:', !!TWILIO_SID, 'TWILIO_AUTH:', !!TWILIO_AUTH);
+    return { ok: false, error: 'secrets_no_configurados' };
+  }
   const numero = telefono.startsWith('+') ? telefono : `+57${telefono}`;
   const cuerpo =
     `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
 
-  const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
-  await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
-    {
-      method:  'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${TWILIO_SID}:${TWILIO_AUTH}`)}`,
-        'Content-Type':  'application/x-www-form-urlencoded',
+  console.log(`[WhatsApp] Enviando a ${numero} (from: ${TWILIO_FROM})`);
+  try {
+    const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+      {
+        method:  'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(`${TWILIO_SID}:${TWILIO_AUTH}`)}`,
+          'Content-Type':  'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
       },
-      body: body.toString(),
-    },
-  ).catch(() => { /* silencioso — el correo ya fue enviado */ });
+    );
+    const resBody = await res.text();
+    if (!res.ok) {
+      console.error(`[WhatsApp] Twilio error ${res.status}:`, resBody);
+      return { ok: false, error: `twilio_${res.status}: ${resBody}` };
+    }
+    console.log(`[WhatsApp] Enviado OK a ${numero}:`, resBody.slice(0, 120));
+    return { ok: true };
+  } catch (err) {
+    console.error('[WhatsApp] Excepción al llamar Twilio:', err);
+    return { ok: false, error: String(err) };
+  }
 }
 
 function htmlInvitacion(nombre: string, sesion: {
@@ -152,11 +168,12 @@ Deno.serve(async (req: Request) => {
         }
 
         // WhatsApp (si hay teléfono)
+        let whatsapp: { ok: boolean; error?: string } | null = null;
         if (telefono) {
-          await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl);
+          whatsapp = await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl);
         }
 
-        return { email, ok: true };
+        return { email, ok: true, whatsapp };
       })
     );
 

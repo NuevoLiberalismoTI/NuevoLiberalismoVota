@@ -89,7 +89,7 @@ export default function ProyeccionPage() {
     <div className="h-screen w-screen flex overflow-hidden select-none">
 
       {/* ── Panel izquierdo: QR + quórum ─────── */}
-      <div className="w-[36%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-6">
+      <div className="w-[280px] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-5">
         <LogoNL />
 
         {/* QR o cerrado */}
@@ -103,19 +103,19 @@ export default function ProyeccionPage() {
             </div>
           ) : (
             <>
-              <p className="text-white/70 text-sm font-semibold text-center">Escanea el QR para registrar tu asistencia</p>
-              <div className="bg-white rounded-3xl p-5 shadow-2xl">
-                <QRCode value={qrValue} size={210} level="M" />
+              <p className="text-white/70 text-xs font-semibold text-center">Escanea el QR para registrar tu asistencia</p>
+              <div className="bg-white rounded-2xl p-3 shadow-2xl">
+                <QRCode value={qrValue} size={180} level="M" />
               </div>
-              <div className="flex flex-col items-center gap-1.5 w-56">
-                <div className="w-full bg-white/20 rounded-full h-1.5">
-                  <div className="bg-white rounded-full h-1.5 transition-all duration-1000" style={{ width: `${(qrSeg / 30) * 100}%` }} />
+              <div className="flex flex-col items-center gap-1 w-full">
+                <div className="w-full bg-white/20 rounded-full h-1">
+                  <div className="bg-white rounded-full h-1 transition-all duration-1000" style={{ width: `${(qrSeg / 30) * 100}%` }} />
                 </div>
-                <p className="text-white/40 text-xs font-semibold">Actualiza en {qrSeg}s</p>
+                <p className="text-white/40 text-[10px] font-semibold">Actualiza en {qrSeg}s</p>
               </div>
               <div className="flex flex-col items-center gap-0.5">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Código manual</p>
-                <p className="text-white text-4xl font-mono font-black tracking-[0.3em]">{sesion.codigo_asistencia}</p>
+                <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Código manual</p>
+                <p className="text-white text-3xl font-mono font-black tracking-[0.3em]">{sesion.codigo_asistencia}</p>
               </div>
             </>
           )}

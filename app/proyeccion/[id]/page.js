@@ -89,53 +89,53 @@ export default function ProyeccionPage() {
   if (!preguntaActiva && histLen === 0 && sesion.estado !== 'finalizada') {
     return (
       <div className="h-screen w-screen flex flex-col bg-brand select-none overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-12 pt-8 pb-4">
+        {/* Header compacto */}
+        <div className="flex items-center justify-between px-10 py-3 shrink-0">
           <LogoNL />
           <div className="text-right">
-            <p className="text-white/50 text-xs font-bold uppercase tracking-widest">{sesion.fecha} · {sesion.hora} · {sesion.lugar}</p>
-            <h1 className="text-white text-2xl font-extrabold">{sesion.nombre}</h1>
+            <p className="text-white/50 text-xs font-bold uppercase tracking-widest">{sesion.fecha} · {sesion.hora}{sesion.lugar ? ` · ${sesion.lugar}` : ''}</p>
+            <h1 className="text-white text-xl font-extrabold">{sesion.nombre}</h1>
           </div>
         </div>
 
-        {/* Centro: QR grande */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-6">
-          <p className="text-white/70 text-base font-semibold">Escanea el QR para registrar tu asistencia</p>
+        {/* Centro: QR ocupa la mayor parte */}
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3">
           {sesion.asistencias_cerradas ? (
-            <div className="bg-white/10 border-2 border-white/20 rounded-3xl p-16 flex flex-col items-center gap-4">
-              <Lock size={96} className="text-white/40" />
-              <p className="text-white/60 text-lg font-bold uppercase tracking-widest">Registro cerrado</p>
+            <div className="bg-white/10 border-2 border-white/20 rounded-3xl p-20 flex flex-col items-center gap-5">
+              <Lock size={120} className="text-white/40" />
+              <p className="text-white/60 text-xl font-bold uppercase tracking-widest">Registro cerrado</p>
             </div>
           ) : (
             <>
-              <div className="bg-white rounded-3xl p-5 shadow-2xl">
-                <QRCode value={qrValue} size={340} level="M" />
+              <p className="text-white/60 text-sm font-semibold shrink-0">Escanea el QR para registrar tu asistencia</p>
+              <div className="bg-white rounded-3xl shadow-2xl shrink-0" style={{ padding: 'clamp(12px, 1.5vw, 24px)', width: 'min(68vh, 68vw)', height: 'min(68vh, 68vw)' }}>
+                <QRCode value={qrValue} size={512} level="M" style={{ width: '100%', height: '100%' }} />
               </div>
-              <div className="flex flex-col items-center gap-2 w-80">
+              <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 'min(68vh, 68vw)' }}>
                 <div className="w-full bg-white/20 rounded-full h-1.5">
                   <div className="bg-white rounded-full h-1.5 transition-all duration-1000" style={{ width: `${(qrSeg / 30) * 100}%` }} />
                 </div>
                 <p className="text-white/40 text-xs font-semibold">Actualiza en {qrSeg}s</p>
               </div>
-              <div className="flex flex-col items-center gap-0.5">
+              <div className="flex flex-col items-center gap-0 shrink-0">
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Código manual</p>
-                <p className="text-white text-5xl font-mono font-black tracking-[0.4em]">{sesion.codigo_asistencia}</p>
+                <p className="text-white font-mono font-black tracking-[0.4em]" style={{ fontSize: 'clamp(2rem, 4vw, 4rem)' }}>{sesion.codigo_asistencia}</p>
               </div>
             </>
           )}
         </div>
 
-        {/* Footer: stats quórum */}
-        <div className="px-12 pb-8 grid grid-cols-4 gap-4">
+        {/* Footer compacto: stats */}
+        <div className="px-10 pb-4 grid grid-cols-4 gap-3 shrink-0">
           {[
-            { label: 'Inscritos',        value: quorum.inscritos },
-            { label: 'Con voto',         value: quorum.acreditados_voto },
-            { label: 'Solo ingreso',     value: quorum.acreditados_ingreso },
-            { label: 'Asistentes',       value: quorum.asistentes },
+            { label: 'Inscritos',    value: quorum.inscritos },
+            { label: 'Con voto',     value: quorum.acreditados_voto },
+            { label: 'Solo ingreso', value: quorum.acreditados_ingreso },
+            { label: 'Asistentes',   value: quorum.asistentes },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-white/10 border border-white/20 rounded-2xl px-5 py-3 flex flex-col items-center">
-              <span className="text-white text-3xl font-extrabold">{value}</span>
-              <span className="text-white/50 text-xs font-semibold uppercase tracking-wide">{label}</span>
+            <div key={label} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 flex flex-col items-center">
+              <span className="text-white text-2xl font-extrabold">{value}</span>
+              <span className="text-white/50 text-[11px] font-semibold uppercase tracking-wide">{label}</span>
             </div>
           ))}
         </div>

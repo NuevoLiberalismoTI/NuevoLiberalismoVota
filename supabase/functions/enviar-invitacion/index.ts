@@ -8,6 +8,37 @@ const CORS = {
 const SENDGRID_KEY = Deno.env.get('SENDGRID_API_KEY')!;
 // @ts-ignore
 const FROM_EMAIL   = Deno.env.get('SENDGRID_FROM_EMAIL')!;
+// @ts-ignore
+const TWILIO_SID   = Deno.env.get('TWILIO_ACCOUNT_SID') ?? '';
+// @ts-ignore
+const TWILIO_AUTH  = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
+// @ts-ignore
+const TWILIO_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
+
+async function enviarWhatsApp(
+  telefono: string,
+  nombre: string,
+  sesion: { nombre: string; fecha: string; hora: string; lugar: string },
+  plataformaUrl: string,
+): Promise<void> {
+  if (!TWILIO_SID || !TWILIO_AUTH) return;
+  const numero = telefono.startsWith('+') ? telefono : `+57${telefono}`;
+  const cuerpo =
+    `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
+
+  const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
+  await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`${TWILIO_SID}:${TWILIO_AUTH}`)}`,
+        'Content-Type':  'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+    },
+  ).catch(() => { /* silencioso — el correo ya fue enviado */ });
+}
 
 function htmlInvitacion(nombre: string, sesion: {
   nombre: string; fecha: string; hora: string; lugar: string;
@@ -89,7 +120,7 @@ Deno.serve(async (req: Request) => {
   try {
     const { sesion, militantes, plataformaUrl } = await req.json() as {
       sesion:        { nombre: string; fecha: string; hora: string; lugar: string };
-      militantes:    { email: string; nombre: string }[];
+      militantes:    { email: string; nombre: string; telefono?: string | null }[];
       plataformaUrl: string;
     };
 
@@ -98,7 +129,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const resultados = await Promise.allSettled(
-      militantes.map(async ({ email, nombre }) => {
+      militantes.map(async ({ email, nombre, telefono }) => {
+        // Correo
         const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
           headers: {
@@ -112,11 +144,18 @@ Deno.serve(async (req: Request) => {
             content: [{ type: 'text/html', value: htmlInvitacion(nombre, sesion, plataformaUrl) }],
           }),
         });
+
         if (!r.ok) {
           const detalle = await r.text().catch(() => '(sin detalle)');
           console.error(`SendGrid ${r.status} para ${email}:`, detalle);
           return { email, ok: false, sgStatus: r.status, sgError: detalle };
         }
+
+        // WhatsApp (si hay teléfono)
+        if (telefono) {
+          await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl);
+        }
+
         return { email, ok: true };
       })
     );

@@ -569,7 +569,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
 
   const addMiembro = (i) =>
     setOpciones((prev) => prev.map((o, oi) => oi !== i ? o : {
-      ...o, miembros: [...o.miembros, { nombre: '', cargo: '' }],
+      ...o, miembros: [...o.miembros, { nombre: '', cargo: '', suplente: '' }],
     }));
 
   const removeMiembro = (i, j) =>
@@ -738,24 +738,32 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
                 <div className="flex flex-col gap-2 pl-3 border-l-2 border-brand-200 ml-1">
                   <p className="text-xs font-semibold text-gray-500">Integrantes:</p>
                   {(op.miembros || []).map((m, j) => (
-                    <div key={j} className="flex gap-2">
+                    <div key={j} className="flex flex-col gap-1">
+                      <div className="flex gap-2">
+                        <input
+                          value={m.nombre}
+                          onChange={(e) => { setMiembro(i, j, { nombre: e.target.value }); setErr(''); }}
+                          placeholder={`Principal ${j + 1}`}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                        />
+                        <input
+                          value={m.cargo}
+                          onChange={(e) => setMiembro(i, j, { cargo: e.target.value })}
+                          placeholder="Cargo (opcional)"
+                          className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                        />
+                        {(op.miembros || []).length > 1 && (
+                          <button onClick={() => removeMiembro(i, j)} className="text-red-400 hover:text-red-600 p-1">
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
                       <input
-                        value={m.nombre}
-                        onChange={(e) => { setMiembro(i, j, { nombre: e.target.value }); setErr(''); }}
-                        placeholder={`Nombre integrante ${j + 1}`}
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
+                        value={m.suplente ?? ''}
+                        onChange={(e) => setMiembro(i, j, { suplente: e.target.value })}
+                        placeholder={`Suplente ${j + 1} (opcional)`}
+                        className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand bg-gray-50"
                       />
-                      <input
-                        value={m.cargo}
-                        onChange={(e) => setMiembro(i, j, { cargo: e.target.value })}
-                        placeholder="Cargo (opcional)"
-                        className="w-28 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand"
-                      />
-                      {(op.miembros || []).length > 1 && (
-                        <button onClick={() => removeMiembro(i, j)} className="text-red-400 hover:text-red-600 p-1">
-                          <Trash2 size={12} />
-                        </button>
-                      )}
                     </div>
                   ))}
                   <button onClick={() => addMiembro(i)}

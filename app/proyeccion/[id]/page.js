@@ -615,11 +615,19 @@ function ResultadoCerrado({ preg, quorum, idx, total, puedeRetro, puedeAdelantar
                       <span className="text-[10px] text-blue-400">· {c.total} votos</span>
                     </div>
                     {miembros.length > 0 && (
-                      <div className="border-l-2 border-green-400 pl-1.5 flex flex-col gap-0.5">
+                      <div className="border-l-2 border-green-400 pl-1.5 flex flex-col gap-1">
                         {miembros.map((m, mi) => (
-                          <div key={mi} className="flex items-baseline gap-1 text-[11px] min-w-0">
-                            <span className="font-bold text-green-600 flex-shrink-0 tabular-nums">#{mi + 1}</span>
-                            <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
+                          <div key={mi} className="flex flex-col min-w-0">
+                            <div className="flex items-baseline gap-1 text-[11px]">
+                              <span className="font-bold text-green-600 flex-shrink-0 tabular-nums">#{mi + 1}</span>
+                              <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
+                            </div>
+                            {m.suplente && (
+                              <div className="flex items-baseline gap-1 text-[10px] pl-4">
+                                <span className="text-gray-400 flex-shrink-0">Sup.</span>
+                                <span className="text-gray-500 truncate">{m.suplente}</span>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

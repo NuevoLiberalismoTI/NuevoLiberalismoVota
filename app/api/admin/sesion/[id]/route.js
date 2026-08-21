@@ -18,7 +18,7 @@ export async function GET(request, { params }) {
     { data: asistenciaRows },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
-    supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,orden))').eq('asamblea_id', sesionId).order('created_at'),
+    supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,suplente,orden))').eq('asamblea_id', sesionId).order('created_at'),
     supabase.from('preguntas_base').select('*').eq('activa', true),
     supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),

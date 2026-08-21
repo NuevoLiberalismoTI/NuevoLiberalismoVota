@@ -41,7 +41,7 @@ export async function POST(request, { params }) {
       if (esPlancha && op.miembros?.length && cand) {
         const miembros = op.miembros
           .filter((m) => m.nombre?.trim())
-          .map((m, j) => ({ candidato_id: cand.id, nombre: m.nombre.trim(), cargo: m.cargo?.trim() || null, orden: j }));
+          .map((m, j) => ({ candidato_id: cand.id, nombre: m.nombre.trim(), cargo: m.cargo?.trim() || null, suplente: m.suplente?.trim() || null, orden: j }));
         if (miembros.length) {
           await supabase.from('miembros_plancha').insert(miembros);
         }

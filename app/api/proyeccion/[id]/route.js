@@ -59,7 +59,7 @@ export async function GET(request, { params }) {
   if (idsConCands.length > 0) {
     const { data: candsData } = await supabase
       .from('candidatos')
-      .select('id, nombre, orden, es_plancha, pregunta_id, miembros_plancha(id, nombre, cargo, orden)')
+      .select('id, nombre, orden, es_plancha, pregunta_id, miembros_plancha(id, nombre, cargo, suplente, orden)')
       .in('pregunta_id', idsConCands)
       .order('orden');
     allCands = candsData || [];

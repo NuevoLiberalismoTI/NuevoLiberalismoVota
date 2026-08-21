@@ -388,79 +388,10 @@ export default function SesionPage() {
               </span>
             </div>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Esperando la siguiente pregunta</h2>
-          <p className="text-sm text-gray-500 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Esperando la siguiente votación</h2>
+          <p className="text-sm text-gray-500">
             El moderador publicará la próxima pregunta en breve. Esta pantalla se actualiza automáticamente.
           </p>
-          {estado?.votos?.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 inline-block mb-4">
-              <p className="text-2xl font-bold text-brand">{estado.votos.length}</p>
-              <p className="text-xs text-gray-500">{estado.votos.length === 1 ? 'pregunta respondida' : 'preguntas respondidas'}</p>
-            </div>
-          )}
-          {estado?.preguntas_perdidas?.length > 0 && (
-            <div className="w-full max-w-sm bg-orange-50 border border-orange-200 rounded-2xl p-4 text-left mt-2">
-              <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                <AlertTriangle size={13}/> No participaste en estas votaciones
-              </p>
-              {estado.preguntas_perdidas.map((txt, i) => (
-                <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
-                  <span className="text-orange-400 mt-0.5 flex-shrink-0">•</span>
-                  <p className="text-xs text-orange-600">{txt}</p>
-                </div>
-              ))}
-              <p className="text-[10px] text-orange-400 mt-2">El tiempo de estas votaciones se agotó</p>
-            </div>
-          )}
-          {estado?.preguntas_cerradas?.length > 0 && (
-            <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-4 text-left mt-2 shadow-sm">
-              <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                <Award size={13}/> Resultados de votaciones cerradas
-              </p>
-              {estado.preguntas_cerradas.map((pc, i) => {
-                const dhondt = pc.cupos && pc.tipo === 'candidatos' ? calcDhondt(pc.opciones, pc.cupos) : [];
-                const ganadores = dhondt.filter((c) => c.cupos_ganados > 0);
-                return (
-                  <div key={pc.id} className={`${i > 0 ? 'border-t border-gray-100 pt-2.5 mt-2.5' : ''}`}>
-                    <p className="text-xs text-gray-500 mb-1.5 leading-snug">{pc.texto}</p>
-                    {pc.yo_vote ? (
-                      <span className="text-[10px] text-green-600 font-semibold">· Votaste en esta</span>
-                    ) : (
-                      <span className="text-[10px] text-orange-400 font-semibold">· No participaste</span>
-                    )}
-                    {ganadores.length > 0 ? (
-                      <div className="mt-2 flex flex-col gap-1">
-                        {ganadores.map((c, ci) => (
-                          <div key={ci} className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand-50 text-brand">
-                              <User size={10}/> {c.respuesta}
-                            </span>
-                            <span className="text-[11px] font-bold text-brand bg-brand-50 px-2 py-0.5 rounded-full">
-                              {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : pc.ganador ? (
-                      <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                          pc.ganador === 'SI' ? 'bg-green-100 text-green-700' :
-                          pc.ganador === 'NO' ? 'bg-red-100 text-red-600' : 'bg-brand-50 text-brand'
-                        }`}>
-                          {pc.ganador === 'SI' && <ThumbsUp size={11}/>}
-                          {pc.ganador === 'NO' && <ThumbsDown size={11}/>}
-                          {pc.ganador !== 'SI' && pc.ganador !== 'NO' && <User size={11}/>}
-                          {pc.ganador}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Sin votos suficientes</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
       <Footer />

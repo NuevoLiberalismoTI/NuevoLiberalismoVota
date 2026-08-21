@@ -417,16 +417,22 @@ export default function ProyeccionPage() {
 
 function calcDhondt(opciones, cupos) {
   if (!cupos || !opciones?.length) return [];
-  const seats = opciones.map((o) => ({ ...o, cupos_ganados: 0 }));
+  const seats = opciones.map((o) => ({
+    ...o,
+    cupos_ganados: 0,
+    capacidad: o.es_plancha ? (o.miembros?.length ?? Infinity) : Infinity,
+  }));
   for (let i = 0; i < cupos; i++) {
-    let maxQ = -1, maxTotal = -1, maxIdx = 0;
+    let maxQ = -1, maxTotal = -1, maxIdx = -1;
     seats.forEach((s, idx) => {
+      if (s.cupos_ganados >= s.capacidad) return;
       const q = Number(s.total) / (s.cupos_ganados + 1);
       const t = Number(s.total);
-      if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+      if (maxIdx === -1 || q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
         maxQ = q; maxTotal = t; maxIdx = idx;
       }
     });
+    if (maxIdx === -1) break;
     seats[maxIdx].cupos_ganados++;
   }
   return [...seats].sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
@@ -434,18 +440,24 @@ function calcDhondt(opciones, cupos) {
 
 function buildDhondtTable(opciones, cupos) {
   if (!cupos || !opciones?.length) return null;
-  // Replay the exact same algorithm as calcDhondt to get the correct winning cells
-  const seats   = opciones.map((o) => ({ respuesta: o.respuesta, total: Number(o.total), cupos_ganados: 0 }));
+  const seats = opciones.map((o) => ({
+    respuesta: o.respuesta,
+    total: Number(o.total),
+    cupos_ganados: 0,
+    capacidad: o.es_plancha ? (o.miembros?.length ?? Infinity) : Infinity,
+  }));
   const winners = new Set();
   for (let i = 0; i < cupos; i++) {
-    let maxQ = -1, maxTotal = -1, maxIdx = 0;
+    let maxQ = -1, maxTotal = -1, maxIdx = -1;
     seats.forEach((s, idx) => {
+      if (s.cupos_ganados >= s.capacidad) return;
       const q = s.total / (s.cupos_ganados + 1);
       const t = s.total;
-      if (q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+      if (maxIdx === -1 || q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
         maxQ = q; maxTotal = t; maxIdx = idx;
       }
     });
+    if (maxIdx === -1) break;
     const divisor = seats[maxIdx].cupos_ganados + 1;
     winners.add(`${seats[maxIdx].respuesta}-${divisor}`);
     seats[maxIdx].cupos_ganados++;

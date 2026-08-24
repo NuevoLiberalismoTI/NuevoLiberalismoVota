@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -34,7 +34,7 @@ const ESTADO_PREG = {
 };
 
 const OPCION_VACIA_INDIVIDUAL = () => ({ tipo: 'individual', nombre: '' });
-const OPCION_VACIA_PLANCHA    = () => ({ tipo: 'plancha',    nombre: '', miembros: [{ nombre: '', cargo: '' }] });
+const OPCION_VACIA_PLANCHA    = () => ({ tipo: 'plancha',    nombre: '', miembros: [{ nombre: '', cargo: '', suplente: '' }] });
 
 const DEPARTAMENTOS_API = [
   { id: '29', nombre: 'Amazonas' },
@@ -542,16 +542,17 @@ function TabInvitaciones({ sesion }) {
   );
 }
 
-function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = false }) {
-  const [tipo, setTipo]               = useState('sino');
-  const [tipoMayoria, setTipoMayoria] = useState('simple');
-  const [texto, setTexto]             = useState('');
-  const [opciones, setOpciones]       = useState([OPCION_VACIA_INDIVIDUAL(), OPCION_VACIA_INDIVIDUAL()]);
-  const [baseId, setBaseId]           = useState('');
-  const [duracion, setDuracion]       = useState('');
-  const [cupos, setCupos]             = useState('');
+function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = false, initialData = null }) {
+  const [tipo, setTipo]               = useState(initialData?.tipo ?? 'sino');
+  const [tipoMayoria, setTipoMayoria] = useState(initialData?.tipoMayoria ?? 'simple');
+  const [texto, setTexto]             = useState(initialData?.texto ?? '');
+  const [opciones, setOpciones]       = useState(initialData?.opciones?.length ? initialData.opciones : [OPCION_VACIA_INDIVIDUAL(), OPCION_VACIA_INDIVIDUAL()]);
+  const [baseId, setBaseId]           = useState(initialData?.pregunta_base_id ?? '');
+  const [duracion, setDuracion]       = useState(initialData?.duracion ? String(initialData.duracion) : '');
+  const [cupos, setCupos]             = useState(initialData?.cupos ? String(initialData.cupos) : '');
   const [err, setErr]                 = useState('');
   const [corrector, setCorrector]     = useState({ cargando: false, errores: [], revisado: false });
+  const xlsRefCands                   = useRef(null);
 
   const selBase = (id) => {
     const pb = preguntasBase.find((p) => p.id === id);
@@ -576,6 +577,48 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
     setOpciones((prev) => prev.map((o, oi) => oi !== i ? o : {
       ...o, miembros: o.miembros.filter((_, mi) => mi !== j),
     }));
+
+  const parsearExcelCandidatos = async (file) => {
+    try {
+      const { read, utils } = await import('xlsx');
+      const wb   = read(await file.arrayBuffer(), { type: 'array' });
+      const rows = utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+      const nuevas = [];
+      let planchaActual = null;
+      for (const row of rows) {
+        const t      = String(row.tipo ?? '').toLowerCase().trim();
+        const nombre = String(row.nombre ?? '').trim();
+        if (!nombre) continue;
+        if (t === 'candidato') {
+          planchaActual = null;
+          nuevas.push({ tipo: 'individual', nombre });
+        } else if (t === 'plancha') {
+          planchaActual = { tipo: 'plancha', nombre, miembros: [] };
+          nuevas.push(planchaActual);
+        } else if (t === 'miembro' && planchaActual) {
+          planchaActual.miembros.push({ nombre, cargo: String(row.cargo ?? '').trim(), suplente: String(row.suplente ?? '').trim() });
+        }
+      }
+      if (nuevas.length > 0) { setOpciones(nuevas); setErr(''); }
+      else setErr('No se encontraron filas válidas. Verifica que la columna "tipo" tenga los valores: candidato, plancha, miembro.');
+    } catch { setErr('Error al leer el archivo Excel.'); }
+  };
+
+  const descargarPlantillaCandidatos = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const ws = utils.aoa_to_sheet([
+      ['tipo', 'nombre', 'cargo', 'suplente'],
+      ['candidato', 'Juan García Pérez', '', ''],
+      ['plancha', 'Plancha Unidad', '', ''],
+      ['miembro', 'Ana López Torres', 'Presidenta', 'María Rodríguez'],
+      ['miembro', 'Carlos Peñaranda', 'Secretario', 'Luis Martínez'],
+      ['plancha', 'Plancha Progreso', '', ''],
+      ['miembro', 'Pedro González', '', 'Sofía Martínez'],
+    ]);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Candidatos');
+    writeFile(wb, 'plantilla_candidatos.xlsx');
+  };
 
   const guardar = () => {
     if (!texto.trim()) { setErr('Escribe el texto de la pregunta'); return; }
@@ -785,6 +828,18 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
               <Users size={12} /> + Plancha
             </button>
           </div>
+          <div className="flex gap-2 mt-1">
+            <button onClick={() => xlsRefCands.current?.click()}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold border border-green-300 text-green-700 hover:bg-green-50 transition-colors">
+              <FileSpreadsheet size={12} /> Importar Excel
+            </button>
+            <button onClick={descargarPlantillaCandidatos}
+              className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+              <FileSpreadsheet size={12} /> Plantilla
+            </button>
+            <input ref={xlsRefCands} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+              onChange={(e) => { const f = e.target.files[0]; if (f) { parsearExcelCandidatos(f); e.target.value = ''; } }} />
+          </div>
         </div>
       )}
 
@@ -838,7 +893,8 @@ export default function AdminSesionPage() {
   const [resultados, setResultados]       = useState([]);
   const [tab, setTab]                     = useState('preguntas');
   const [mostrarForm, setMostrarForm]     = useState(false);
-  const [mostrarVivo, setMostrarVivo]         = useState(false);
+  const [mostrarVivo, setMostrarVivo]     = useState(false);
+  const [duplicarData, setDuplicarData]   = useState(null);
   const [mostrarCodigo,       setMostrarCodigo]       = useState(false);
   const [mostrarCodigoTexto,  setMostrarCodigoTexto]  = useState(false);
   const [mostrarProyeccion,   setMostrarProyeccion]   = useState(false);
@@ -987,8 +1043,27 @@ export default function AdminSesionPage() {
         cupos: cupos ? Number(cupos) : null,
       }),
     });
-    setMostrarForm(false); setMostrarVivo(false);
+    setMostrarForm(false); setMostrarVivo(false); setDuplicarData(null);
     await cargar(); setCargando(false);
+  };
+
+  const handleDuplicar = (p) => {
+    const opciones = (p.candidatos || []).map((c) =>
+      c.es_plancha
+        ? { tipo: 'plancha', nombre: c.nombre, miembros: (c.miembros || []).map((m) => ({ nombre: m.nombre, cargo: m.cargo || '', suplente: m.suplente || '' })) }
+        : { tipo: 'individual', nombre: c.nombre }
+    );
+    setDuplicarData({
+      tipo:             p.tipo,
+      tipoMayoria:      p.tipo_mayoria,
+      texto:            p.texto,
+      opciones:         opciones.length ? opciones : undefined,
+      duracion:         p.duracion ?? '',
+      cupos:            p.cupos ?? '',
+      pregunta_base_id: p.pregunta_base_id ?? '',
+    });
+    setMostrarForm(false); setMostrarVivo(false);
+    setTimeout(() => document.getElementById('form-duplicar')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
   const handleEliminar = async (pId) => {
@@ -1937,6 +2012,7 @@ export default function AdminSesionPage() {
 
             {mostrarVivo && <div className="mb-3"><FormPregunta enVivo preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarVivo(false)}/></div>}
             {mostrarForm && <div className="mb-3"><FormPregunta preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setMostrarForm(false)}/></div>}
+            {duplicarData && <div id="form-duplicar" className="mb-3"><FormPregunta preguntasBase={preguntasBase} onGuardar={handleGuardar} onCancelar={() => setDuplicarData(null)} initialData={duplicarData}/></div>}
 
             {preguntas.length === 0 && !mostrarForm && !mostrarVivo && (
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-8 text-center">
@@ -1969,10 +2045,17 @@ export default function AdminSesionPage() {
                         </span>
                         {p.en_vivo && <span className="text-xs font-bold text-orange-500 flex items-center gap-0.5"><Zap size={10}/>En vivo</span>}
                       </div>
-                      {sesion.estado !== 'finalizada' && p.estado !== 'activa' && (
-                        <button onClick={() => handleEliminar(p.id)} className="text-gray-300 hover:text-red-500 p-1 flex-shrink-0">
-                          <Trash2 size={15}/>
-                        </button>
+                      {sesion.estado !== 'finalizada' && (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <button onClick={() => handleDuplicar(p)} title="Duplicar pregunta" className="text-gray-300 hover:text-blue-500 p-1">
+                            <Copy size={15}/>
+                          </button>
+                          {p.estado !== 'activa' && (
+                            <button onClick={() => handleEliminar(p.id)} title="Eliminar pregunta" className="text-gray-300 hover:text-red-500 p-1">
+                              <Trash2 size={15}/>
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
 

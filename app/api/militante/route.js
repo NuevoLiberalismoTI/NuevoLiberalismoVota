@@ -5,6 +5,17 @@ export async function GET(request) {
   const cedula = searchParams.get('cedula')?.trim();
   if (!cedula) return Response.json({ ok: false, error: 'Número de identificación requerido' }, { status: 400 });
 
+  // Usuario demo para tutoriales — no consulta militantes
+  const DEMO_USERS = {
+    '10131122334455': { cedula: '10131122334455', nombres: 'Pedro', apellidos: 'Perez Pelaez', email: 'mayersan0111@gmail.com', estado_afiliacion: 'activo' },
+  };
+  if (DEMO_USERS[cedula]) {
+    const supabase = createServerClient();
+    const { data: usuarioExiste } = await supabase.from('usuarios').select('cedula').eq('cedula', cedula).maybeSingle();
+    if (usuarioExiste) return Response.json({ ok: false, tipo: 'ya_existe' });
+    return Response.json({ ok: true, militante: DEMO_USERS[cedula] });
+  }
+
   const token = process.env.MILITANTES_API_TOKEN || '7TvcetUYWs0zuLMy5bX4Fx0cfYvrg2WCfbMpIOWVhCFwOQXB2WfMyWBB3kqSKIMo';
 
   // Consultar API externa de militantes

@@ -372,18 +372,29 @@ export default function ProyeccionPage() {
                   </div>
                 )}
 
-                {/* Indicador de mayoría — tipo y umbral visibles, conteos ocultos */}
+                {/* Indicador de mayoría — votos totales visibles, desglose por opción oculto */}
                 {opciones.length > 0 && (
-                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-5 py-3">
-                    <div className="flex items-center justify-between">
+                  <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
                           {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
                         </span>
                         <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
                       </div>
-                      <span className="text-xs text-gray-400 italic">Resultados al cerrar</span>
+                      <span className={`text-xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
+                        {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
+                      </span>
                     </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-3 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
+                        style={{ width: `${mayorPct}%` }} />
+                    </div>
+                    <p className={`text-xs font-semibold mt-1.5 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
+                      {mayorAlcanzada
+                        ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                        : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
+                    </p>
                   </div>
                 )}
               </div>

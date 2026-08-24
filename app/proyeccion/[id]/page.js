@@ -355,12 +355,9 @@ export default function ProyeccionPage() {
                               {esNO && <ThumbsDown size={14} className="text-red-500" />}
                               {op.respuesta}
                             </span>
-                            <span className="text-xs font-bold text-gray-500 tabular-nums flex-shrink-0">
-                              {votos} voto{votos !== 1 ? 's' : ''} · <span className="text-gray-800">{pct}%</span>
-                            </span>
                           </div>
                           {esPlancha && (
-                            <div className="px-4 pb-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                            <div className="px-4 pb-3 grid grid-cols-2 gap-x-3 gap-y-0.5">
                               {op.miembros.map((m, mi) => (
                                 <div key={mi} className="flex items-baseline gap-1 min-w-0">
                                   <span className="text-brand/50 text-[9px] font-bold tabular-nums flex-shrink-0">#{mi + 1}</span>
@@ -369,41 +366,19 @@ export default function ProyeccionPage() {
                               ))}
                             </div>
                           )}
-                          <div className="px-4 pb-3 mt-auto">
-                            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                              <div className={`h-3 rounded-full transition-all duration-700 ease-out ${barBg}`}
-                                style={{ width: `${bar}%` }} />
-                            </div>
-                          </div>
                         </div>
                       );
                     })}
                   </div>
                 )}
 
-                {/* Indicador de mayoría */}
+                {/* Indicador de mayoría — solo tipo, sin conteos */}
                 {opciones.length > 0 && (
-                  <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
-                          {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
-                        </span>
-                        <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
-                      </div>
-                      <span className={`text-xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
-                        {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
-                      </span>
-                    </div>
-                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-3 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
-                        style={{ width: `${mayorPct}%` }} />
-                    </div>
-                    <p className={`text-xs font-semibold mt-1.5 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
-                      {mayorAlcanzada
-                        ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
-                        : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
-                    </p>
+                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-5 py-3 flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+                      {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+                    </span>
+                    <span className="text-gray-400 text-xs">Votación en curso — los resultados se mostrarán al cerrar</span>
                   </div>
                 )}
               </div>

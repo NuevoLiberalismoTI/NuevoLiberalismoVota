@@ -372,13 +372,18 @@ export default function ProyeccionPage() {
                   </div>
                 )}
 
-                {/* Indicador de mayoría — solo tipo, sin conteos */}
+                {/* Indicador de mayoría — tipo y umbral visibles, conteos ocultos */}
                 {opciones.length > 0 && (
-                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-5 py-3 flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
-                      {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
-                    </span>
-                    <span className="text-gray-400 text-xs">Votación en curso — los resultados se mostrarán al cerrar</span>
+                  <div className="rounded-2xl border border-gray-200 bg-white shadow-sm px-5 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+                          {tipoMayoria === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+                        </span>
+                        <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
+                      </div>
+                      <span className="text-xs text-gray-400 italic">Resultados al cerrar</span>
+                    </div>
                   </div>
                 )}
               </div>

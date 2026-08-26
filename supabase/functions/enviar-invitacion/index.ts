@@ -102,12 +102,29 @@ function htmlInvitacion(nombre: string, sesion: {
             </td></tr>
           </table>
 
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
             <tr><td align="center">
               <a href="${plataformaUrl}" target="_blank"
                 style="display:inline-block;background:#C20A00;color:#fff;font-size:15px;font-weight:800;padding:14px 36px;border-radius:12px;text-decoration:none;letter-spacing:0.3px;">
                 Ir a la plataforma →
               </a>
+            </td></tr>
+          </table>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+            <tr><td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;">
+              <p style="margin:0 0 10px;font-size:13px;color:#166534;font-weight:700;">¿Es tu primera vez? 🎓</p>
+              <p style="margin:0 0 12px;font-size:13px;color:#166534;line-height:1.5;">
+                Si aún no tienes usuario creado, sigue el tutorial paso a paso para registrarte en la plataforma.
+              </p>
+              <table cellpadding="0" cellspacing="0">
+                <tr><td align="center">
+                  <a href="https://drive.google.com/file/d/1MRVTrz8E2AK2SyWBZVTEAnIzl_fI_kQc/view?usp=sharing" target="_blank"
+                    style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:800;padding:10px 24px;border-radius:8px;text-decoration:none;">
+                    Ver tutorial de registro →
+                  </a>
+                </td></tr>
+              </table>
             </td></tr>
           </table>
 

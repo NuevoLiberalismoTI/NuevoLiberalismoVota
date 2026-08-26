@@ -11,6 +11,8 @@ const FROM_EMAIL   = Deno.env.get('SENDGRID_FROM_EMAIL')!;
 // @ts-ignore
 const TWILIO_SID   = Deno.env.get('TWILIO_ACCOUNT_SID') ?? '';
 // @ts-ignore
+const TWILIO_KEY   = Deno.env.get('TWILIO_API_KEY') ?? '';
+// @ts-ignore
 const TWILIO_AUTH  = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
 // @ts-ignore
 const TWILIO_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
@@ -22,35 +24,22 @@ async function enviarWhatsApp(
   plataformaUrl: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!TWILIO_SID || !TWILIO_AUTH) {
-    console.error('[WhatsApp] Secrets de Twilio no configurados — TWILIO_SID:', !!TWILIO_SID, 'TWILIO_AUTH:', !!TWILIO_AUTH);
+    console.error('[WhatsApp] Secrets de Twilio no configurados');
     return { ok: false, error: 'secrets_no_configurados' };
   }
-  const isContactId = telefono.startsWith('C0.') || telefono.startsWith('CO.');
-  const to = isContactId
-    ? `whatsapp:${telefono}`
-    : `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
+  const to = `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
+  const cuerpo = `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
 
-  console.log(`[WhatsApp] Enviando a ${to} (from: ${TWILIO_FROM}, contactId: ${isContactId})`);
+  console.log(`[WhatsApp] Enviando a ${to}`);
   try {
-    // Contact IDs del Sandbox de Twilio requieren contentSid (template) en lugar de Body
-    let body: URLSearchParams;
-    if (isContactId) {
-      body = new URLSearchParams({
-        From: TWILIO_FROM,
-        To: to,
-        ContentSid: 'HXb5b62575e6e4ff6129ad7c8efe1f983e',
-        ContentVariables: JSON.stringify({ '1': sesion.nombre, '2': sesion.hora }),
-      });
-    } else {
-      const cuerpo = `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
-      body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
-    }
+    const authUser = TWILIO_KEY || TWILIO_SID;
+    const body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
       {
         method:  'POST',
         headers: {
-          'Authorization': `Basic ${btoa(`${TWILIO_SID}:${TWILIO_AUTH}`)}`,
+          'Authorization': `Basic ${btoa(`${authUser}:${TWILIO_AUTH}`)}`,
           'Content-Type':  'application/x-www-form-urlencoded',
         },
         body: body.toString(),

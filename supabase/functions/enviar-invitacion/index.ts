@@ -113,7 +113,7 @@ function htmlInvitacion(nombre: string, sesion: {
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
             <tr><td style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;">
-              <p style="margin:0 0 10px;font-size:13px;color:#166534;font-weight:700;">¿Es tu primera vez? 🎓</p>
+              <p style="margin:0 0 10px;font-size:13px;color:#166534;font-weight:700;">¿No tienes usuario creado?</p>
               <p style="margin:0 0 12px;font-size:13px;color:#166534;line-height:1.5;">
                 Si aún no tienes usuario creado, sigue el tutorial paso a paso para registrarte en la plataforma.
               </p>

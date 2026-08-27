@@ -125,7 +125,7 @@ export default function ProyeccionPage() {
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden select-none">
+    <div className="h-screen w-screen flex overflow-hidden select-none font-montserrat">
 
       {/* ── Panel izquierdo: QR + quórum ─────── */}
       <div className="w-[28%] flex-shrink-0 bg-brand flex flex-col items-center justify-between py-8 px-5">

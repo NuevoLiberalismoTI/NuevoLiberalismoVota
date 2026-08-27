@@ -9,4 +9,5 @@
   --color-brand-200: #ffc5c1;
 
   --font-display: var(--font-display), Georgia, serif;
+  --font-montserrat: var(--font-montserrat), 'Montserrat', sans-serif;
 }

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -170,6 +170,26 @@ function TabInvitaciones({ sesion }) {
     } catch { setXlsError('Error al leer el archivo. Asegúrate de que sea .xlsx o .csv válido.'); }
   };
 
+  const descargarPendientes = async () => {
+    const pendientes = invitadosLista.filter((i) => !i.preinscrito);
+    if (pendientes.length === 0) return;
+    const { utils, writeFile } = await import('xlsx');
+    const filas = [
+      ['Nombre', 'Correo', 'Cédula', 'Fecha invitación'],
+      ...pendientes.map((p) => [
+        p.nombre || '',
+        p.email  || '',
+        p.cedula || '',
+        p.enviado_en ? new Date(p.enviado_en).toLocaleDateString('es-CO') : '',
+      ]),
+    ];
+    const ws = utils.aoa_to_sheet(filas);
+    ws['!cols'] = [{ wch: 30 }, { wch: 34 }, { wch: 16 }, { wch: 18 }];
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Pendientes');
+    writeFile(wb, `pendientes_${sesion.id.slice(0, 8)}.xlsx`);
+  };
+
   const descargarPlantilla = async () => {
     const { utils, writeFile } = await import('xlsx');
     const ws = utils.aoa_to_sheet([
@@ -222,9 +242,20 @@ function TabInvitaciones({ sesion }) {
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-2xl">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
-            <button onClick={cargarInvitados} className="text-gray-400 hover:text-brand transition-colors">
-              <RefreshCw size={12} />
-            </button>
+            <div className="flex items-center gap-2">
+              {invitadosLista.some((i) => !i.preinscrito) && (
+                <button
+                  onClick={descargarPendientes}
+                  title="Descargar pendientes"
+                  className="text-gray-400 hover:text-orange-500 transition-colors"
+                >
+                  <Download size={12} />
+                </button>
+              )}
+              <button onClick={cargarInvitados} className="text-gray-400 hover:text-brand transition-colors">
+                <RefreshCw size={12} />
+              </button>
+            </div>
           </div>
           {invitadosLista.length > 0 && (() => {
             const inscritos  = invitadosLista.filter((i) => i.preinscrito).length;

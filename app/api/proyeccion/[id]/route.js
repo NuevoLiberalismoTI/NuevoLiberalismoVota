@@ -13,6 +13,7 @@ export async function GET(request, { params }) {
     { data: pregs },
     { data: resultados },
     { data: inscData },
+    { data: invitData },
   ] = await Promise.all([
     supabase
       .from('asambleas')
@@ -33,6 +34,10 @@ export async function GET(request, { params }) {
       .from('inscripciones')
       .select('estado_acreditacion')
       .eq('asamblea_id', sesionId),
+    supabase
+      .from('invitaciones_enviadas')
+      .select('cedula')
+      .eq('sesion_id', sesionId),
   ]);
 
   if (!asm || asm.estado === 'borrador') {
@@ -44,6 +49,9 @@ export async function GET(request, { params }) {
   const acreditadosVoto    = insc.filter((i) => i.estado_acreditacion === 'acreditado_voto').length;
   const acreditadosIngreso = insc.filter((i) => i.estado_acreditacion === 'acreditado_ingreso').length;
   const totalInscritos     = insc.length;
+
+  // Invitados únicos por cédula (deduplicados)
+  const invitadosUnicos = new Set((invitData || []).map((i) => String(i.cedula)).filter(Boolean)).size;
 
   // Pregunta activa
   const preguntaActiva = (pregs || []).find((p) => p.estado === 'activa') ?? null;
@@ -142,6 +150,7 @@ export async function GET(request, { params }) {
       acreditados_voto:    acreditadosVoto,
       acreditados_ingreso: acreditadosIngreso,
       asistentes:          asistentes ?? 0,
+      invitados:           invitadosUnicos,
     },
     preguntaActiva: preguntaActiva
       ? {

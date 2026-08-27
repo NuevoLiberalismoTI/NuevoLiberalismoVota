@@ -73,8 +73,8 @@ export default function ProyeccionPage() {
   const { sesion, quorum, preguntaActiva, historial = [] } = datos;
   const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}&ts=${qrTs}`;
 
-  const quorumPct       = quorum.acreditados_voto > 0
-    ? Math.round((quorum.asistentes / quorum.acreditados_voto) * 100)
+  const quorumPct       = quorum.invitados > 0
+    ? Math.round((quorum.asistentes / quorum.invitados) * 100)
     : 0;
   const quorumAlcanzado = quorumPct >= 50;
 
@@ -201,7 +201,7 @@ export default function ProyeccionPage() {
             <p className={`text-[11px] font-bold mt-1.5 ${quorumAlcanzado ? 'text-green-300' : 'text-yellow-300'}`}>
               {quorumAlcanzado
                 ? '✓ Quórum alcanzado'
-                : `Faltan ${Math.max(0, Math.ceil(quorum.acreditados_voto * 0.5) - quorum.asistentes)} para quórum (50%)`}
+                : `Faltan ${Math.max(0, Math.ceil(quorum.invitados * 0.5) - quorum.asistentes)} para quórum (50%)`}
             </p>
           </div>
         </div>
@@ -272,8 +272,8 @@ export default function ProyeccionPage() {
                 </div>
                 <p className={`text-sm font-semibold mt-2 ${quorumAlcanzado ? 'text-green-600' : 'text-orange-500'}`}>
                   {quorumAlcanzado
-                    ? `✓ Quórum alcanzado — ${quorum.asistentes} de ${quorum.acreditados_voto} habilitados presentes`
-                    : `Faltan ${Math.max(0, Math.ceil(quorum.acreditados_voto * 0.5) - quorum.asistentes)} asistentes para alcanzar quórum (50%)`}
+                    ? `✓ Quórum alcanzado — ${quorum.asistentes} de ${quorum.invitados} invitados presentes`
+                    : `Faltan ${Math.max(0, Math.ceil(quorum.invitados * 0.5) - quorum.asistentes)} asistentes para alcanzar quórum (50%)`}
                 </p>
               </div>
             </div>
@@ -299,8 +299,8 @@ export default function ProyeccionPage() {
             const totalVotos    = opciones.reduce((s, o) => s + Number(o.total), 0);
             const maxVotos      = Math.max(...opciones.map((o) => Number(o.total)), 1);
             const tipoMayoria   = preguntaActiva.tipo_mayoria ?? 'simple';
-            const baseM         = quorum.acreditados_voto;
-            const baseLabel     = 'acreditados con voto';
+            const baseM         = quorum.invitados;
+            const baseLabel     = 'invitados';
             const umbral        = Math.floor(baseM / 2) + 1;
             const mayorPct      = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
             const mayorAlcanzada = totalVotos >= umbral && umbral > 0;

@@ -16,6 +16,7 @@ export async function GET(request, { params }) {
     { count: asistentes },
     { data: resultados },
     { data: asistenciaRows },
+    { data: invitData },
   ] = await Promise.all([
     supabase.from('asambleas').select('*, tipos_asamblea(codigo,nombre), colectivos(codigo,nombre)').eq('id', sesionId).single(),
     supabase.from('asamblea_preguntas').select('*, candidatos(id,nombre,orden,es_plancha,miembros_plancha(id,nombre,cargo,suplente,orden))').eq('asamblea_id', sesionId).order('created_at'),
@@ -24,6 +25,7 @@ export async function GET(request, { params }) {
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
     supabase.from('asistencia').select('usuario_cedula, created_at').eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
+    supabase.from('invitaciones_enviadas').select('cedula').eq('sesion_id', sesionId),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
@@ -76,6 +78,7 @@ export async function GET(request, { params }) {
       acreditados_voto: preinscritos.filter((i) => i.estado_acreditacion === 'acreditado_voto').length,
       acreditados:      preinscritos.filter((i) => i.estado_acreditacion === 'acreditado_voto' || i.estado_acreditacion === 'acreditado_ingreso').length,
       pendientes:       preinscritos.filter((i) => i.estado_acreditacion === 'preinscrito').length,
+      invitados:        new Set((invitData || []).map((i) => String(i.cedula)).filter(Boolean)).size,
     },
     preinscritos,
     asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at })),

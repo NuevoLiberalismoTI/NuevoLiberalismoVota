@@ -59,7 +59,7 @@ const s = StyleSheet.create({
 });
 
 export function InformePDF({ sesion, stats, resultados, logoData }) {
-  const baseQuorum     = stats?.acreditados_voto ?? stats?.inscritos ?? 0;
+  const baseQuorum     = stats?.invitados ?? stats?.acreditados_voto ?? stats?.inscritos ?? 0;
   const quorumReq      = baseQuorum > 0 ? Math.floor(baseQuorum / 2) + 1 : 0;
   const pctAsist       = baseQuorum > 0 ? Math.min(100, Math.round((stats.asistentes / baseQuorum) * 100)) : 0;
   const quorumAlcanzado = stats ? stats.asistentes >= quorumReq : false;
@@ -169,10 +169,10 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
           {resultados.map((preg, idx) => {
             const total   = (preg.opciones || []).reduce((acc, o) => acc + Number(o.total), 0);
             const maxVotos = Math.max(...(preg.opciones || []).map((o) => Number(o.total)), 1);
-            const baseAcred = stats?.acreditados_voto ?? 0;
+            const baseAcred = stats?.invitados ?? stats?.acreditados_voto ?? 0;
             const umbral    = Math.floor(baseAcred / 2) + 1;
             const base      = baseAcred;
-            const baseLabel = 'acreditados con voto';
+            const baseLabel = 'invitados';
             const esValida  = preg.estado === 'cerrada' && total >= umbral;
             const ganador   = preg.estado === 'cerrada' && total > 0
               ? [...(preg.opciones || [])].sort((a, b) => Number(b.total) - Number(a.total))[0]?.respuesta

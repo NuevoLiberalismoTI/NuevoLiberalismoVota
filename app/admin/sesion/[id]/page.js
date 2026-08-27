@@ -1024,10 +1024,10 @@ export default function AdminSesionPage() {
   const activaId = sesion.pregunta_activa_id;
   const hayActiva= !!activaId;
 
-  const quorumRequerido  = stats ? Math.floor((stats.acreditados_voto ?? stats.inscritos) / 2) + 1 : 0;
+  const quorumRequerido  = stats ? Math.floor((stats.invitados ?? stats.acreditados_voto ?? stats.inscritos) / 2) + 1 : 0;
   const quorumAlcanzado  = stats ? stats.asistentes >= quorumRequerido : false;
   const faltanParaQuorum = stats ? Math.max(0, quorumRequerido - stats.asistentes) : 0;
-  const baseQuorum       = stats?.acreditados_voto ?? stats?.inscritos ?? 0;
+  const baseQuorum       = stats?.invitados ?? stats?.acreditados_voto ?? stats?.inscritos ?? 0;
   const pctAsistencia    = baseQuorum > 0
     ? Math.min(100, Math.round((stats.asistentes / baseQuorum) * 100))
     : 0;
@@ -1747,7 +1747,7 @@ export default function AdminSesionPage() {
             )}
             {resultados.map((preg) => {
               const total      = Number(preg.total_votos) || 0;
-              const baseUmbral = stats?.acreditados_voto ?? 0;
+              const baseUmbral = stats?.invitados ?? stats?.acreditados_voto ?? 0;
               const umbral     = baseUmbral > 0 ? Math.floor(baseUmbral / 2) + 1 : (Number(preg.umbral) || 0);
               const esValida   = total >= umbral && umbral > 0;
               const ganador    = preg.ganador;
@@ -1758,7 +1758,7 @@ export default function AdminSesionPage() {
 
               const pctParticipacion = baseUmbral > 0 ? Math.min(100, Math.round((total / baseUmbral) * 100)) : 0;
               const pctUmbral        = baseUmbral > 0 ? Math.min(100, Math.round((umbral / baseUmbral) * 100)) : 50;
-              const baseLabel        = 'acreditados';
+              const baseLabel        = 'invitados';
 
               return (
                 <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 transition-colors ${

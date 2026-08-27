@@ -13,8 +13,8 @@ export default function ProyeccionPage() {
 
   const [datos, setDatos]     = useState(null);
   const [error, setError]     = useState(null);
-  const [qrTs,  setQrTs]     = useState(() => Math.floor(Date.now() / 30000));
-  const [qrSeg, setQrSeg]    = useState(30);
+  const [qrTs,  setQrTs]     = useState(() => Math.floor(Date.now() / 120000));
+  const [qrSeg, setQrSeg]    = useState(120);
   const [timer, setTimer]    = useState(null);
   const [histIdx, setHistIdx] = useState(-1); // -1 = most recent auto
   const timerRef   = useRef(null);
@@ -42,8 +42,8 @@ export default function ProyeccionPage() {
   useEffect(() => {
     const iv = setInterval(() => {
       const now = Date.now();
-      setQrSeg(Math.ceil(30 - (now / 1000) % 30));
-      setQrTs(Math.floor(now / 30000));
+      setQrSeg(Math.ceil(120 - (now / 1000) % 120));
+      setQrTs(Math.floor(now / 120000));
     }, 1000);
     return () => clearInterval(iv);
   }, []);

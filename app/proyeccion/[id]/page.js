@@ -126,12 +126,10 @@ export default function ProyeccionPage() {
         </div>
 
         {/* Footer compacto: stats */}
-        <div className="px-10 pb-4 grid grid-cols-4 gap-3 shrink-0">
+        <div className="px-10 pb-4 grid grid-cols-2 gap-3 shrink-0">
           {[
-            { label: 'Invitados',    value: quorum.invitados },
-            { label: 'Con voto',     value: quorum.acreditados_voto },
-            { label: 'Solo ingreso', value: quorum.acreditados_ingreso },
-            { label: 'Asistentes',   value: quorum.asistentes },
+            { label: 'Invitados',  value: quorum.invitados  },
+            { label: 'Asistentes', value: quorum.asistentes },
           ].map(({ label, value }) => (
             <div key={label} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 flex flex-col items-center">
               <span className="text-white text-2xl font-extrabold">{value}</span>
@@ -182,10 +180,8 @@ export default function ProyeccionPage() {
         {/* Stats + quórum */}
         <div className="w-full flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-2">
-            <StatLeft icon={<Users size={13}/>}    label="Asistentes"       value={quorum.asistentes}          bold />
-            <StatLeft icon={<Vote size={13}/>}     label="Con voto"         value={quorum.acreditados_voto} />
-            <StatLeft icon={<UserCheck size={13}/>} label="Solo ingreso"    value={quorum.acreditados_ingreso} />
-            <StatLeft icon={<Users size={13}/>}    label="Invitados"        value={quorum.invitados} />
+            <StatLeft icon={<Users size={13}/>} label="Invitados"  value={quorum.invitados}  />
+            <StatLeft icon={<Users size={13}/>} label="Asistentes" value={quorum.asistentes} bold />
           </div>
           <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
             <div className="flex items-center justify-between mb-2">

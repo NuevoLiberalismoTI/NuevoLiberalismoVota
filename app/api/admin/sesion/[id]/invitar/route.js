@@ -22,8 +22,24 @@ export async function POST(request, { params }) {
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
-  const edgeFnUrl    = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/enviar-invitacion`;
+  const edgeFnUrl     = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/enviar-invitacion`;
   const plataformaUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vota.nuevoliberalismo.org';
+
+  // Determinar quién ya tiene usuario para elegir la plantilla de WhatsApp correcta
+  const cedulasTodas = militantes.map((m) => m.cedula).filter(Boolean);
+  let cedulasConUsuarioSet = new Set();
+  if (cedulasTodas.length > 0) {
+    const { data: usrs } = await supabase
+      .from('usuarios')
+      .select('cedula')
+      .in('cedula', cedulasTodas);
+    cedulasConUsuarioSet = new Set((usrs || []).map((u) => String(u.cedula)));
+  }
+
+  const militantesEnriquecidos = militantes.map((m) => ({
+    ...m,
+    tieneUsuario: m.cedula ? cedulasConUsuarioSet.has(String(m.cedula)) : false,
+  }));
 
   const res = await fetch(edgeFnUrl, {
     method:  'POST',
@@ -38,7 +54,7 @@ export async function POST(request, { params }) {
         hora:   asm.hora,
         lugar:  asm.lugar,
       },
-      militantes,
+      militantes: militantesEnriquecidos,
       plataformaUrl,
     }),
   });

@@ -17,33 +17,46 @@ const TWILIO_AUTH  = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
 // @ts-ignore
 const TWILIO_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
 
+// ContentSid plantilla sin tutorial (usuario ya creado)
+const SID_INVITACION          = 'HX0aa70c50e4134b94f3f05389af656a0f';
+// ContentSid plantilla con tutorial (usuario aún sin crear) — reemplaza con el SID aprobado
+// @ts-ignore
+const SID_INVITACION_TUTORIAL = Deno.env.get('TWILIO_CONTENT_SID_INVITACION_TUTORIAL') ?? SID_INVITACION;
+
+const TUTORIAL_URL = 'https://drive.google.com/file/d/1MRVTrz8E2AK2SyWBZVTEAnIzl_fI_kQc/view?usp=sharing';
+
 async function enviarWhatsApp(
   telefono: string,
   nombre: string,
   sesion: { nombre: string; fecha: string; hora: string; lugar: string },
   plataformaUrl: string,
+  tieneUsuario: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!TWILIO_SID || !TWILIO_AUTH) {
     console.error('[WhatsApp] Secrets de Twilio no configurados');
     return { ok: false, error: 'secrets_no_configurados' };
   }
   const to = `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
+  const contentSid = tieneUsuario ? SID_INVITACION : SID_INVITACION_TUTORIAL;
 
-  console.log(`[WhatsApp] Enviando a ${to}`);
+  console.log(`[WhatsApp] Enviando a ${to} (plantilla: ${tieneUsuario ? 'sin tutorial' : 'con tutorial'})`);
   try {
     const authUser = TWILIO_KEY || TWILIO_SID;
+    const variables: Record<string, string> = {
+      '1': nombre,
+      '2': sesion.nombre,
+      '3': sesion.fecha,
+      '4': sesion.hora,
+      '5': sesion.lugar,
+      '6': plataformaUrl,
+    };
+    if (!tieneUsuario) variables['7'] = TUTORIAL_URL;
+
     const body = new URLSearchParams({
       From:             TWILIO_FROM,
       To:               to,
-      ContentSid:       'HX0aa70c50e4134b94f3f05389af656a0f',
-      ContentVariables: JSON.stringify({
-        '1': nombre,
-        '2': sesion.nombre,
-        '3': sesion.fecha,
-        '4': sesion.hora,
-        '5': sesion.lugar,
-        '6': plataformaUrl,
-      }),
+      ContentSid:       contentSid,
+      ContentVariables: JSON.stringify(variables),
     });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
@@ -166,7 +179,7 @@ Deno.serve(async (req: Request) => {
   try {
     const { sesion, militantes, plataformaUrl } = await req.json() as {
       sesion:        { nombre: string; fecha: string; hora: string; lugar: string };
-      militantes:    { email: string; nombre: string; telefono?: string | null }[];
+      militantes:    { email: string; nombre: string; telefono?: string | null; tieneUsuario?: boolean }[];
       plataformaUrl: string;
     };
 
@@ -175,7 +188,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const resultados = await Promise.allSettled(
-      militantes.map(async ({ email, nombre, telefono }) => {
+      militantes.map(async ({ email, nombre, telefono, tieneUsuario }) => {
         // Correo
         const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
@@ -200,7 +213,7 @@ Deno.serve(async (req: Request) => {
         // WhatsApp (si hay teléfono)
         let whatsapp: { ok: boolean; error?: string } | null = null;
         if (telefono) {
-          whatsapp = await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl);
+          whatsapp = await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl, tieneUsuario ?? true);
         }
 
         return { email, ok: true, whatsapp };

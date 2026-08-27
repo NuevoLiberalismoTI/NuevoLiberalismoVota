@@ -97,6 +97,14 @@ export default function CrearUsuarioPage() {
       });
       if (error) throw error;
       if (!data?.ok) { setErrCodigo(data?.error || 'Código incorrecto o expirado'); return; }
+
+      // Pre-inscribir automáticamente en sesiones donde fue invitado
+      await fetch('/api/auto-inscribir', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ cedula: cedula.trim() }),
+      }).catch(() => { /* silencioso — no bloquea la creación del usuario */ });
+
       setStep(4);
     } catch {
       setErrCodigo('Error al verificar. Intenta de nuevo.');

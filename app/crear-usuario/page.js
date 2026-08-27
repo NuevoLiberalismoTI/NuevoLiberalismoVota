@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle, UserX, Loader2, Mail } from 'lucide-react';
@@ -15,6 +15,14 @@ function enmascararEmail(email) {
 }
 
 export default function CrearUsuarioPage() {
+  return (
+    <Suspense>
+      <CrearUsuarioContent />
+    </Suspense>
+  );
+}
+
+function CrearUsuarioContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep]             = useState(1);

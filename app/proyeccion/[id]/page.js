@@ -128,7 +128,7 @@ export default function ProyeccionPage() {
         {/* Footer compacto: stats */}
         <div className="px-10 pb-4 grid grid-cols-4 gap-3 shrink-0">
           {[
-            { label: 'Inscritos',    value: quorum.inscritos },
+            { label: 'Invitados',    value: quorum.invitados },
             { label: 'Con voto',     value: quorum.acreditados_voto },
             { label: 'Solo ingreso', value: quorum.acreditados_ingreso },
             { label: 'Asistentes',   value: quorum.asistentes },
@@ -185,7 +185,7 @@ export default function ProyeccionPage() {
             <StatLeft icon={<Users size={13}/>}    label="Asistentes"       value={quorum.asistentes}          bold />
             <StatLeft icon={<Vote size={13}/>}     label="Con voto"         value={quorum.acreditados_voto} />
             <StatLeft icon={<UserCheck size={13}/>} label="Solo ingreso"    value={quorum.acreditados_ingreso} />
-            <StatLeft icon={<Users size={13}/>}    label="Inscritos"        value={quorum.inscritos} />
+            <StatLeft icon={<Users size={13}/>}    label="Invitados"        value={quorum.invitados} />
           </div>
           <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
             <div className="flex items-center justify-between mb-2">

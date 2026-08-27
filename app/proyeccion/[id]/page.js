@@ -13,8 +13,6 @@ export default function ProyeccionPage() {
 
   const [datos, setDatos]     = useState(null);
   const [error, setError]     = useState(null);
-  const [qrTs,  setQrTs]     = useState(() => Math.floor(Date.now() / 300000));
-  const [qrSeg, setQrSeg]    = useState(300);
   const [timer, setTimer]    = useState(null);
   const [histIdx, setHistIdx] = useState(-1); // -1 = most recent auto
   const timerRef   = useRef(null);
@@ -38,15 +36,6 @@ export default function ProyeccionPage() {
 
   useEffect(() => { cargar(); const iv = setInterval(cargar, 5000); return () => clearInterval(iv); }, [cargar]);
 
-  // QR rotation
-  useEffect(() => {
-    const iv = setInterval(() => {
-      const now = Date.now();
-      setQrSeg(Math.ceil(120 - (now / 1000) % 120));
-      setQrTs(Math.floor(now / 300000));
-    }, 1000);
-    return () => clearInterval(iv);
-  }, []);
 
   // Question countdown
   useEffect(() => {
@@ -71,7 +60,7 @@ export default function ProyeccionPage() {
   );
 
   const { sesion, quorum, preguntaActiva, historial = [] } = datos;
-  const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}&ts=${qrTs}`;
+  const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`;
 
   const quorumPct       = quorum.invitados > 0
     ? Math.round((quorum.asistentes / quorum.invitados) * 100)
@@ -110,12 +99,6 @@ export default function ProyeccionPage() {
               <p className="text-white/60 text-sm font-semibold shrink-0">Escanea el QR para registrar tu asistencia</p>
               <div className="bg-white rounded-3xl shadow-2xl shrink-0" style={{ padding: 'clamp(12px, 1.5vw, 24px)', width: 'min(68vh, 68vw)', height: 'min(68vh, 68vw)' }}>
                 <QRCode value={qrValue} size={512} level="M" style={{ width: '100%', height: '100%' }} />
-              </div>
-              <div className="flex flex-col items-center gap-1 shrink-0" style={{ width: 'min(68vh, 68vw)' }}>
-                <div className="w-full bg-white/20 rounded-full h-1.5">
-                  <div className="bg-white rounded-full h-1.5 transition-all duration-1000" style={{ width: `${(qrSeg / 30) * 100}%` }} />
-                </div>
-                <p className="text-white/40 text-xs font-semibold">Actualiza en {qrSeg}s</p>
               </div>
               <div className="flex flex-col items-center gap-0 shrink-0">
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Código manual</p>
@@ -162,12 +145,6 @@ export default function ProyeccionPage() {
               <p className="text-white/70 text-xs font-semibold text-center">Escanea el QR para registrar tu asistencia</p>
               <div className="bg-white rounded-2xl p-3 shadow-2xl">
                 <QRCode value={qrValue} size={180} level="M" />
-              </div>
-              <div className="flex flex-col items-center gap-1 w-full">
-                <div className="w-full bg-white/20 rounded-full h-1">
-                  <div className="bg-white rounded-full h-1 transition-all duration-1000" style={{ width: `${(qrSeg / 30) * 100}%` }} />
-                </div>
-                <p className="text-white/40 text-[10px] font-semibold">Actualiza en {qrSeg}s</p>
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Código manual</p>

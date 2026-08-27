@@ -1,20 +1,10 @@
 import { createServerClient } from '../../lib/supabase-server';
 
 export async function POST(request) {
-  const { sesionId, cedula, codigo, ts } = await request.json();
+  const { sesionId, cedula, codigo } = await request.json();
 
-  if (!sesionId || !cedula || !codigo || ts === undefined) {
+  if (!sesionId || !cedula || !codigo) {
     return Response.json({ ok: false, error: 'Parámetros incompletos' }, { status: 400 });
-  }
-
-  // Validar ventana de tiempo: el token debe estar en la ventana actual o la anterior (margen de ~10 min)
-  const ventanaActual = Math.floor(Date.now() / 300000);
-  if (Math.abs(ventanaActual - Number(ts)) > 1) {
-    return Response.json({
-      ok: false,
-      error: 'El código QR ha expirado. Escanea el código actualizado en pantalla.',
-      expirado: true,
-    });
   }
 
   const supabase = createServerClient();

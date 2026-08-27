@@ -199,7 +199,7 @@ export default function ProyeccionPage() {
               {sesion.estado === 'finalizada' && <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Finalizada</span>}
               {sesion.estado === 'proxima' && <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">Próxima</span>}
             </div>
-            <h1 className="text-gray-900 text-2xl font-extrabold leading-tight" style={{ fontFamily: 'var(--font-display), Georgia, serif' }}>{sesion.nombre}</h1>
+            <h1 className="text-gray-900 text-2xl font-extrabold leading-tight">{sesion.nombre}</h1>
           </div>
           <div className="flex items-center gap-5 text-gray-400 text-sm">
             {sesion.fecha && <span className="flex items-center gap-1.5"><Calendar size={13}/>{sesion.fecha} · {sesion.hora}</span>}
@@ -303,7 +303,7 @@ export default function ProyeccionPage() {
 
                 {/* Pregunta */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-7 py-4">
-                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.5rem)', fontFamily: 'var(--font-display), Georgia, serif' }}>
+                  <p className="text-gray-900 font-extrabold leading-snug" style={{ fontSize: 'clamp(1rem, 1.8vw, 1.5rem)' }}>
                     {preguntaActiva.texto}
                   </p>
                 </div>

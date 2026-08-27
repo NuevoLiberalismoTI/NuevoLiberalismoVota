@@ -28,12 +28,23 @@ async function enviarWhatsApp(
     return { ok: false, error: 'secrets_no_configurados' };
   }
   const to = `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
-  const cuerpo = `📩 *Nuevo Liberalismo*\n\nHola *${nombre}*, estás invitado/a a:\n\n*${sesion.nombre}*\n📅 ${sesion.fecha} · 🕐 ${sesion.hora}\n📍 ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}`;
 
   console.log(`[WhatsApp] Enviando a ${to}`);
   try {
     const authUser = TWILIO_KEY || TWILIO_SID;
-    const body = new URLSearchParams({ From: TWILIO_FROM, To: to, Body: cuerpo });
+    const body = new URLSearchParams({
+      From:             TWILIO_FROM,
+      To:               to,
+      ContentSid:       'HX0aa70c50e4134b94f3f05389af656a0f',
+      ContentVariables: JSON.stringify({
+        '1': nombre,
+        '2': sesion.nombre,
+        '3': sesion.fecha,
+        '4': sesion.hora,
+        '5': sesion.lugar,
+        '6': plataformaUrl,
+      }),
+    });
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
       {

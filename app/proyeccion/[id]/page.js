@@ -257,7 +257,7 @@ export default function ProyeccionPage() {
                 <p className="text-gray-400 text-sm">El moderador publicará la primera pregunta en breve</p>
               </div>
               <div className="grid grid-cols-3 gap-4 w-full">
-                <BigStatRight value={quorum.inscritos}        label="Inscritos"              accent="text-gray-500"  />
+                <BigStatRight value={quorum.invitados}        label="Invitados"              accent="text-gray-500"  />
                 <BigStatRight value={quorum.acreditados_voto} label="Habilitados para votar" accent="text-green-600" />
                 <BigStatRight value={quorum.asistentes}       label="Asistentes presentes"   accent="text-brand"     />
               </div>

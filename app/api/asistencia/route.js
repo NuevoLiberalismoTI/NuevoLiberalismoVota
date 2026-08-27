@@ -7,8 +7,8 @@ export async function POST(request) {
     return Response.json({ ok: false, error: 'Parámetros incompletos' }, { status: 400 });
   }
 
-  // Validar ventana de tiempo: el token debe estar en la ventana actual o la anterior (margen de ~4 min)
-  const ventanaActual = Math.floor(Date.now() / 120000);
+  // Validar ventana de tiempo: el token debe estar en la ventana actual o la anterior (margen de ~10 min)
+  const ventanaActual = Math.floor(Date.now() / 300000);
   if (Math.abs(ventanaActual - Number(ts)) > 1) {
     return Response.json({
       ok: false,

@@ -13,13 +13,25 @@ export async function POST(request) {
     }
 
     const supabase = createServerClient();
+
+    // Verificar si el usuario existe antes de intentar login
+    const { data: existe } = await supabase
+      .from('usuarios')
+      .select('cedula')
+      .eq('cedula', cedula)
+      .maybeSingle();
+
+    if (!existe) {
+      return NextResponse.json({ ok: false, tipo: 'no_existe', error: 'No tienes usuario creado. Crea tu cuenta primero.' }, { status: 401 });
+    }
+
     const { data, error } = await supabase.rpc('verificar_login', {
       p_cedula: cedula,
       p_password: contrasena,
     });
 
     if (error || !data || data.length === 0) {
-      return NextResponse.json({ ok: false, error: 'Usuario o contraseña incorrectos' }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Contraseña incorrecta' }, { status: 401 });
     }
 
     const user = data[0];

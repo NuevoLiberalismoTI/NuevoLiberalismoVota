@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle, UserX, Loader2, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -16,8 +16,14 @@ function enmascararEmail(email) {
 
 export default function CrearUsuarioPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep]             = useState(1);
   const [cedula, setCedula]         = useState('');
+
+  useEffect(() => {
+    const cedulaParam = searchParams.get('cedula');
+    if (cedulaParam) setCedula(cedulaParam);
+  }, [searchParams]);
   const [errorCedula, setErrorCedula] = useState('');
   const [militante, setMilitante]   = useState(null);
   const [cargando, setCargando]     = useState(false);

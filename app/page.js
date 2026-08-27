@@ -40,6 +40,10 @@ export default function HomePage() {
       });
       const json = await res.json();
       if (!json.ok) {
+        if (json.tipo === 'no_existe') {
+          router.push(`/crear-usuario?cedula=${encodeURIComponent(form.usuario.trim())}`);
+          return;
+        }
         setError(json.error || 'Usuario o contraseña incorrectos');
         return;
       }

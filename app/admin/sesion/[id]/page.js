@@ -1778,7 +1778,10 @@ export default function AdminSesionPage() {
             )}
             {resultados.map((preg) => {
               const total      = Number(preg.total_votos) || 0;
-              const baseUmbral = stats?.invitados ?? stats?.acreditados_voto ?? 0;
+              const esAbsoluta = preg.tipo_mayoria === 'absoluta';
+              const baseUmbral = esAbsoluta
+                ? (stats?.invitados ?? stats?.acreditados_voto ?? 0)
+                : (stats?.asistentes ?? 0);
               const umbral     = baseUmbral > 0 ? Math.floor(baseUmbral / 2) + 1 : (Number(preg.umbral) || 0);
               const esValida   = total >= umbral && umbral > 0;
               const ganador    = preg.ganador;
@@ -1789,7 +1792,7 @@ export default function AdminSesionPage() {
 
               const pctParticipacion = baseUmbral > 0 ? Math.min(100, Math.round((total / baseUmbral) * 100)) : 0;
               const pctUmbral        = baseUmbral > 0 ? Math.min(100, Math.round((umbral / baseUmbral) * 100)) : 50;
-              const baseLabel        = 'invitados';
+              const baseLabel        = esAbsoluta ? 'invitados' : 'asistentes';
 
               return (
                 <div key={preg.id} className={`bg-white rounded-2xl shadow-sm p-4 border-2 transition-colors ${

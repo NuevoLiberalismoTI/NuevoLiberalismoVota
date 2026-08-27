@@ -169,10 +169,13 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
           {resultados.map((preg, idx) => {
             const total   = (preg.opciones || []).reduce((acc, o) => acc + Number(o.total), 0);
             const maxVotos = Math.max(...(preg.opciones || []).map((o) => Number(o.total)), 1);
-            const baseAcred = stats?.invitados ?? stats?.acreditados_voto ?? 0;
+            const esAbsoluta = preg.tipo_mayoria === 'absoluta';
+            const baseAcred  = esAbsoluta
+              ? (stats?.invitados ?? stats?.acreditados_voto ?? 0)
+              : (stats?.asistentes ?? 0);
             const umbral    = Math.floor(baseAcred / 2) + 1;
             const base      = baseAcred;
-            const baseLabel = 'invitados';
+            const baseLabel = esAbsoluta ? 'invitados' : 'asistentes';
             const esValida  = preg.estado === 'cerrada' && total >= umbral;
             const ganador   = preg.estado === 'cerrada' && total > 0
               ? [...(preg.opciones || [])].sort((a, b) => Number(b.total) - Number(a.total))[0]?.respuesta

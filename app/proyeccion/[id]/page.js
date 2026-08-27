@@ -272,8 +272,8 @@ export default function ProyeccionPage() {
             const totalVotos    = opciones.reduce((s, o) => s + Number(o.total), 0);
             const maxVotos      = Math.max(...opciones.map((o) => Number(o.total)), 1);
             const tipoMayoria   = preguntaActiva.tipo_mayoria ?? 'simple';
-            const baseM         = quorum.invitados;
-            const baseLabel     = 'invitados';
+            const baseM         = tipoMayoria === 'simple' ? quorum.asistentes : quorum.invitados;
+            const baseLabel     = tipoMayoria === 'simple' ? 'asistentes' : 'invitados';
             const umbral        = Math.floor(baseM / 2) + 1;
             const mayorPct      = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
             const mayorAlcanzada = totalVotos >= umbral && umbral > 0;

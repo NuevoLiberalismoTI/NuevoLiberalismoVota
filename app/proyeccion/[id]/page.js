@@ -628,7 +628,7 @@ function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
 
         {/* Contenido */}
         <div className="flex-1 flex flex-col items-center px-14 py-8 gap-7 overflow-y-auto"
-          style={{ justifyContent: verDhondt ? 'flex-start' : 'center', animation: fase === 2 ? 'slideUp 0.5s ease-out' : 'none' }}>
+          style={{ justifyContent: verTabla ? 'flex-start' : 'center', animation: fase === 2 ? 'slideUp 0.5s ease-out' : 'none' }}>
 
           {/* Ganador */}
           {ganador && (

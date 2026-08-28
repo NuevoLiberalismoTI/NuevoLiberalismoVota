@@ -171,23 +171,23 @@ function TabInvitaciones({ sesion }) {
   };
 
   const descargarPendientes = async () => {
-    const pendientes = invitadosLista.filter((i) => !i.preinscrito);
-    if (pendientes.length === 0) return;
+    if (invitadosLista.length === 0) return;
     const { utils, writeFile } = await import('xlsx');
     const filas = [
-      ['Nombre', 'Correo', 'Cédula', 'Fecha invitación'],
-      ...pendientes.map((p) => [
-        p.nombre || '',
-        p.email  || '',
-        p.cedula || '',
+      ['Nombre', 'Correo', 'Cédula', 'Estado', 'Fecha invitación'],
+      ...invitadosLista.map((p) => [
+        p.nombre     || '',
+        p.email      || '',
+        p.cedula     || '',
+        p.preinscrito ? 'Inscrito' : 'Pendiente',
         p.enviado_en ? new Date(p.enviado_en).toLocaleDateString('es-CO') : '',
       ]),
     ];
     const ws = utils.aoa_to_sheet(filas);
-    ws['!cols'] = [{ wch: 30 }, { wch: 34 }, { wch: 16 }, { wch: 18 }];
+    ws['!cols'] = [{ wch: 30 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 18 }];
     const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, 'Pendientes');
-    writeFile(wb, `pendientes_${sesion.id.slice(0, 8)}.xlsx`);
+    utils.book_append_sheet(wb, ws, 'Invitados');
+    writeFile(wb, `invitados_${sesion.id.slice(0, 8)}.xlsx`);
   };
 
   const descargarPlantilla = async () => {
@@ -243,11 +243,11 @@ function TabInvitaciones({ sesion }) {
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
             <div className="flex items-center gap-2">
-              {invitadosLista.some((i) => !i.preinscrito) && (
+              {invitadosLista.length > 0 && (
                 <button
                   onClick={descargarPendientes}
-                  title="Descargar pendientes"
-                  className="text-gray-400 hover:text-orange-500 transition-colors"
+                  title="Descargar listado de invitados"
+                  className="text-gray-400 hover:text-brand transition-colors"
                 >
                   <Download size={12} />
                 </button>

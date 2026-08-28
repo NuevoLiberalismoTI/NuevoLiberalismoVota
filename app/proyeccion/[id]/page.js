@@ -554,67 +554,67 @@ function SplashResultado({ preg, quorum, onCerrar }) {
     return () => clearTimeout(t);
   }, []);
 
-  const opciones   = preg.opciones ?? [];
-  const totalVotos = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
-  const maxVotos   = Math.max(...opciones.map((o) => Number(o.total)), 1);
-  const ganador    = preg.ganador;
-  const ganadorOp  = ganador ? opciones.find((o) => o.respuesta === ganador) : null;
+  const opciones    = preg.opciones ?? [];
+  const totalVotos  = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
+  const maxVotos    = Math.max(...opciones.map((o) => Number(o.total)), 1);
+  const ganador     = preg.ganador;
+  const ganadorOp   = ganador ? opciones.find((o) => o.respuesta === ganador) : null;
   const hayPlanchas = opciones.some((o) => o.es_plancha);
-  const cols = hayPlanchas ? (opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3') : '';
+  const cols        = opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
   return (
     <div className="fixed inset-0 z-50 select-none font-montserrat overflow-hidden">
 
-      {/* ── FASE 1: animación "VOTACIÓN CERRADA" ── */}
-      <div className={`absolute inset-0 bg-gray-950 flex flex-col items-center justify-center transition-opacity duration-700 ${
+      {/* ── FASE 1: animación "VOTACIÓN CERRADA" — fondo blanco ── */}
+      <div className={`absolute inset-0 bg-gray-50 flex flex-col items-center justify-center transition-opacity duration-700 ${
         fase === 1 ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       }`}>
         <div style={{ animation: 'zoomBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both' }}>
-          <Lock size={96} className="text-brand mx-auto mb-8" />
+          <Lock size={96} className="text-brand mx-auto mb-6" />
         </div>
-        <p className="text-white font-black text-center"
-          style={{ fontSize: 'clamp(2.5rem, 7vw, 7rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.1s both', letterSpacing: '-0.02em' }}>
+        <p className="text-gray-900 font-black text-center"
+          style={{ fontSize: 'clamp(2.5rem, 7vw, 6rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.1s both', letterSpacing: '-0.02em' }}>
           VOTACIÓN
         </p>
         <p className="text-brand font-black text-center"
-          style={{ fontSize: 'clamp(2.5rem, 7vw, 7rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s both', letterSpacing: '-0.02em' }}>
+          style={{ fontSize: 'clamp(2.5rem, 7vw, 6rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s both', letterSpacing: '-0.02em' }}>
           CERRADA
         </p>
       </div>
 
-      {/* ── FASE 2: resultados ── */}
-      <div className={`absolute inset-0 bg-gray-950 flex flex-col transition-opacity duration-700 ${
+      {/* ── FASE 2: resultados — mismo formato que pantalla activa ── */}
+      <div className={`absolute inset-0 bg-gray-50 flex flex-col transition-opacity duration-700 ${
         fase === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}>
 
-        {/* Barra superior */}
-        <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-3">
-            <Lock size={16} className="text-brand" />
-            <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Resultado final</span>
+        {/* Header igual al de FullscreenPregunta */}
+        <div className="bg-white border-b border-gray-200 flex items-center justify-between px-10 py-4 shadow-sm shrink-0">
+          <div className="flex items-center gap-4">
+            <LogoNL />
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <Lock size={13} className="text-brand" />
+                <span className="text-brand text-xs font-bold uppercase tracking-widest">Votación cerrada</span>
+              </div>
+              <h1 className="text-gray-900 text-xl font-extrabold leading-tight">{preg.texto}</h1>
+            </div>
           </div>
           <button onClick={onCerrar}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
             <X size={15}/> Cerrar pantalla
           </button>
         </div>
 
         {/* Contenido */}
-        <div className="flex-1 flex flex-col items-center justify-center px-12 py-6 gap-7 overflow-hidden"
+        <div className="flex-1 flex flex-col items-center justify-center px-14 py-8 gap-7 overflow-hidden"
           style={{ animation: fase === 2 ? 'slideUp 0.5s ease-out' : 'none' }}>
-
-          {/* Pregunta */}
-          <p className="text-white/60 text-center font-semibold leading-snug shrink-0"
-            style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)', maxWidth: '800px' }}>
-            {preg.texto}
-          </p>
 
           {/* Ganador */}
           {ganador && (
-            <div className="flex flex-col items-center gap-2 shrink-0" style={{ animation: 'zoomBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }}>
-              <Award size={44} className="text-yellow-400" />
-              <p className="text-yellow-400 text-xs font-black uppercase tracking-[0.25em]">Ganador</p>
-              <p className="text-white font-black text-center" style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)', letterSpacing: '-0.02em' }}>
+            <div className="flex flex-col items-center gap-2 shrink-0" style={{ animation: 'zoomBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.15s both' }}>
+              <Award size={40} className="text-yellow-500" />
+              <p className="text-gray-400 text-xs font-black uppercase tracking-[0.3em]">Resultado</p>
+              <p className="text-gray-900 font-black text-center" style={{ fontSize: 'clamp(2rem, 5vw, 4rem)', letterSpacing: '-0.02em' }}>
                 {ganador}
               </p>
             </div>
@@ -622,54 +622,61 @@ function SplashResultado({ preg, quorum, onCerrar }) {
 
           {/* Integrantes plancha ganadora */}
           {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && !preg.cupos && (
-            <div className="bg-green-900/30 border border-green-500/40 rounded-2xl px-6 py-3 w-full shrink-0" style={{ maxWidth: '860px' }}>
-              <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5">
+            <div className="bg-green-50 border border-green-200 rounded-2xl px-6 py-4 w-full shrink-0" style={{ maxWidth: '1000px' }}>
+              <p className="text-green-700 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Users size={12}/> Integrantes — {ganador}
               </p>
-              <div className="grid grid-cols-3 gap-x-8 gap-y-1">
+              <div className="grid grid-cols-3 gap-x-8 gap-y-1.5">
                 {ganadorOp.miembros.map((m, mi) => (
                   <div key={mi} className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-green-500/60 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
-                    {m.cargo && <span className="text-green-400 font-bold text-sm flex-shrink-0">{m.cargo}:</span>}
-                    <span className="text-green-200 font-semibold text-sm truncate">{m.nombre}</span>
+                    <span className="text-green-500/70 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                    {m.cargo && <span className="text-green-700 font-bold text-sm flex-shrink-0">{m.cargo}:</span>}
+                    <span className="text-green-900 font-semibold text-sm truncate">{m.nombre}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Barras de resultado */}
-          <div className={`w-full shrink-0 ${hayPlanchas ? `grid ${cols} gap-4` : 'flex flex-col gap-3'}`} style={{ maxWidth: '860px' }}>
+          {/* Opciones con resultados — mismo estilo que las tarjetas de la vista activa */}
+          <div className={`w-full shrink-0 ${hayPlanchas ? `grid ${cols} gap-5` : 'flex flex-col gap-4'}`} style={{ maxWidth: '1000px' }}>
             {opciones.map((op, i) => {
-              const votos    = Number(op.total);
-              const pct      = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
-              const bar      = Math.round((votos / maxVotos) * 100);
-              const esGan    = op.respuesta === ganador;
-              const esSI     = op.respuesta === 'SI';
-              const esNO     = op.respuesta === 'NO';
+              const votos     = Number(op.total);
+              const pct       = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+              const bar       = Math.round((votos / maxVotos) * 100);
+              const esGan     = op.respuesta === ganador;
+              const esSI      = op.respuesta === 'SI';
+              const esNO      = op.respuesta === 'NO';
               const esPlancha = op.es_plancha && op.miembros?.length > 0;
-              const barBg    = esGan ? 'bg-green-500' : esSI ? 'bg-green-500/40' : esNO ? 'bg-red-500/40' : 'bg-white/25';
-              const textC    = esGan ? 'text-green-400' : esSI ? 'text-green-600' : esNO ? 'text-red-400' : 'text-white/70';
+              const textC     = esGan ? 'text-green-700' : esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-700';
+              const borderC   = esGan ? 'bg-green-50 border-green-300' : esSI ? 'bg-white border-gray-200' : esNO ? 'bg-white border-gray-200' : 'bg-white border-gray-200';
+              const barBg     = esGan ? 'bg-green-500' : esSI ? 'bg-green-400' : esNO ? 'bg-red-400' : 'bg-brand';
               return (
-                <div key={i} className={`rounded-xl border px-5 py-3.5 flex flex-col gap-2.5 ${esGan ? 'bg-green-900/30 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
+                <div key={i} className={`rounded-2xl border shadow-sm p-6 flex flex-col gap-3 ${borderC}`}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className={`font-extrabold text-lg flex items-center gap-2 ${textC}`}>
-                      {esGan && <CheckCircle size={18} className="text-green-400 flex-shrink-0"/>}
+                    <span className={`font-extrabold flex items-center gap-2 ${textC}`}
+                      style={{ fontSize: 'clamp(1.1rem, 2vw, 1.8rem)' }}>
+                      {esGan && <CheckCircle size={22} className="text-green-600 flex-shrink-0"/>}
+                      {esSI && !esGan && <ThumbsUp size={20} className="text-green-500 flex-shrink-0"/>}
+                      {esNO && !esGan && <ThumbsDown size={20} className="text-red-500 flex-shrink-0"/>}
                       {op.respuesta}
                     </span>
-                    <span className="text-white/50 font-bold tabular-nums">{votos} voto{votos!==1?'s':''} · {pct}%</span>
+                    <span className={`font-extrabold tabular-nums text-lg ${esGan ? 'text-green-700' : 'text-gray-500'}`}>
+                      {votos} voto{votos !== 1 ? 's' : ''} · {pct}%
+                    </span>
                   </div>
                   {esPlancha && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 border-t border-white/10 pt-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 border-t border-gray-200 pt-3">
                       {op.miembros.map((m, mi) => (
-                        <div key={mi} className="flex items-baseline gap-1 min-w-0">
-                          <span className={`text-[9px] font-bold tabular-nums flex-shrink-0 ${esGan ? 'text-green-500/60' : 'text-white/30'}`}>#{mi+1}</span>
-                          <span className={`text-sm font-semibold truncate ${esGan ? 'text-green-200' : 'text-white/60'}`}>{m.nombre}</span>
+                        <div key={mi} className="flex items-baseline gap-2 min-w-0">
+                          <span className="text-brand/40 text-xs font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                          {m.cargo && <span className="text-gray-500 font-semibold text-sm flex-shrink-0">{m.cargo}:</span>}
+                          <span className="text-gray-800 font-semibold text-sm truncate">{m.nombre}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="h-4 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
                     <div className={`h-4 rounded-full ${barBg}`} style={{ width: `${bar}%`, transition: 'width 1.2s ease-out' }} />
                   </div>
                 </div>

@@ -34,8 +34,9 @@ export default function ProyeccionPage() {
           if (hist.length > 0) setSplash(hist[hist.length - 1]);
           setModoFullscreen(false);
         }
-        // Nueva pregunta → pantalla completa automática
+        // Nueva pregunta → pantalla completa automática, cierra splash si estaba abierto
         if (pa) {
+          setSplash(null);
           setModoFullscreen(true);
           setHistIdx(-1);
         }

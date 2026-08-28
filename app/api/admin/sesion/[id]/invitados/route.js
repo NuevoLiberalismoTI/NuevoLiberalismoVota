@@ -18,24 +18,27 @@ export async function GET(request, { params }) {
 
   const invitados = data ?? [];
 
-  // Cruzar con inscripciones para saber quién ya se preinscribió
-  const cedulas = invitados.map((i) => i.cedula).filter(Boolean);
-  let inscritosSet = new Set();
-  if (cedulas.length > 0) {
-    const { data: inscs } = await supabase
-      .from('inscripciones')
-      .select('usuario_cedula')
-      .eq('asamblea_id', sesionId)
-      .in('usuario_cedula', cedulas);
-    inscritosSet = new Set((inscs || []).map((i) => String(i.usuario_cedula)));
-  }
+  // Normalizar cédula: quitar espacios y ceros iniciales para comparación robusta
+  const normCedula = (c) => {
+    if (!c) return null;
+    const s = String(c).trim().replace(/[^0-9a-zA-Z]/g, '');
+    const n = parseInt(s, 10);
+    return isNaN(n) ? s.toLowerCase() : String(n);
+  };
+
+  // Traer TODAS las inscripciones de la sesión (sin filtrar por cédula para evitar mismatches de tipo)
+  const { data: inscs } = await supabase
+    .from('inscripciones')
+    .select('usuario_cedula')
+    .eq('asamblea_id', sesionId);
+  const inscritosSet = new Set((inscs || []).map((i) => normCedula(i.usuario_cedula)).filter(Boolean));
 
   // Deduplicar por cédula (o email si no hay cédula) — conserva la invitación más reciente
   const seen = new Set();
   const resultado = invitados
-    .map((inv) => ({ ...inv, preinscrito: inv.cedula ? inscritosSet.has(String(inv.cedula)) : false }))
+    .map((inv) => ({ ...inv, preinscrito: inv.cedula ? inscritosSet.has(normCedula(inv.cedula)) : false }))
     .filter((inv) => {
-      const key = inv.cedula ? String(inv.cedula) : inv.email;
+      const key = inv.cedula ? normCedula(inv.cedula) : inv.email;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

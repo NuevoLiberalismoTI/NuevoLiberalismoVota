@@ -562,6 +562,14 @@ function SplashResultado({ preg, quorum, onCerrar }) {
   const hayPlanchas = opciones.some((o) => o.es_plancha);
   const cols        = opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
+  // Validez por mayoría
+  const tipoM        = preg.tipo_mayoria ?? 'simple';
+  const baseLabel    = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const baseM        = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
+  const umbral       = Math.floor(baseM / 2) + 1;
+  const votosGanador = Number(ganadorOp?.total ?? 0);
+  const esValida     = !!ganador && votosGanador >= umbral;
+
   return (
     <div className="fixed inset-0 z-50 select-none font-montserrat overflow-hidden">
 
@@ -619,6 +627,31 @@ function SplashResultado({ preg, quorum, onCerrar }) {
               </p>
             </div>
           )}
+
+          {/* Banner de validez */}
+          <div className={`w-full rounded-2xl border px-6 py-4 shrink-0 flex items-center gap-4 ${
+            esValida
+              ? 'bg-green-50 border-green-300'
+              : 'bg-red-50 border-red-300'
+          }`} style={{ maxWidth: '1000px', animation: 'zoomBounce 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.3s both' }}>
+            <div className={`rounded-full p-3 flex-shrink-0 ${esValida ? 'bg-green-100' : 'bg-red-100'}`}>
+              {esValida
+                ? <CheckCircle size={28} className="text-green-600" />
+                : <X size={28} className="text-red-600" />
+              }
+            </div>
+            <div>
+              <p className={`font-black text-xl ${esValida ? 'text-green-700' : 'text-red-700'}`}>
+                {esValida ? 'Votación VÁLIDA' : 'Votación NO VÁLIDA'}
+              </p>
+              <p className={`text-sm font-semibold mt-0.5 ${esValida ? 'text-green-600' : 'text-red-600'}`}>
+                {esValida
+                  ? `✓ Se alcanzó la mayoría ${tipoM} — ${votosGanador} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
+                  : `✗ No se alcanzó la mayoría ${tipoM} — ${votosGanador} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
+                }
+              </p>
+            </div>
+          </div>
 
           {/* Integrantes plancha ganadora */}
           {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && !preg.cupos && (

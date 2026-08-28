@@ -134,10 +134,6 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
                   <Text style={s.statNum}>{stats.asistentes}</Text>
                   <Text style={s.statKey}>Asistentes</Text>
                 </View>
-                <View style={s.statBox}>
-                  <Text style={s.statNum}>{stats.acreditados ?? '—'}</Text>
-                  <Text style={s.statKey}>Acreditados</Text>
-                </View>
                 <View style={s.statBoxLast}>
                   <Text style={{ ...s.statNum, color: quorumAlcanzado ? GREEN : RED }}>{pctAsist}%</Text>
                   <Text style={s.statKey}>Asistencia</Text>

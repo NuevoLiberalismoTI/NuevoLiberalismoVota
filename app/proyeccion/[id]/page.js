@@ -560,7 +560,7 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
 // ── Splash al cerrar votación ─────────────────────────────────────────────────
 function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
   const [fase, setFase] = useState(inicioFase);
-  const [verDhondt, setVerDhondt] = useState(false);
+  const [verTabla, setVerTabla] = useState(false);
 
   useEffect(() => {
     if (inicioFase >= 2) return;
@@ -620,18 +620,10 @@ function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
               <h1 className="text-gray-900 text-xl font-extrabold leading-tight">{preg.texto}</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {preg.cupos && preg.tipo === 'candidatos' && (
-              <button onClick={() => setVerDhondt((v) => !v)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border ${verDhondt ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}>
-                <Award size={15}/> {verDhondt ? 'Ocultar D\'Hondt' : 'Ver D\'Hondt'}
-              </button>
-            )}
-            <button onClick={onCerrar}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
-              <X size={15}/> Cerrar pantalla
-            </button>
-          </div>
+          <button onClick={onCerrar}
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
+            <X size={15}/> Cerrar pantalla
+          </button>
         </div>
 
         {/* Contenido */}
@@ -754,17 +746,24 @@ function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
             })}
           </div>
 
-          {/* D'Hondt */}
-          {verDhondt && preg.cupos && preg.tipo === 'candidatos' && (() => {
+          {/* D'Hondt — siempre visible cuando hay cupos */}
+          {preg.cupos && preg.tipo === 'candidatos' && (() => {
             const dhondt      = calcDhondt(opciones, preg.cupos);
             const tabla       = buildDhondtTable(opciones, preg.cupos);
             const ganadoresDh = dhondt.filter((c) => c.cupos_ganados > 0);
             if (!ganadoresDh.length) return null;
             return (
               <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 w-full shrink-0" style={{ maxWidth: '1000px' }}>
-                <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5 mb-3">
-                  <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
-                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                    <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
+                  </p>
+                  <button
+                    onClick={() => setVerTabla((v) => !v)}
+                    className="text-[11px] font-bold text-blue-500 hover:text-blue-700 border border-blue-300 bg-white rounded-lg px-3 py-1 transition-colors">
+                    {verTabla ? 'Ocultar cálculo' : 'Ver cálculo'}
+                  </button>
+                </div>
                 <div className={`grid gap-3 mb-3 ${ganadoresDh.length === 1 ? 'grid-cols-1' : ganadoresDh.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                   {ganadoresDh.map((c, i) => {
                     const op       = opciones.find((o) => o.respuesta === c.respuesta);
@@ -800,7 +799,7 @@ function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
                     );
                   })}
                 </div>
-                {tabla && (
+                {verTabla && tabla && (
                   <div className="mt-2 pt-4 border-t border-blue-200">
                     <p className="text-[11px] text-blue-600 mb-3 leading-relaxed">
                       Se dividen los votos de cada plancha entre 1, 2, 3… Los <strong>{preg.cupos} cocientes más altos</strong> ganan un cupo. En caso de empate en el cociente, gana la plancha con más votos totales.

@@ -563,13 +563,12 @@ function SplashResultado({ preg, quorum, onCerrar }) {
   const hayPlanchas = opciones.some((o) => o.es_plancha);
   const cols        = opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
 
-  // Validez por mayoría
-  const tipoM        = preg.tipo_mayoria ?? 'simple';
-  const baseLabel    = tipoM === 'simple' ? 'asistentes' : 'invitados';
-  const baseM        = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
-  const umbral       = Math.floor(baseM / 2) + 1;
-  const votosGanador = Number(ganadorOp?.total ?? 0);
-  const esValida     = !!ganador && votosGanador >= umbral;
+  // Validez por mayoría — igual que el panel admin: total votos >= umbral
+  const tipoM     = preg.tipo_mayoria ?? 'simple';
+  const baseLabel = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const baseM     = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
+  const umbral    = baseM > 0 ? Math.floor(baseM / 2) + 1 : 0;
+  const esValida  = umbral > 0 && totalVotos >= umbral;
 
   return (
     <div className="fixed inset-0 z-50 select-none font-montserrat overflow-hidden">
@@ -647,8 +646,8 @@ function SplashResultado({ preg, quorum, onCerrar }) {
               </p>
               <p className={`text-sm font-semibold mt-0.5 ${esValida ? 'text-green-600' : 'text-red-600'}`}>
                 {esValida
-                  ? `✓ Se alcanzó la mayoría ${tipoM} — ${votosGanador} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
-                  : `✗ No se alcanzó la mayoría ${tipoM} — ${votosGanador} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
+                  ? `✓ Se alcanzó la mayoría ${tipoM} — ${totalVotos} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
+                  : `✗ No se alcanzó la mayoría ${tipoM} — ${totalVotos} de ${umbral} votos requeridos (base: ${baseM} ${baseLabel})`
                 }
               </p>
             </div>

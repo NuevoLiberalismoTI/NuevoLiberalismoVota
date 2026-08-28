@@ -127,8 +127,8 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
               <Text style={s.label}>PARTICIPACIÓN</Text>
               <View style={s.statsRow}>
                 <View style={s.statBox}>
-                  <Text style={s.statNum}>{stats.inscritos}</Text>
-                  <Text style={s.statKey}>Inscritos</Text>
+                  <Text style={s.statNum}>{stats.invitados ?? stats.inscritos}</Text>
+                  <Text style={s.statKey}>Invitados</Text>
                 </View>
                 <View style={s.statBox}>
                   <Text style={s.statNum}>{stats.asistentes}</Text>

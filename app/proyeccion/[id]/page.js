@@ -17,6 +17,7 @@ export default function ProyeccionPage() {
   const [histIdx, setHistIdx]         = useState(-1);
   const [modoFullscreen, setModoFullscreen] = useState(false);
   const [splash, setSplash]           = useState(null);
+  const [splashFaseInicio, setSplashFaseInicio] = useState(1);
   const timerRef   = useRef(null);
   const prevPregId = useRef(null);
 
@@ -31,7 +32,7 @@ export default function ProyeccionPage() {
         // Pregunta cerrada → mostrar splash con resultado
         if (prevPregId.current !== null && !pa) {
           const hist = json.historial ?? [];
-          if (hist.length > 0) setSplash(hist[hist.length - 1]);
+          if (hist.length > 0) { setSplashFaseInicio(1); setSplash(hist[hist.length - 1]); }
           setModoFullscreen(false);
         }
         // Nueva pregunta → pantalla completa automática, cierra splash si estaba abierto
@@ -267,16 +268,25 @@ export default function ProyeccionPage() {
 
           {/* Resultado histórico — cuando no hay pregunta activa pero sí hay historial */}
           {!preguntaActiva && histLen > 0 && histActual && (
-            <ResultadoCerrado
-              preg={histActual}
-              quorum={quorum}
-              idx={efectivoIdx}
-              total={histLen}
-              puedeRetro={puedeRetro}
-              puedeAdelantar={puedeAdelantar}
-              onRetro={() => setHistIdx(Math.max(0, efectivoIdx - 1))}
-              onAdelantar={() => setHistIdx(Math.min(histLen - 1, efectivoIdx + 1))}
-            />
+            <div className="flex flex-col gap-3 w-full" style={{ maxWidth: '100%' }}>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => { setSplashFaseInicio(2); setSplash(histActual); }}
+                  className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors">
+                  <Maximize2 size={11}/> Proyectar resultados
+                </button>
+              </div>
+              <ResultadoCerrado
+                preg={histActual}
+                quorum={quorum}
+                idx={efectivoIdx}
+                total={histLen}
+                puedeRetro={puedeRetro}
+                puedeAdelantar={puedeAdelantar}
+                onRetro={() => setHistIdx(Math.max(0, efectivoIdx - 1))}
+                onAdelantar={() => setHistIdx(Math.min(histLen - 1, efectivoIdx + 1))}
+              />
+            </div>
           )}
 
           {/* ── Pregunta activa ── */}
@@ -412,6 +422,7 @@ export default function ProyeccionPage() {
       <SplashResultado
         preg={splash}
         quorum={quorum}
+        inicioFase={splashFaseInicio}
         onCerrar={() => setSplash(null)}
       />
     )}
@@ -547,11 +558,12 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
 }
 
 // ── Splash al cerrar votación ─────────────────────────────────────────────────
-function SplashResultado({ preg, quorum, onCerrar }) {
-  const [fase, setFase] = useState(1);
+function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
+  const [fase, setFase] = useState(inicioFase);
   const [verDhondt, setVerDhondt] = useState(false);
 
   useEffect(() => {
+    if (inicioFase >= 2) return;
     const t = setTimeout(() => setFase(2), 2800);
     return () => clearTimeout(t);
   }, []);

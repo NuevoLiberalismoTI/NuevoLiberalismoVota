@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award } from 'lucide-react';
+import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award, X, Maximize2 } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -11,10 +11,12 @@ export default function ProyeccionPage() {
   const { id } = useParams();
   const sesionId = decodeURIComponent(id);
 
-  const [datos, setDatos]     = useState(null);
-  const [error, setError]     = useState(null);
-  const [timer, setTimer]    = useState(null);
-  const [histIdx, setHistIdx] = useState(-1); // -1 = most recent auto
+  const [datos, setDatos]             = useState(null);
+  const [error, setError]             = useState(null);
+  const [timer, setTimer]             = useState(null);
+  const [histIdx, setHistIdx]         = useState(-1);
+  const [modoFullscreen, setModoFullscreen] = useState(false);
+  const [splash, setSplash]           = useState(null);
   const timerRef   = useRef(null);
   const prevPregId = useRef(null);
 
@@ -26,10 +28,19 @@ export default function ProyeccionPage() {
       setDatos(json);
       const pa = json.preguntaActiva;
       if (pa?.id !== prevPregId.current) {
+        // Pregunta cerrada → mostrar splash con resultado
+        if (prevPregId.current !== null && !pa) {
+          const hist = json.historial ?? [];
+          if (hist.length > 0) setSplash(hist[hist.length - 1]);
+          setModoFullscreen(false);
+        }
+        // Nueva pregunta → pantalla completa automática
+        if (pa) {
+          setModoFullscreen(true);
+          setHistIdx(-1);
+        }
         prevPregId.current = pa?.id ?? null;
         setTimer(pa?.segundos_restantes ?? null);
-        // Reset history navigation when a new active question appears
-        if (pa) setHistIdx(-1);
       }
     } catch { setError('Error de conexión'); }
   }, [sesionId]);
@@ -125,6 +136,7 @@ export default function ProyeccionPage() {
   }
 
   return (
+  <>
     <div className="h-screen w-screen flex overflow-hidden select-none font-montserrat">
 
       {/* ── Panel izquierdo: QR + quórum ─────── */}
@@ -285,6 +297,7 @@ export default function ProyeccionPage() {
               <div className="flex flex-col gap-4 w-full" style={{ maxWidth: hayPlanchas ? '100%' : '48rem' }}>
                 {/* Indicador + timer */}
                 <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-full px-4 py-1.5">
                     <span className="flex h-2.5 w-2.5 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -294,6 +307,11 @@ export default function ProyeccionPage() {
                       <Zap size={12}/> Votación en curso
                     </span>
                   </div>
+                  <button onClick={() => setModoFullscreen(true)}
+                    className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-700 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-colors">
+                    <Maximize2 size={11}/> Pantalla completa
+                  </button>
+                </div>
                   {timer != null && (
                     <span className={`font-extrabold tabular-nums tracking-tight ${timer <= 30 ? 'text-brand animate-pulse text-4xl' : 'text-gray-700 text-3xl'}`}>
                       {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
@@ -373,6 +391,303 @@ export default function ProyeccionPage() {
               </div>
             );
           })()}
+        </div>
+      </div>
+    </div>
+
+    {/* ── Overlay pantalla completa: pregunta activa ── */}
+    {modoFullscreen && preguntaActiva && (
+      <FullscreenPregunta
+        pregunta={preguntaActiva}
+        sesion={sesion}
+        quorum={quorum}
+        timer={timer}
+        onCerrar={() => setModoFullscreen(false)}
+      />
+    )}
+
+    {/* ── Splash: resultado al cerrar pregunta ── */}
+    {splash && (
+      <SplashResultado
+        preg={splash}
+        quorum={quorum}
+        onCerrar={() => setSplash(null)}
+      />
+    )}
+  </>
+  );
+}
+
+// ── Pregunta en pantalla completa ────────────────────────────────────────────
+function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
+  const opciones    = pregunta.opciones ?? [];
+  const totalVotos  = opciones.reduce((s, o) => s + Number(o.total), 0);
+  const maxVotos    = Math.max(...opciones.map((o) => Number(o.total)), 1);
+  const tipoM       = pregunta.tipo_mayoria ?? 'simple';
+  const baseM       = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
+  const baseLabel   = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const umbral      = Math.floor(baseM / 2) + 1;
+  const mayorPct    = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
+  const mayorOk     = totalVotos >= umbral && umbral > 0;
+  const hayPlanchas = opciones.some((o) => o.es_plancha);
+  const cols        = hayPlanchas ? (opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3')
+                                  : opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+  const timerAcabado = timer === 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col select-none font-montserrat" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-4">
+          <LogoNL />
+          <div>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Sesión en curso</p>
+            <p className="text-white text-sm font-bold leading-tight">{sesion.nombre}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          {timer != null && (
+            timerAcabado ? (
+              <span className="text-brand text-2xl font-black uppercase tracking-widest animate-pulse">Tiempo agotado</span>
+            ) : (
+              <span className={`font-black tabular-nums ${timer <= 30 ? 'text-red-400 animate-pulse text-6xl' : 'text-white text-5xl'}`}>
+                {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
+              </span>
+            )
+          )}
+          <button onClick={onCerrar}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+            <X size={15}/> Volver
+          </button>
+        </div>
+      </div>
+
+      {/* Contenido */}
+      <div className="flex-1 flex flex-col items-center justify-center px-14 py-6 gap-7 overflow-hidden">
+
+        {/* Indicador */}
+        <div className="flex items-center gap-2 bg-green-500/15 border border-green-500/30 rounded-full px-5 py-2 shrink-0">
+          <span className="flex h-2.5 w-2.5 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
+          </span>
+          <span className="text-green-300 text-sm font-bold uppercase tracking-widest">Votación en curso</span>
+        </div>
+
+        {/* Pregunta */}
+        <p className="text-white font-extrabold text-center leading-tight shrink-0"
+          style={{ fontSize: 'clamp(1.6rem, 3.2vw, 3.2rem)', maxWidth: '960px' }}>
+          {pregunta.texto}
+        </p>
+
+        {/* Opciones */}
+        {opciones.length > 0 && (
+          <div className={`w-full grid gap-4 ${cols}`} style={{ maxWidth: '960px' }}>
+            {opciones.map((op, i) => {
+              const votos    = Number(op.total);
+              const pct      = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+              const bar      = Math.round((votos / maxVotos) * 100);
+              const esSI     = op.respuesta === 'SI';
+              const esNO     = op.respuesta === 'NO';
+              const esPlancha = op.es_plancha && op.miembros?.length > 0;
+              const barBg    = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
+              const textC    = esSI ? 'text-green-400' : esNO ? 'text-red-400' : 'text-white';
+              return (
+                <div key={i} className="bg-white/8 border border-white/15 rounded-2xl p-5 flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-extrabold flex items-center gap-2 ${textC}`}
+                      style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)' }}>
+                      {esSI && <ThumbsUp size={20} className="text-green-400 flex-shrink-0"/>}
+                      {esNO && <ThumbsDown size={20} className="text-red-400 flex-shrink-0"/>}
+                      {op.respuesta}
+                    </span>
+                    <span className="text-white/50 font-bold text-sm tabular-nums flex-shrink-0">
+                      {votos} voto{votos !== 1 ? 's' : ''} · {pct}%
+                    </span>
+                  </div>
+                  {esPlancha && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-white/10 pt-2">
+                      {op.miembros.map((m, mi) => (
+                        <div key={mi} className="flex items-baseline gap-1.5 min-w-0">
+                          <span className="text-white/30 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                          <span className="text-white/75 text-sm font-semibold truncate">{m.nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-3 rounded-full transition-all duration-700 ${barBg}`}
+                      style={{ width: `${bar}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Mayoría */}
+        {opciones.length > 0 && (
+          <div className={`w-full rounded-2xl border px-6 py-4 shrink-0 ${mayorOk ? 'bg-green-900/30 border-green-500/40' : 'bg-white/5 border-white/10'}`}
+            style={{ maxWidth: '960px' }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`text-xs font-bold px-3 py-1 rounded-full ${tipoM === 'absoluta' ? 'bg-purple-900/60 text-purple-300' : 'bg-teal-900/60 text-teal-300'}`}>
+                  {tipoM === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+                </span>
+                <span className="text-white/40 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
+              </div>
+              <span className={`text-2xl font-extrabold tabular-nums ${mayorOk ? 'text-green-400' : 'text-white'}`}>
+                {totalVotos}<span className="text-base font-semibold text-white/30">/{umbral}</span>
+              </span>
+            </div>
+            <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+              <div className={`h-3 rounded-full transition-all duration-700 ${mayorOk ? 'bg-green-400' : 'bg-brand'}`}
+                style={{ width: `${mayorPct}%` }} />
+            </div>
+            <p className={`text-xs font-semibold mt-1.5 ${mayorOk ? 'text-green-400' : 'text-white/40'}`}>
+              {mayorOk
+                ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                : `Faltan ${Math.max(0, umbral - totalVotos)} votos para mayoría (${mayorPct}% del objetivo)`}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Splash al cerrar votación ─────────────────────────────────────────────────
+function SplashResultado({ preg, quorum, onCerrar }) {
+  const [fase, setFase] = useState(1);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFase(2), 2800);
+    return () => clearTimeout(t);
+  }, []);
+
+  const opciones   = preg.opciones ?? [];
+  const totalVotos = preg.total_votos || opciones.reduce((s, o) => s + Number(o.total), 0);
+  const maxVotos   = Math.max(...opciones.map((o) => Number(o.total)), 1);
+  const ganador    = preg.ganador;
+  const ganadorOp  = ganador ? opciones.find((o) => o.respuesta === ganador) : null;
+  const hayPlanchas = opciones.some((o) => o.es_plancha);
+  const cols = hayPlanchas ? (opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3') : '';
+
+  return (
+    <div className="fixed inset-0 z-50 select-none font-montserrat overflow-hidden">
+
+      {/* ── FASE 1: animación "VOTACIÓN CERRADA" ── */}
+      <div className={`absolute inset-0 bg-gray-950 flex flex-col items-center justify-center transition-opacity duration-700 ${
+        fase === 1 ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+      }`}>
+        <div style={{ animation: 'zoomBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+          <Lock size={96} className="text-brand mx-auto mb-8" />
+        </div>
+        <p className="text-white font-black text-center"
+          style={{ fontSize: 'clamp(2.5rem, 7vw, 7rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.1s both', letterSpacing: '-0.02em' }}>
+          VOTACIÓN
+        </p>
+        <p className="text-brand font-black text-center"
+          style={{ fontSize: 'clamp(2.5rem, 7vw, 7rem)', animation: 'zoomBounce 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.2s both', letterSpacing: '-0.02em' }}>
+          CERRADA
+        </p>
+      </div>
+
+      {/* ── FASE 2: resultados ── */}
+      <div className={`absolute inset-0 bg-gray-950 flex flex-col transition-opacity duration-700 ${
+        fase === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+      }`}>
+
+        {/* Barra superior */}
+        <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-3">
+            <Lock size={16} className="text-brand" />
+            <span className="text-white/50 text-xs font-bold uppercase tracking-widest">Resultado final</span>
+          </div>
+          <button onClick={onCerrar}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+            <X size={15}/> Cerrar pantalla
+          </button>
+        </div>
+
+        {/* Contenido */}
+        <div className="flex-1 flex flex-col items-center justify-center px-12 py-6 gap-7 overflow-hidden"
+          style={{ animation: fase === 2 ? 'slideUp 0.5s ease-out' : 'none' }}>
+
+          {/* Pregunta */}
+          <p className="text-white/60 text-center font-semibold leading-snug shrink-0"
+            style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)', maxWidth: '800px' }}>
+            {preg.texto}
+          </p>
+
+          {/* Ganador */}
+          {ganador && (
+            <div className="flex flex-col items-center gap-2 shrink-0" style={{ animation: 'zoomBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both' }}>
+              <Award size={44} className="text-yellow-400" />
+              <p className="text-yellow-400 text-xs font-black uppercase tracking-[0.25em]">Ganador</p>
+              <p className="text-white font-black text-center" style={{ fontSize: 'clamp(2rem, 5vw, 4.5rem)', letterSpacing: '-0.02em' }}>
+                {ganador}
+              </p>
+            </div>
+          )}
+
+          {/* Integrantes plancha ganadora */}
+          {ganadorOp?.es_plancha && ganadorOp.miembros?.length > 0 && !preg.cupos && (
+            <div className="bg-green-900/30 border border-green-500/40 rounded-2xl px-6 py-3 w-full shrink-0" style={{ maxWidth: '860px' }}>
+              <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Users size={12}/> Integrantes — {ganador}
+              </p>
+              <div className="grid grid-cols-3 gap-x-8 gap-y-1">
+                {ganadorOp.miembros.map((m, mi) => (
+                  <div key={mi} className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-green-500/60 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                    {m.cargo && <span className="text-green-400 font-bold text-sm flex-shrink-0">{m.cargo}:</span>}
+                    <span className="text-green-200 font-semibold text-sm truncate">{m.nombre}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Barras de resultado */}
+          <div className={`w-full shrink-0 ${hayPlanchas ? `grid ${cols} gap-4` : 'flex flex-col gap-3'}`} style={{ maxWidth: '860px' }}>
+            {opciones.map((op, i) => {
+              const votos    = Number(op.total);
+              const pct      = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
+              const bar      = Math.round((votos / maxVotos) * 100);
+              const esGan    = op.respuesta === ganador;
+              const esSI     = op.respuesta === 'SI';
+              const esNO     = op.respuesta === 'NO';
+              const esPlancha = op.es_plancha && op.miembros?.length > 0;
+              const barBg    = esGan ? 'bg-green-500' : esSI ? 'bg-green-500/40' : esNO ? 'bg-red-500/40' : 'bg-white/25';
+              const textC    = esGan ? 'text-green-400' : esSI ? 'text-green-600' : esNO ? 'text-red-400' : 'text-white/70';
+              return (
+                <div key={i} className={`rounded-xl border px-5 py-3.5 flex flex-col gap-2.5 ${esGan ? 'bg-green-900/30 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-extrabold text-lg flex items-center gap-2 ${textC}`}>
+                      {esGan && <CheckCircle size={18} className="text-green-400 flex-shrink-0"/>}
+                      {op.respuesta}
+                    </span>
+                    <span className="text-white/50 font-bold tabular-nums">{votos} voto{votos!==1?'s':''} · {pct}%</span>
+                  </div>
+                  {esPlancha && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 border-t border-white/10 pt-2">
+                      {op.miembros.map((m, mi) => (
+                        <div key={mi} className="flex items-baseline gap-1 min-w-0">
+                          <span className={`text-[9px] font-bold tabular-nums flex-shrink-0 ${esGan ? 'text-green-500/60' : 'text-white/30'}`}>#{mi+1}</span>
+                          <span className={`text-sm font-semibold truncate ${esGan ? 'text-green-200' : 'text-white/60'}`}>{m.nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="h-4 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-4 rounded-full ${barBg}`} style={{ width: `${bar}%`, transition: 'width 1.2s ease-out' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

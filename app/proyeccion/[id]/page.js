@@ -549,6 +549,7 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
 // ── Splash al cerrar votación ─────────────────────────────────────────────────
 function SplashResultado({ preg, quorum, onCerrar }) {
   const [fase, setFase] = useState(1);
+  const [verDhondt, setVerDhondt] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setFase(2), 2800);
@@ -607,10 +608,18 @@ function SplashResultado({ preg, quorum, onCerrar }) {
               <h1 className="text-gray-900 text-xl font-extrabold leading-tight">{preg.texto}</h1>
             </div>
           </div>
-          <button onClick={onCerrar}
-            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
-            <X size={15}/> Cerrar pantalla
-          </button>
+          <div className="flex items-center gap-2">
+            {preg.cupos && preg.tipo === 'candidatos' && (
+              <button onClick={() => setVerDhondt((v) => !v)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border ${verDhondt ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'}`}>
+                <Award size={15}/> {verDhondt ? 'Ocultar D\'Hondt' : 'Ver D\'Hondt'}
+              </button>
+            )}
+            <button onClick={onCerrar}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
+              <X size={15}/> Cerrar pantalla
+            </button>
+          </div>
         </div>
 
         {/* Contenido */}
@@ -659,12 +668,20 @@ function SplashResultado({ preg, quorum, onCerrar }) {
               <p className="text-green-700 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
                 <Users size={12}/> Integrantes — {ganador}
               </p>
-              <div className="grid grid-cols-3 gap-x-8 gap-y-1.5">
+              <div className="grid grid-cols-3 gap-x-8 gap-y-2">
                 {ganadorOp.miembros.map((m, mi) => (
-                  <div key={mi} className="flex items-baseline gap-2 min-w-0">
-                    <span className="text-green-500/70 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
-                    {m.cargo && <span className="text-green-700 font-bold text-sm flex-shrink-0">{m.cargo}:</span>}
-                    <span className="text-green-900 font-semibold text-sm truncate">{m.nombre}</span>
+                  <div key={mi} className="flex flex-col min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-green-500/70 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                      {m.cargo && <span className="text-green-700 font-bold text-sm flex-shrink-0">{m.cargo}:</span>}
+                      <span className="text-green-900 font-semibold text-sm truncate">{m.nombre}</span>
+                    </div>
+                    {m.suplente && (
+                      <div className="pl-5 flex items-baseline gap-1">
+                        <span className="text-green-500/50 text-xs">Sup.:</span>
+                        <span className="text-green-700/70 text-xs truncate">{m.suplente}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -699,12 +716,20 @@ function SplashResultado({ preg, quorum, onCerrar }) {
                     </span>
                   </div>
                   {esPlancha && (
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 border-t border-gray-200 pt-3">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 border-t border-gray-200 pt-3">
                       {op.miembros.map((m, mi) => (
-                        <div key={mi} className="flex items-baseline gap-2 min-w-0">
-                          <span className="text-brand/40 text-xs font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
-                          {m.cargo && <span className="text-gray-500 font-semibold text-sm flex-shrink-0">{m.cargo}:</span>}
-                          <span className="text-gray-800 font-semibold text-sm truncate">{m.nombre}</span>
+                        <div key={mi} className="flex flex-col min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-brand/40 text-xs font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                            {m.cargo && <span className="text-gray-500 font-semibold text-sm flex-shrink-0">{m.cargo}:</span>}
+                            <span className="text-gray-800 font-semibold text-sm truncate">{m.nombre}</span>
+                          </div>
+                          {m.suplente && (
+                            <div className="pl-5 flex items-baseline gap-1">
+                              <span className="text-gray-400 text-xs">Sup.:</span>
+                              <span className="text-gray-500 text-xs truncate">{m.suplente}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -716,6 +741,96 @@ function SplashResultado({ preg, quorum, onCerrar }) {
               );
             })}
           </div>
+
+          {/* D'Hondt */}
+          {verDhondt && preg.cupos && preg.tipo === 'candidatos' && (() => {
+            const dhondt      = calcDhondt(opciones, preg.cupos);
+            const tabla       = buildDhondtTable(opciones, preg.cupos);
+            const ganadoresDh = dhondt.filter((c) => c.cupos_ganados > 0);
+            if (!ganadoresDh.length) return null;
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 w-full shrink-0" style={{ maxWidth: '1000px' }}>
+                <p className="text-xs font-bold text-blue-700 uppercase tracking-wide flex items-center gap-1.5 mb-3">
+                  <Award size={12}/> D'Hondt — {preg.cupos} cupo{preg.cupos !== 1 ? 's' : ''} distribuidos
+                </p>
+                <div className={`grid gap-3 mb-3 ${ganadoresDh.length === 1 ? 'grid-cols-1' : ganadoresDh.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                  {ganadoresDh.map((c, i) => {
+                    const op       = opciones.find((o) => o.respuesta === c.respuesta);
+                    const miembros = (op?.miembros ?? []).slice(0, c.cupos_ganados);
+                    return (
+                      <div key={i} className="bg-white border border-blue-100 rounded-xl px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <span className="font-extrabold text-blue-900 text-xs">{c.respuesta}</span>
+                          <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                            {c.cupos_ganados} cupo{c.cupos_ganados !== 1 ? 's' : ''}
+                          </span>
+                          <span className="text-[10px] text-blue-400">· {c.total} votos</span>
+                        </div>
+                        {miembros.length > 0 && (
+                          <div className="border-l-2 border-green-400 pl-1.5 flex flex-col gap-1">
+                            {miembros.map((m, mi) => (
+                              <div key={mi} className="flex flex-col min-w-0">
+                                <div className="flex items-baseline gap-1 text-[11px]">
+                                  <span className="font-bold text-green-600 flex-shrink-0 tabular-nums">#{mi + 1}</span>
+                                  <span className="text-green-900 font-semibold truncate">{m.nombre}</span>
+                                </div>
+                                {m.suplente && (
+                                  <div className="flex items-baseline gap-1 text-[10px] pl-4">
+                                    <span className="text-gray-400 flex-shrink-0">Sup.</span>
+                                    <span className="text-gray-500 truncate">{m.suplente}</span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {tabla && (
+                  <div className="mt-2 pt-4 border-t border-blue-200">
+                    <p className="text-[11px] text-blue-600 mb-3 leading-relaxed">
+                      Se dividen los votos de cada plancha entre 1, 2, 3… Los <strong>{preg.cupos} cocientes más altos</strong> ganan un cupo. En caso de empate en el cociente, gana la plancha con más votos totales.
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-[11px] border-collapse bg-white rounded-lg overflow-hidden">
+                        <thead>
+                          <tr className="bg-blue-100">
+                            <th className="text-left py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">Plancha</th>
+                            <th className="text-center py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">Votos</th>
+                            {tabla.divisors.map((d) => (
+                              <th key={d} className="text-center py-1.5 px-2 text-blue-700 font-bold border-b border-blue-200">÷{d}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {opciones.slice().sort((a, b) => Number(b.total) - Number(a.total)).map((op, ri) => (
+                            <tr key={ri} className="border-b border-blue-100 last:border-0">
+                              <td className="py-1.5 px-2 font-semibold text-blue-900 max-w-[130px] truncate">{op.respuesta}</td>
+                              <td className="py-1.5 px-2 text-center text-blue-600 font-bold">{op.total}</td>
+                              {tabla.divisors.map((d) => {
+                                const key      = `${op.respuesta}-${d}`;
+                                const isWinner = tabla.winners.has(key);
+                                return (
+                                  <td key={d} className={`py-1.5 px-2 text-center font-mono rounded ${isWinner ? 'bg-blue-600 text-white font-extrabold' : 'text-blue-400'}`}>
+                                    {(Number(op.total) / d).toFixed(2)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[10px] text-blue-400 mt-2 font-semibold">
+                      Cupos asignados: {dhondt.filter((c) => c.cupos_ganados > 0).map((c) => `${c.respuesta} (${c.cupos_ganados})`).join(' · ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

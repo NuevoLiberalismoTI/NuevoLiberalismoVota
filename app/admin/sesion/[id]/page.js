@@ -793,7 +793,7 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
                     <Icon size={12} />{label}
                   </button>
                 ))}
-                {opciones.length > 2 && (
+                {opciones.length > 1 && (
                   <button onClick={() => setOpciones(opciones.filter((_, j) => j !== i))}
                     className="text-red-400 hover:text-red-600 p-1">
                     <Trash2 size={14} />
@@ -848,6 +848,12 @@ function FormPregunta({ onGuardar, onCancelar, preguntasBase = [], enVivo = fals
               )}
             </div>
           ))}
+
+          {opciones.length === 1 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-800">
+              <strong>Postulado único</strong> — Se registrará como la única opción. El quórum y los integrantes quedarán guardados en el acta.
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button onClick={() => setOpciones([...opciones, OPCION_VACIA_INDIVIDUAL()])}

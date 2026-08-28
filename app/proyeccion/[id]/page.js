@@ -509,13 +509,37 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
           </div>
         )}
 
-        {/* Tipo de mayoría — sin conteo de votos */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-3 shrink-0 flex items-center gap-4" style={{ maxWidth: '1000px', width: '100%' }}>
-          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${tipoM === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
-            {tipoM === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
-          </span>
-          <span className="text-gray-500 text-sm">50%+1 de {baseLabel} · umbral: <strong className="text-gray-800">{umbral} votos</strong></span>
-        </div>
+        {/* Barra de mayoría — con votos totales pero sin desglose por opción */}
+        {opciones.length > 0 && (() => {
+          const totalVotos = opciones.reduce((s, o) => s + Number(o.total), 0);
+          const mayorPct   = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
+          const mayorOk    = totalVotos >= umbral && umbral > 0;
+          return (
+            <div className={`w-full rounded-2xl border shadow-sm px-6 py-4 shrink-0 ${mayorOk ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+              style={{ maxWidth: '1000px' }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${tipoM === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+                    {tipoM === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+                  </span>
+                  <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
+                </div>
+                <span className={`text-2xl font-extrabold tabular-nums ${mayorOk ? 'text-green-600' : 'text-gray-700'}`}>
+                  {totalVotos}<span className="text-base font-semibold text-gray-300">/{umbral}</span>
+                </span>
+              </div>
+              <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`h-4 rounded-full transition-all duration-700 ${mayorOk ? 'bg-green-500' : 'bg-brand'}`}
+                  style={{ width: `${mayorPct}%` }} />
+              </div>
+              <p className={`text-xs font-semibold mt-1.5 ${mayorOk ? 'text-green-600' : 'text-gray-500'}`}>
+                {mayorOk
+                  ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                  : `Faltan ${Math.max(0, umbral - totalVotos)} votos para mayoría (${mayorPct}% del objetivo)`}
+              </p>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

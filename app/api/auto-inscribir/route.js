@@ -1,5 +1,12 @@
 import { createServerClient } from '../../lib/supabase-server';
 
+const normCedula = (c) => {
+  if (!c) return null;
+  const s = String(c).trim().replace(/[^0-9a-zA-Z]/g, '');
+  const n = parseInt(s, 10);
+  return isNaN(n) ? s.toLowerCase() : String(n);
+};
+
 export async function POST(request) {
   const { cedula } = await request.json();
   if (!cedula) return Response.json({ ok: false, error: 'Cédula requerida' }, { status: 400 });
@@ -15,13 +22,22 @@ export async function POST(request) {
 
   if (!usuario) return Response.json({ ok: false, error: 'Usuario no encontrado' }, { status: 404 });
 
-  // Buscar todas las sesiones a las que fue invitado (deduplicadas)
-  const { data: invitaciones } = await supabase
+  // Buscar invitaciones cuya cédula normalizada coincida con la del usuario
+  const { data: todasInvitaciones } = await supabase
     .from('invitaciones_enviadas')
-    .select('sesion_id')
-    .eq('cedula', cedula);
+    .select('sesion_id, cedula')
+    .not('cedula', 'is', null);
 
-  const sesionIds = [...new Set((invitaciones || []).map((i) => i.sesion_id).filter(Boolean))];
+  const cedulaNorm = normCedula(cedula);
+  const sesionIds = [
+    ...new Set(
+      (todasInvitaciones || [])
+        .filter((i) => normCedula(i.cedula) === cedulaNorm)
+        .map((i) => i.sesion_id)
+        .filter(Boolean)
+    ),
+  ];
+
   if (sesionIds.length === 0) return Response.json({ ok: true, inscritos: 0 });
 
   // Inscribir en cada sesión que aún esté activa y no esté ya inscrito

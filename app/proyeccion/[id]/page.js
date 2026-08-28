@@ -420,30 +420,31 @@ export default function ProyeccionPage() {
 
 // ── Pregunta en pantalla completa ────────────────────────────────────────────
 function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
-  const opciones    = pregunta.opciones ?? [];
-  const totalVotos  = opciones.reduce((s, o) => s + Number(o.total), 0);
-  const maxVotos    = Math.max(...opciones.map((o) => Number(o.total)), 1);
-  const tipoM       = pregunta.tipo_mayoria ?? 'simple';
-  const baseM       = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
-  const baseLabel   = tipoM === 'simple' ? 'asistentes' : 'invitados';
-  const umbral      = Math.floor(baseM / 2) + 1;
-  const mayorPct    = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
-  const mayorOk     = totalVotos >= umbral && umbral > 0;
-  const hayPlanchas = opciones.some((o) => o.es_plancha);
-  const cols        = hayPlanchas ? (opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3')
-                                  : opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
+  const opciones     = pregunta.opciones ?? [];
+  const tipoM        = pregunta.tipo_mayoria ?? 'simple';
+  const baseLabel    = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const baseM        = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
+  const umbral       = Math.floor(baseM / 2) + 1;
+  const hayPlanchas  = opciones.some((o) => o.es_plancha);
+  const cols         = opciones.length <= 2 ? 'grid-cols-2' : 'grid-cols-3';
   const timerAcabado = timer === 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col select-none font-montserrat" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col select-none font-montserrat" style={{ animation: 'fadeIn 0.3s ease-out' }}>
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 shrink-0">
+      {/* Top bar — igual al header del layout normal */}
+      <div className="bg-white border-b border-gray-200 flex items-center justify-between px-10 py-4 shadow-sm shrink-0">
         <div className="flex items-center gap-4">
           <LogoNL />
           <div>
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Sesión en curso</p>
-            <p className="text-white text-sm font-bold leading-tight">{sesion.nombre}</p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+              </span>
+              <span className="text-green-600 text-xs font-bold uppercase tracking-widest">Votación en curso</span>
+            </div>
+            <h1 className="text-gray-900 text-xl font-extrabold leading-tight">{sesion.nombre}</h1>
           </div>
         </div>
         <div className="flex items-center gap-6">
@@ -451,107 +452,70 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
             timerAcabado ? (
               <span className="text-brand text-2xl font-black uppercase tracking-widest animate-pulse">Tiempo agotado</span>
             ) : (
-              <span className={`font-black tabular-nums ${timer <= 30 ? 'text-red-400 animate-pulse text-6xl' : 'text-white text-5xl'}`}>
+              <span className={`font-black tabular-nums ${timer <= 30 ? 'text-brand animate-pulse text-6xl' : 'text-gray-800 text-5xl'}`}>
                 {String(Math.floor(timer / 60)).padStart(2, '0')}:{String(timer % 60).padStart(2, '0')}
               </span>
             )
           )}
           <button onClick={onCerrar}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors">
+            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border border-gray-200">
             <X size={15}/> Volver
           </button>
         </div>
       </div>
 
       {/* Contenido */}
-      <div className="flex-1 flex flex-col items-center justify-center px-14 py-6 gap-7 overflow-hidden">
-
-        {/* Indicador */}
-        <div className="flex items-center gap-2 bg-green-500/15 border border-green-500/30 rounded-full px-5 py-2 shrink-0">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400" />
-          </span>
-          <span className="text-green-300 text-sm font-bold uppercase tracking-widest">Votación en curso</span>
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-14 py-8 gap-8 overflow-hidden">
 
         {/* Pregunta */}
-        <p className="text-white font-extrabold text-center leading-tight shrink-0"
-          style={{ fontSize: 'clamp(1.6rem, 3.2vw, 3.2rem)', maxWidth: '960px' }}>
-          {pregunta.texto}
-        </p>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-10 py-6 w-full shrink-0" style={{ maxWidth: '1000px' }}>
+          <p className="text-gray-900 font-extrabold text-center leading-tight"
+            style={{ fontSize: 'clamp(1.5rem, 2.8vw, 3rem)' }}>
+            {pregunta.texto}
+          </p>
+        </div>
 
-        {/* Opciones */}
+        {/* Opciones — sin votos */}
         {opciones.length > 0 && (
-          <div className={`w-full grid gap-4 ${cols}`} style={{ maxWidth: '960px' }}>
+          <div className={`w-full grid gap-5 ${cols}`} style={{ maxWidth: '1000px' }}>
             {opciones.map((op, i) => {
-              const votos    = Number(op.total);
-              const pct      = totalVotos > 0 ? Math.round((votos / totalVotos) * 100) : 0;
-              const bar      = Math.round((votos / maxVotos) * 100);
-              const esSI     = op.respuesta === 'SI';
-              const esNO     = op.respuesta === 'NO';
+              const esSI      = op.respuesta === 'SI';
+              const esNO      = op.respuesta === 'NO';
               const esPlancha = op.es_plancha && op.miembros?.length > 0;
-              const barBg    = esSI ? 'bg-green-500' : esNO ? 'bg-red-500' : 'bg-brand';
-              const textC    = esSI ? 'text-green-400' : esNO ? 'text-red-400' : 'text-white';
+              const textC     = esSI ? 'text-green-700' : esNO ? 'text-red-600' : 'text-gray-900';
+              const borderC   = esSI ? 'border-green-300 bg-green-50' : esNO ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white';
               return (
-                <div key={i} className="bg-white/8 border border-white/15 rounded-2xl p-5 flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`font-extrabold flex items-center gap-2 ${textC}`}
-                      style={{ fontSize: 'clamp(1rem, 2vw, 1.6rem)' }}>
-                      {esSI && <ThumbsUp size={20} className="text-green-400 flex-shrink-0"/>}
-                      {esNO && <ThumbsDown size={20} className="text-red-400 flex-shrink-0"/>}
-                      {op.respuesta}
-                    </span>
-                    <span className="text-white/50 font-bold text-sm tabular-nums flex-shrink-0">
-                      {votos} voto{votos !== 1 ? 's' : ''} · {pct}%
-                    </span>
-                  </div>
+                <div key={i} className={`rounded-2xl border shadow-sm p-6 flex flex-col gap-4 ${borderC}`}>
+                  <span className={`font-extrabold flex items-center gap-3 ${textC}`}
+                    style={{ fontSize: 'clamp(1.2rem, 2.2vw, 2rem)' }}>
+                    {esSI && <ThumbsUp size={24} className="text-green-500 flex-shrink-0"/>}
+                    {esNO && <ThumbsDown size={24} className="text-red-500 flex-shrink-0"/>}
+                    {op.respuesta}
+                  </span>
                   {esPlancha && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-white/10 pt-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-gray-200 pt-4">
                       {op.miembros.map((m, mi) => (
-                        <div key={mi} className="flex items-baseline gap-1.5 min-w-0">
-                          <span className="text-white/30 text-[10px] font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
-                          <span className="text-white/75 text-sm font-semibold truncate">{m.nombre}</span>
+                        <div key={mi} className="flex items-baseline gap-2 min-w-0">
+                          <span className="text-brand/40 text-xs font-bold tabular-nums flex-shrink-0">#{mi+1}</span>
+                          {m.cargo && <span className="text-gray-500 font-semibold text-sm flex-shrink-0">{m.cargo}:</span>}
+                          <span className="text-gray-800 font-semibold text-sm truncate">{m.nombre}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                    <div className={`h-3 rounded-full transition-all duration-700 ${barBg}`}
-                      style={{ width: `${bar}%` }} />
-                  </div>
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Mayoría */}
-        {opciones.length > 0 && (
-          <div className={`w-full rounded-2xl border px-6 py-4 shrink-0 ${mayorOk ? 'bg-green-900/30 border-green-500/40' : 'bg-white/5 border-white/10'}`}
-            style={{ maxWidth: '960px' }}>
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${tipoM === 'absoluta' ? 'bg-purple-900/60 text-purple-300' : 'bg-teal-900/60 text-teal-300'}`}>
-                  {tipoM === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
-                </span>
-                <span className="text-white/40 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
-              </div>
-              <span className={`text-2xl font-extrabold tabular-nums ${mayorOk ? 'text-green-400' : 'text-white'}`}>
-                {totalVotos}<span className="text-base font-semibold text-white/30">/{umbral}</span>
-              </span>
-            </div>
-            <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-              <div className={`h-3 rounded-full transition-all duration-700 ${mayorOk ? 'bg-green-400' : 'bg-brand'}`}
-                style={{ width: `${mayorPct}%` }} />
-            </div>
-            <p className={`text-xs font-semibold mt-1.5 ${mayorOk ? 'text-green-400' : 'text-white/40'}`}>
-              {mayorOk
-                ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
-                : `Faltan ${Math.max(0, umbral - totalVotos)} votos para mayoría (${mayorPct}% del objetivo)`}
-            </p>
-          </div>
-        )}
+        {/* Tipo de mayoría — sin conteo de votos */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm px-6 py-3 shrink-0 flex items-center gap-4" style={{ maxWidth: '1000px', width: '100%' }}>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${tipoM === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
+            {tipoM === 'absoluta' ? 'Mayoría Absoluta' : 'Mayoría Simple'}
+          </span>
+          <span className="text-gray-500 text-sm">50%+1 de {baseLabel} · umbral: <strong className="text-gray-800">{umbral} votos</strong></span>
+        </div>
       </div>
     </div>
   );

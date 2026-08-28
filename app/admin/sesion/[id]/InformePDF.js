@@ -7,6 +7,30 @@ const LIGHT = '#f4f4f5';
 const DARK  = '#111827';
 const GREEN = '#15803d';
 const RED   = '#b91c1c';
+const BLUE  = '#1d4ed8';
+
+function calcDhondt(opciones, cupos) {
+  if (!cupos || !opciones?.length) return [];
+  const seats = opciones.map((o) => ({
+    ...o,
+    cupos_ganados: 0,
+    capacidad: o.es_plancha ? (o.miembros?.length ?? Infinity) : Infinity,
+  }));
+  for (let i = 0; i < cupos; i++) {
+    let maxQ = -1, maxTotal = -1, maxIdx = -1;
+    seats.forEach((s, idx) => {
+      if (s.cupos_ganados >= s.capacidad) return;
+      const q = Number(s.total) / (s.cupos_ganados + 1);
+      const t = Number(s.total);
+      if (maxIdx === -1 || q > maxQ + 1e-10 || (Math.abs(q - maxQ) < 1e-10 && t > maxTotal)) {
+        maxQ = q; maxTotal = t; maxIdx = idx;
+      }
+    });
+    if (maxIdx === -1) break;
+    seats[maxIdx].cupos_ganados++;
+  }
+  return seats.filter((s) => s.cupos_ganados > 0).sort((a, b) => b.cupos_ganados - a.cupos_ganados || Number(b.total) - Number(a.total));
+}
 
 const s = StyleSheet.create({
   page:         { fontFamily: 'Helvetica', fontSize: 10, color: DARK },
@@ -50,6 +74,24 @@ const s = StyleSheet.create({
   resultBox:    { borderRadius: 6, paddingVertical: 8, paddingHorizontal: 12, marginTop: 10 },
   resultTitle:  { fontSize: 9, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
   resultDetail: { fontSize: 8, color: GRAY },
+  // Candidatos seleccionados
+  candSection:  { marginTop: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
+  candTitle:    { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: BLUE, marginBottom: 6, letterSpacing: 0.5 },
+  candGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  candBox:      { backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 6, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 6, minWidth: 160, flex: 1 },
+  candPlancha:  { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: BLUE, marginBottom: 4 },
+  candCupo:     { fontSize: 7, color: '#3b82f6', marginBottom: 4 },
+  candMember:   { flexDirection: 'row', marginBottom: 3 },
+  candNum:      { fontSize: 7.5, color: '#60a5fa', width: 16, fontFamily: 'Helvetica-Bold' },
+  candNombre:   { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#1e3a5f', flex: 1 },
+  candSuplente: { fontSize: 7, color: GRAY, paddingLeft: 16, marginBottom: 2 },
+  // Winner plancha (no cupos)
+  winBox:       { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#86efac', borderRadius: 6, paddingVertical: 8, paddingHorizontal: 10, marginTop: 10 },
+  winTitle:     { fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: GREEN, marginBottom: 6, letterSpacing: 0.5 },
+  winMember:    { flexDirection: 'row', marginBottom: 3 },
+  winNum:       { fontSize: 7.5, color: '#4ade80', width: 16, fontFamily: 'Helvetica-Bold' },
+  winNombre:    { fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#14532d', flex: 1 },
+  winSuplente:  { fontSize: 7, color: GRAY, paddingLeft: 16, marginBottom: 2 },
   // Empty state
   emptyBox:     { backgroundColor: LIGHT, borderRadius: 8, paddingVertical: 24, paddingHorizontal: 16, marginTop: 16, alignItems: 'center' },
   // Footer
@@ -223,6 +265,64 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
                     </Text>
                   </View>
                 )}
+
+                {preg.tipo === 'candidatos' && preg.estado === 'cerrada' && total > 0 && (() => {
+                  const esConCupos = preg.cupos && preg.cupos > 0;
+                  if (esConCupos) {
+                    const ganadoresDhondt = calcDhondt(preg.opciones, preg.cupos);
+                    if (!ganadoresDhondt.length) return null;
+                    return (
+                      <View style={s.candSection}>
+                        <Text style={s.candTitle}>CANDIDATOS SELECCIONADOS (D'HONDT)</Text>
+                        <View style={s.candGrid}>
+                          {ganadoresDhondt.map((plan, pi) => (
+                            <View key={pi} style={s.candBox}>
+                              <Text style={s.candPlancha}>{plan.respuesta}</Text>
+                              <Text style={s.candCupo}>
+                                {plan.cupos_ganados} cupo{plan.cupos_ganados !== 1 ? 's' : ''}
+                              </Text>
+                              {(plan.miembros || []).slice(0, plan.cupos_ganados).map((m, mi) => (
+                                <View key={mi}>
+                                  <View style={s.candMember}>
+                                    <Text style={s.candNum}>{mi + 1}.</Text>
+                                    <Text style={s.candNombre}>{m.nombre}</Text>
+                                  </View>
+                                  {m.suplente ? (
+                                    <Text style={s.candSuplente}>Suplente: {m.suplente}</Text>
+                                  ) : null}
+                                </View>
+                              ))}
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  } else {
+                    const opGanadora = (preg.opciones || []).find(
+                      (o) => o.respuesta === ganador && o.es_plancha
+                    );
+                    if (!opGanadora) return null;
+                    return (
+                      <View style={s.winBox}>
+                        <Text style={s.winTitle}>PLANCHA SELECCIONADA</Text>
+                        <Text style={{ ...s.candPlancha, color: GREEN, marginBottom: 6 }}>
+                          {opGanadora.respuesta}
+                        </Text>
+                        {(opGanadora.miembros || []).map((m, mi) => (
+                          <View key={mi}>
+                            <View style={s.winMember}>
+                              <Text style={s.winNum}>{mi + 1}.</Text>
+                              <Text style={s.winNombre}>{m.nombre}</Text>
+                            </View>
+                            {m.suplente ? (
+                              <Text style={s.winSuplente}>Suplente: {m.suplente}</Text>
+                            ) : null}
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  }
+                })()}
               </View>
             );
           })}

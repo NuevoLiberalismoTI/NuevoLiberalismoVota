@@ -30,10 +30,16 @@ export async function GET(request, { params }) {
     inscritosSet = new Set((inscs || []).map((i) => String(i.usuario_cedula)));
   }
 
-  const resultado = invitados.map((inv) => ({
-    ...inv,
-    preinscrito: inv.cedula ? inscritosSet.has(String(inv.cedula)) : false,
-  }));
+  // Deduplicar por cédula (o email si no hay cédula) — conserva la invitación más reciente
+  const seen = new Set();
+  const resultado = invitados
+    .map((inv) => ({ ...inv, preinscrito: inv.cedula ? inscritosSet.has(String(inv.cedula)) : false }))
+    .filter((inv) => {
+      const key = inv.cedula ? String(inv.cedula) : inv.email;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
   return Response.json({ ok: true, data: resultado });
 }

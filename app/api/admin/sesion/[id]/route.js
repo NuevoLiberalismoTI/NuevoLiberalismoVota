@@ -82,7 +82,29 @@ export async function GET(request, { params }) {
     },
     preinscritos,
     asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at })),
-    resultados: resultados?.preguntas || [],
+    resultados: (() => {
+      // Enrich RPC resultados with es_plancha + miembros from pregs (which has candidatos + miembros_plancha)
+      const pregMap = {};
+      (pregs || []).forEach((p) => {
+        const byNombre = {};
+        (p.candidatos || []).forEach((c) => { byNombre[c.nombre] = c; });
+        pregMap[p.id] = byNombre;
+      });
+      return (resultados?.preguntas || []).map((preg) => {
+        const byNombre = pregMap[preg.id] || {};
+        return {
+          ...preg,
+          opciones: (preg.opciones || []).map((op) => {
+            const cand = byNombre[op.respuesta];
+            return {
+              ...op,
+              es_plancha: cand?.es_plancha ?? false,
+              miembros:   (cand?.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+            };
+          }),
+        };
+      });
+    })(),
   });
 }
 

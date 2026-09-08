@@ -83,17 +83,25 @@ export async function GET(request, { params }) {
     preinscritos,
     asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at })),
     resultados: (() => {
-      // Enrich RPC resultados with es_plancha + miembros from pregs (which has candidatos + miembros_plancha)
-      const pregMap = {};
+      // Enrich RPC resultados with cupos + es_plancha + miembros from pregs
+      // The RPC only returns vote counts; cupos, tipo, estado come from asamblea_preguntas
+      const pregById  = {};
+      const candMap   = {};
       (pregs || []).forEach((p) => {
+        pregById[p.id] = p;
         const byNombre = {};
         (p.candidatos || []).forEach((c) => { byNombre[c.nombre] = c; });
-        pregMap[p.id] = byNombre;
+        candMap[p.id] = byNombre;
       });
       return (resultados?.preguntas || []).map((preg) => {
-        const byNombre = pregMap[preg.id] || {};
+        const pregData = pregById[preg.id] || {};
+        const byNombre = candMap[preg.id]  || {};
         return {
           ...preg,
+          cupos:        pregData.cupos        ?? preg.cupos        ?? null,
+          tipo:         pregData.tipo         ?? preg.tipo,
+          estado:       pregData.estado       ?? preg.estado,
+          tipo_mayoria: pregData.tipo_mayoria ?? preg.tipo_mayoria,
           opciones: (preg.opciones || []).map((op) => {
             const cand = byNombre[op.respuesta];
             return {

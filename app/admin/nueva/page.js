@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Zap } from 'lucide-react';
 import { DEPARTAMENTOS_CON_CODIGO, generarConsecutivo } from '../../lib/data';
 
-const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', hora: '', lugar: '' };
+const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', hora: '', lugar: '', modo_rapido: false };
 
 export default function NuevaSesionPage() {
   const router = useRouter();
@@ -107,6 +107,7 @@ export default function NuevaSesionPage() {
         fecha:            form.fecha,
         hora:             form.hora,
         lugar:            form.lugar,
+        modo_rapido:      form.modo_rapido || false,
         estado:           'borrador',
         codigo_asistencia: Array.from({length:6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random()*36)]).join(''),
       }),
@@ -219,6 +220,30 @@ export default function NuevaSesionPage() {
           <input type="number" name="cupo_maximo" value={form.cupo_maximo || ''} onChange={handleChange}
             placeholder="Sin límite" className={inp(false)} />
         </div>
+
+        {/* Modo rápido */}
+        <button type="button"
+          onClick={() => setForm({ ...form, modo_rapido: !form.modo_rapido })}
+          className={`flex items-start gap-3 w-full text-left rounded-xl border-2 px-4 py-3 transition-colors ${
+            form.modo_rapido ? 'border-purple-400 bg-purple-50' : 'border-gray-200 bg-white hover:border-gray-300'
+          }`}>
+          <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+            form.modo_rapido ? 'border-purple-500 bg-purple-500' : 'border-gray-300'
+          }`}>
+            {form.modo_rapido && <span className="text-white text-xs font-bold">✓</span>}
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <Zap size={13} className={form.modo_rapido ? 'text-purple-600' : 'text-gray-400'}/>
+              <span className={`text-sm font-bold ${form.modo_rapido ? 'text-purple-700' : 'text-gray-700'}`}>
+                Modo rápido (sin verificación de usuario)
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Los invitados acceden solo con su cédula mediante un link directo. Ideal para asambleas de colectivos con menor nivel de control.
+            </p>
+          </div>
+        </button>
       </div>
 
       {errServidor && <p className="text-sm text-red-500 text-center mb-4">{errServidor}</p>}

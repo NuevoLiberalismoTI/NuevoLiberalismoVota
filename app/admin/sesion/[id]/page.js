@@ -1364,8 +1364,31 @@ export default function AdminSesionPage() {
               <h1 className="font-bold text-gray-900 text-base leading-snug">{sesion.nombre}</h1>
               <p className="text-xs font-mono text-gray-400 mt-0.5">{sesion.id}</p>
             </div>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${cfg.color}`}>{cfg.label}</span>
+            <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+              <span className={`text-xs font-bold px-3 py-1 rounded-full ${cfg.color}`}>{cfg.label}</span>
+              {sesion.modo_rapido && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                  <Zap size={9}/> Modo rápido
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Link de acceso rápido */}
+          {sesion.modo_rapido && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl px-3 py-2.5 flex items-center gap-2">
+              <Zap size={13} className="text-purple-600 flex-shrink-0"/>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-purple-700 mb-0.5">Link de acceso para invitados</p>
+                <p className="text-[10px] text-purple-500 font-mono truncate">{typeof window !== 'undefined' ? window.location.origin : ''}/v/{sesion.id}</p>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(`${window.location.origin}/v/${sesion.id}`)}
+                className="flex items-center gap-1 text-[10px] font-bold text-purple-700 bg-white border border-purple-300 px-2 py-1 rounded-lg hover:bg-purple-100 transition-colors flex-shrink-0">
+                <Copy size={10}/> Copiar
+              </button>
+            </div>
+          )}
 
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">

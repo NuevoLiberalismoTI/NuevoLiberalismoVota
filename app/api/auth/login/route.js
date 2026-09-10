@@ -17,12 +17,17 @@ export async function POST(request) {
     // Verificar si el usuario existe antes de intentar login
     const { data: existe } = await supabase
       .from('usuarios')
-      .select('cedula')
+      .select('cedula, es_rapido')
       .eq('cedula', cedula)
       .maybeSingle();
 
     if (!existe) {
       return NextResponse.json({ ok: false, tipo: 'no_existe', error: 'No tienes usuario creado. Crea tu cuenta primero.' }, { status: 401 });
+    }
+
+    // Usuario rápido: no tiene contraseña real, debe completar su registro
+    if (existe.es_rapido) {
+      return NextResponse.json({ ok: false, tipo: 'usuario_rapido', error: 'Debes completar tu registro para iniciar sesión.' }, { status: 401 });
     }
 
     const { data, error } = await supabase.rpc('verificar_login', {

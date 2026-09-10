@@ -27,10 +27,12 @@ function CrearUsuarioContent() {
   const searchParams = useSearchParams();
   const [step, setStep]             = useState(1);
   const [cedula, setCedula]         = useState('');
+  const [esUsuarioRapido, setEsUsuarioRapido] = useState(false);
 
   useEffect(() => {
     const cedulaParam = searchParams.get('cedula');
     if (cedulaParam) setCedula(cedulaParam);
+    if (searchParams.get('rapido') === '1') setEsUsuarioRapido(true);
   }, [searchParams]);
   const [errorCedula, setErrorCedula] = useState('');
   const [militante, setMilitante]   = useState(null);
@@ -60,6 +62,7 @@ function CrearUsuarioContent() {
         return;
       }
 
+      if (json.tipo === 'usuario_rapido') setEsUsuarioRapido(true);
       setMilitante(json.militante);
       setStep(2);
     } catch {
@@ -102,22 +105,39 @@ function CrearUsuarioContent() {
     setErrCodigo('');
     try {
       const nombreCompleto = [militante.nombres, militante.apellidos].filter(Boolean).join(' ');
-      const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {
-        p_cedula:   cedula.trim(),
-        p_codigo:   codigoIngresado.trim(),
-        p_password: password,
-        p_nombre:   nombreCompleto,
-        p_email:    militante.email || '',
-      });
-      if (error) throw error;
-      if (!data?.ok) { setErrCodigo(data?.error || 'Código incorrecto o expirado'); return; }
 
-      // Pre-inscribir automáticamente en sesiones donde fue invitado
-      await fetch('/api/auto-inscribir', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ cedula: cedula.trim() }),
-      }).catch(() => { /* silencioso — no bloquea la creación del usuario */ });
+      if (esUsuarioRapido) {
+        // Flujo especial: actualiza el usuario rápido existente en lugar de crear uno nuevo
+        const res = await fetch('/api/auth/completar-usuario', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            cedula:   cedula.trim(),
+            codigo:   codigoIngresado.trim(),
+            password,
+            nombre:   nombreCompleto,
+            email:    militante.email || '',
+          }),
+        });
+        const json = await res.json();
+        if (!json.ok) { setErrCodigo(json.error || 'Código incorrecto o expirado'); return; }
+      } else {
+        const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {
+          p_cedula:   cedula.trim(),
+          p_codigo:   codigoIngresado.trim(),
+          p_password: password,
+          p_nombre:   nombreCompleto,
+          p_email:    militante.email || '',
+        });
+        if (error) throw error;
+        if (!data?.ok) { setErrCodigo(data?.error || 'Código incorrecto o expirado'); return; }
+
+        await fetch('/api/auto-inscribir', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ cedula: cedula.trim() }),
+        }).catch(() => {});
+      }
 
       setStep(4);
     } catch {

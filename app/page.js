@@ -44,6 +44,10 @@ export default function HomePage() {
           router.push(`/crear-usuario?cedula=${encodeURIComponent(form.usuario.trim())}`);
           return;
         }
+        if (json.tipo === 'usuario_rapido') {
+          router.push(`/crear-usuario?cedula=${encodeURIComponent(form.usuario.trim())}&rapido=1`);
+          return;
+        }
         setError(json.error || 'Usuario o contraseña incorrectos');
         return;
       }

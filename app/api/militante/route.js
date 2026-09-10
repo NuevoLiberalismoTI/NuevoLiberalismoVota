@@ -36,8 +36,31 @@ export async function GET(request) {
     return Response.json({ ok: false, error: 'No se pudo conectar con el sistema de militantes' }, { status: 502 });
   }
 
-  // Verificar si ya tiene usuario creado
   const supabase = createServerClient();
+
+  // Si es usuario rápido, puede completar su perfil
+  const { data: usuarioRapido } = await supabase
+    .from('usuarios')
+    .select('cedula, nombre, email')
+    .eq('cedula', cedula)
+    .eq('es_rapido', true)
+    .maybeSingle();
+
+  if (usuarioRapido) {
+    const emailReal = usuarioRapido.email?.endsWith('@rapido.nliberal.co') ? '' : (usuarioRapido.email || '');
+    return Response.json({
+      ok:   true,
+      tipo: 'usuario_rapido',
+      militante: {
+        cedula:    cedula,
+        nombres:   usuarioRapido.nombre || '',
+        apellidos: '',
+        email:     emailReal,
+      },
+    });
+  }
+
+  // Verificar si ya tiene usuario verificado creado
   const { data: usuarioExiste } = await supabase
     .from('usuarios')
     .select('cedula')

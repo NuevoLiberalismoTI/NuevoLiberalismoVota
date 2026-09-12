@@ -11,7 +11,7 @@ BEGIN
     p_nombre,
     p_email,
     crypt(gen_random_uuid()::text, gen_salt('bf')),
-    'votante',
+    'militante',
     true
   );
   RETURN json_build_object('ok', true);

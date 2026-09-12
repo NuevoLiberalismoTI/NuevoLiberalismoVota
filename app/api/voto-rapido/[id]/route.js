@@ -88,7 +88,7 @@ export async function POST(request, { params }) {
       const { randomUUID } = await import('crypto');
       const { error: insertError } = await supabase
         .from('usuarios')
-        .insert([{ cedula, nombre, email, password_hash: `RAPIDO_${randomUUID()}`, es_rapido: true, rol: 'votante' }]);
+        .insert([{ cedula, nombre, email, password_hash: `RAPIDO_${randomUUID()}`, es_rapido: true, rol: 'militante' }]);
 
       if (insertError) {
         return Response.json({
@@ -98,7 +98,7 @@ export async function POST(request, { params }) {
       }
     }
 
-    usuario = { cedula, nombre, email, rol: 'votante', es_rapido: true };
+    usuario = { cedula, nombre, email, rol: 'militante', es_rapido: true };
   }
 
   // Crear inscripción si no existe (acreditado_voto)

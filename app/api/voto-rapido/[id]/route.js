@@ -76,14 +76,25 @@ export async function POST(request, { params }) {
     const nombre = invitacion.nombre || `Usuario ${cedulaNorm}`;
     const email  = invitacion.email  || `${cedulaNorm}@rapido.nliberal.co`;
 
-    const { data: created } = await supabase.rpc('crear_usuario_rapido', {
+    // Intentar via RPC (requiere migración crear_usuario_rapido en Supabase)
+    const { data: created, error: rpcError } = await supabase.rpc('crear_usuario_rapido', {
       p_cedula: cedula,
       p_nombre: nombre,
       p_email:  email,
     });
 
-    if (!created?.ok) {
-      return Response.json({ ok: false, error: 'Error al preparar acceso' }, { status: 500 });
+    if (rpcError || !created?.ok) {
+      // Fallback: insert directo sin contraseña (usuarios rápidos no hacen login normal)
+      const { error: insertError } = await supabase
+        .from('usuarios')
+        .insert([{ cedula, nombre, email, es_rapido: true, rol: 'votante' }]);
+
+      if (insertError) {
+        return Response.json({
+          ok:    false,
+          error: `Error al crear usuario: ${insertError.message ?? rpcError?.message ?? 'desconocido'}`,
+        }, { status: 500 });
+      }
     }
 
     usuario = { cedula, nombre, email, rol: 'votante', es_rapido: true };

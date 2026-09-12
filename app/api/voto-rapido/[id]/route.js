@@ -84,10 +84,11 @@ export async function POST(request, { params }) {
     });
 
     if (rpcError || !created?.ok) {
-      // Fallback: insert directo sin contraseña (usuarios rápidos no hacen login normal)
+      // Fallback: insert directo con placeholder en password_hash (no usable para login)
+      const { randomUUID } = await import('crypto');
       const { error: insertError } = await supabase
         .from('usuarios')
-        .insert([{ cedula, nombre, email, es_rapido: true, rol: 'votante' }]);
+        .insert([{ cedula, nombre, email, password_hash: `RAPIDO_${randomUUID()}`, es_rapido: true, rol: 'votante' }]);
 
       if (insertError) {
         return Response.json({

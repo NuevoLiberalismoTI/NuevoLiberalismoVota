@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION crear_usuario_rapido(
   p_email  text
 ) RETURNS json AS $$
 BEGIN
-  INSERT INTO usuarios (cedula, nombre, email, password, rol, es_rapido)
+  INSERT INTO usuarios (cedula, nombre, email, password_hash, rol, es_rapido)
   VALUES (
     p_cedula,
     p_nombre,

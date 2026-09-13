@@ -5,7 +5,7 @@ const API_TOKEN = process.env.MILITANTES_API_TOKEN || '7TvcetUYWs0zuLMy5bX4Fx0cf
 const BASE_URL  = 'https://nuevoliberalismo.org/wp-json/nl/v1/formularios/postulaciones';
 
 function detectarForm(colectivoNombre = '') {
-  const n = colectivoNombre.toUpperCase();
+  const n = colectivoNombre.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
   if (n.includes('JOVEN')) return 77;
   if (n.includes('MUJER')) return 76;
   return null;

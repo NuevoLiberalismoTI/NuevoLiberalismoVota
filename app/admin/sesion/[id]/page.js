@@ -110,7 +110,7 @@ function TabInvitaciones({ sesion }) {
   const [syncResultado,    setSyncResultado]    = useState(null);
   const fileRef = useRef(null);
 
-  const colectivoNombre = (sesion.colectivos?.nombre || '').toUpperCase();
+  const colectivoNombre = (sesion.colectivos?.nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
   const esColectivoRapido = sesion.modo_rapido && (colectivoNombre.includes('JOVEN') || colectivoNombre.includes('MUJER'));
 
   const sincronizarPostulantes = async () => {

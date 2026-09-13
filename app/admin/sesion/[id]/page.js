@@ -106,7 +106,27 @@ function TabInvitaciones({ sesion }) {
   const [xlsPreview,       setXlsPreview]       = useState([]);
   const [xlsError,         setXlsError]         = useState('');
   const [filtroInvitados,  setFiltroInvitados]  = useState('todos');
+  const [sincronizando,    setSincronizando]    = useState(false);
+  const [syncResultado,    setSyncResultado]    = useState(null);
   const fileRef = useRef(null);
+
+  const colectivoNombre = (sesion.colectivos?.nombre || '').toUpperCase();
+  const esColectivoRapido = sesion.modo_rapido && (colectivoNombre.includes('JOVEN') || colectivoNombre.includes('MUJER'));
+
+  const sincronizarPostulantes = async () => {
+    setSincronizando(true);
+    setSyncResultado(null);
+    try {
+      const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/sincronizar-postulantes`, { method: 'POST' });
+      const json = await res.json();
+      setSyncResultado(json);
+      if (json.ok) cargarInvitados();
+    } catch {
+      setSyncResultado({ ok: false, error: 'Error de red al sincronizar.' });
+    } finally {
+      setSincronizando(false);
+    }
+  };
 
   const cargarInvitados = useCallback(async () => {
     try {
@@ -244,11 +264,8 @@ function TabInvitaciones({ sesion }) {
             <h3 className="text-xs font-bold text-gray-700">Invitados ({invitadosLista.length})</h3>
             <div className="flex items-center gap-2">
               {invitadosLista.length > 0 && (
-                <button
-                  onClick={descargarPendientes}
-                  title="Descargar listado de invitados"
-                  className="text-gray-400 hover:text-brand transition-colors"
-                >
+                <button onClick={descargarPendientes} title="Descargar listado"
+                  className="text-gray-400 hover:text-brand transition-colors">
                   <Download size={12} />
                 </button>
               )}
@@ -257,6 +274,25 @@ function TabInvitaciones({ sesion }) {
               </button>
             </div>
           </div>
+
+          {/* Botón sincronizar postulantes (solo modo rápido + colectivo jóvenes/mujeres) */}
+          {esColectivoRapido && (
+            <div className="mb-2">
+              <button onClick={sincronizarPostulantes} disabled={sincronizando}
+                className="w-full flex items-center justify-center gap-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-[11px] font-bold py-1.5 rounded-lg transition-colors">
+                {sincronizando ? <Loader2 size={11} className="animate-spin"/> : <Zap size={11}/>}
+                {sincronizando ? 'Sincronizando...' : `Sincronizar postulantes ${colectivoNombre.includes('JOVEN') ? 'Jóvenes' : 'Mujeres'}`}
+              </button>
+              {syncResultado && (
+                <p className={`text-[10px] text-center mt-1 font-semibold ${syncResultado.ok ? 'text-green-600' : 'text-red-500'}`}>
+                  {syncResultado.ok
+                    ? `✓ ${syncResultado.insertados} postulantes cargados`
+                    : `✗ ${syncResultado.error}`}
+                </p>
+              )}
+            </div>
+          )}
+
           {invitadosLista.length > 0 && (() => {
             const inscritos  = invitadosLista.filter((i) => i.preinscrito).length;
             const pendientes = invitadosLista.length - inscritos;

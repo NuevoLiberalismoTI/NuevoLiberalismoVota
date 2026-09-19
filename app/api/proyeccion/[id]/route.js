@@ -17,7 +17,7 @@ export async function GET(request, { params }) {
   ] = await Promise.all([
     supabase
       .from('asambleas')
-      .select('id, nombre, estado, fecha, hora, lugar, codigo_asistencia, asistencias_cerradas')
+      .select('id, nombre, estado, fecha, hora, lugar, codigo_asistencia, asistencias_cerradas, modo_rapido')
       .eq('id', sesionId)
       .single(),
     supabase
@@ -144,6 +144,7 @@ export async function GET(request, { params }) {
       lugar:                 asm.lugar,
       codigo_asistencia:     asm.codigo_asistencia,
       asistencias_cerradas:  asm.asistencias_cerradas ?? false,
+      modo_rapido:           asm.modo_rapido ?? false,
     },
     quorum: {
       inscritos:           totalInscritos,

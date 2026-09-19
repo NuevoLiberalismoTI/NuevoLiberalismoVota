@@ -73,7 +73,10 @@ export default function ProyeccionPage() {
   );
 
   const { sesion, quorum, preguntaActiva, historial = [] } = datos;
-  const qrValue = `${typeof window !== 'undefined' ? window.location.origin : ''}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`;
+  const origin  = typeof window !== 'undefined' ? window.location.origin : '';
+  const qrValue = sesion.modo_rapido
+    ? `${origin}/v/${sesion.id}`
+    : `${origin}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`;
 
   const quorumPct       = quorum.invitados > 0
     ? Math.round((quorum.asistentes / quorum.invitados) * 100)
@@ -109,14 +112,18 @@ export default function ProyeccionPage() {
             </div>
           ) : (
             <>
-              <p className="text-white/60 text-sm font-semibold shrink-0">Escanea el QR para registrar tu asistencia</p>
+              <p className="text-white/60 text-sm font-semibold shrink-0">
+                {sesion.modo_rapido ? 'Escanea el QR para acceder con tu cédula' : 'Escanea el QR para registrar tu asistencia'}
+              </p>
               <div className="bg-white rounded-3xl shadow-2xl shrink-0" style={{ padding: 'clamp(12px, 1.5vw, 24px)', width: 'min(68vh, 68vw)', height: 'min(68vh, 68vw)' }}>
                 <QRCode value={qrValue} size={512} level="M" style={{ width: '100%', height: '100%' }} />
               </div>
-              <div className="flex flex-col items-center gap-0 shrink-0">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Código manual</p>
-                <p className="text-white font-mono font-black tracking-[0.4em]" style={{ fontSize: 'clamp(2rem, 4vw, 4rem)' }}>{sesion.codigo_asistencia}</p>
-              </div>
+              {!sesion.modo_rapido && (
+                <div className="flex flex-col items-center gap-0 shrink-0">
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Código manual</p>
+                  <p className="text-white font-mono font-black tracking-[0.4em]" style={{ fontSize: 'clamp(2rem, 4vw, 4rem)' }}>{sesion.codigo_asistencia}</p>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -156,14 +163,18 @@ export default function ProyeccionPage() {
             </div>
           ) : (
             <>
-              <p className="text-white/70 text-xs font-semibold text-center">Escanea el QR para registrar tu asistencia</p>
+              <p className="text-white/70 text-xs font-semibold text-center">
+                {sesion.modo_rapido ? 'Escanea el QR para acceder con tu cédula' : 'Escanea el QR para registrar tu asistencia'}
+              </p>
               <div className="bg-white rounded-2xl p-3 shadow-2xl">
                 <QRCode value={qrValue} size={180} level="M" />
               </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Código manual</p>
-                <p className="text-white text-3xl font-mono font-black tracking-[0.3em]">{sesion.codigo_asistencia}</p>
-              </div>
+              {!sesion.modo_rapido && (
+                <div className="flex flex-col items-center gap-0.5">
+                  <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest">Código manual</p>
+                  <p className="text-white text-3xl font-mono font-black tracking-[0.3em]">{sesion.codigo_asistencia}</p>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import {
   Megaphone, Upload, Send, CheckCircle, ChevronRight, Loader2,
   FileSpreadsheet, X, Phone, User, AlertCircle, Eye, EyeOff,
-  MessageSquare, ArrowLeft, ArrowRight, RefreshCw,
+  MessageSquare, ArrowLeft, ArrowRight, RefreshCw, Download,
 } from 'lucide-react';
 
 const PASOS = ['Datos de la convocatoria', 'Cargar contactos', 'Revisar y enviar'];
@@ -340,10 +340,28 @@ ${vars.v7 || '[LINK FORMULARIO]'}
         <div className="flex flex-col gap-5">
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-1">Cargar archivo de contactos</h2>
-            <p className="text-xs text-gray-400 mb-4">
-              El archivo debe tener columnas: <strong>nombre</strong>, <strong>telefono</strong> (requerido), <strong>email</strong> (opcional).
-              Formatos aceptados: .xlsx, .xls, .csv
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-gray-400">
+                El archivo debe tener columnas: <strong>nombre</strong>, <strong>telefono</strong> (requerido), <strong>email</strong> (opcional).
+                Formatos aceptados: .xlsx, .xls, .csv
+              </p>
+              <button
+                onClick={async () => {
+                  const { utils, writeFile } = await import('xlsx');
+                  const ws = utils.aoa_to_sheet([
+                    ['nombre', 'telefono', 'email'],
+                    ['Juan Pérez', '3001234567', 'juan@ejemplo.com'],
+                    ['María López', '3109876543', 'maria@ejemplo.com'],
+                  ]);
+                  ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 30 }];
+                  const wb = utils.book_new();
+                  utils.book_append_sheet(wb, ws, 'Contactos');
+                  writeFile(wb, 'plantilla_contactos_convocatoria.xlsx');
+                }}
+                className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-brand border border-brand/30 bg-brand/5 hover:bg-brand/10 rounded-lg px-3 py-1.5 transition-colors ml-4">
+                <Download size={13} /> Descargar plantilla
+              </button>
+            </div>
 
             {/* Zona de carga */}
             <div

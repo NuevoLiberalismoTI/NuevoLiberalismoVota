@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users, Shield } from 'lucide-react';
+import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users, Shield, Megaphone } from 'lucide-react';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -13,6 +13,7 @@ function getPageTitle(pathname) {
   if (pathname === '/admin/usuarios') return 'Administradores';
   if (pathname === '/admin/parametricas') return 'Parámetricas';
   if (pathname === '/admin/militantes') return 'Militantes';
+  if (pathname === '/admin/convocatoria') return 'Convocatoria masiva';
   if (pathname.startsWith('/admin/sesion/')) return 'Gestión de sesión';
   return 'Admin';
 }
@@ -25,7 +26,8 @@ const NAV_ITEMS = [
     group: 'PANEL',
     items: [
       { label: 'Dashboard',    href: '/admin',        Icon: LayoutDashboard, exact: true,  soloAdmin: false },
-      { label: 'Nueva sesión', href: '/admin/nueva',  Icon: Plus,            exact: false, soloAdmin: true  },
+      { label: 'Nueva sesión',   href: '/admin/nueva',         Icon: Plus,       exact: false, soloAdmin: true  },
+      { label: 'Convocatoria',   href: '/admin/convocatoria',  Icon: Megaphone,  exact: false, soloAdmin: true  },
     ],
   },
   {

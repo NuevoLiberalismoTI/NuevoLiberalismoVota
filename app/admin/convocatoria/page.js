@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Megaphone, Upload, Send, CheckCircle, ChevronRight, Loader2,
   FileSpreadsheet, X, Phone, User, AlertCircle, Eye, EyeOff,
   MessageSquare, ArrowLeft, ArrowRight, RefreshCw, Download,
+  History, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 const PASOS = ['Datos de la convocatoria', 'Cargar contactos', 'Revisar y enviar'];
@@ -48,9 +49,17 @@ export default function ConvocatoriaPage() {
   const [archivo, setArchivo]     = useState(null);
   const [dragOver, setDragOver]   = useState(false);
   const [preview, setPreview]     = useState(true);
-  const [enviando, setEnviando]   = useState(false);
-  const [resultado, setResultado] = useState(null);
+  const [enviando, setEnviando]       = useState(false);
+  const [resultado, setResultado]     = useState(null);
+  const [historial, setHistorial]     = useState([]);
+  const [histAbierto, setHistAbierto] = useState(null);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/admin/convocatoria/historial')
+      .then((r) => r.json())
+      .then((j) => { if (j.ok) setHistorial(j.historial); });
+  }, [resultado]);
 
   // ── Variables calculadas ────────────────────────────────────────────────────
   const vars = {
@@ -598,6 +607,132 @@ ${vars.v7 || '[LINK FORMULARIO]'}
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── HISTORIAL DE ENVÍOS ── */}
+      {historial.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide flex items-center gap-2 mb-4">
+            <History size={15} className="text-gray-400" /> Historial de envíos
+          </h2>
+          <div className="flex flex-col gap-3">
+            {historial.map((h) => {
+              const abierto = histAbierto === h.id;
+              const fecha   = new Date(h.enviado_en).toLocaleString('es-CO', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+              });
+              const contactos = h.contactos || [];
+              const exitosos  = contactos.filter((c) => c.ok);
+              const fallidos  = contactos.filter((c) => !c.ok);
+              return (
+                <div key={h.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                  {/* Cabecera */}
+                  <button
+                    onClick={() => setHistAbierto(abierto ? null : h.id)}
+                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left">
+                    <div className="flex items-center gap-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900">{h.departamento}</span>
+                        <span className="text-xs text-gray-400">{fecha} · por {h.enviado_por}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-brand/10 text-brand px-2.5 py-1 rounded-full">
+                          {h.total} contactos
+                        </span>
+                        <span className="text-xs font-bold bg-green-100 text-green-700 px-2.5 py-1 rounded-full">
+                          ✓ {h.enviados} enviados
+                        </span>
+                        {h.fallidos > 0 && (
+                          <span className="text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full">
+                            ✗ {h.fallidos} fallidos
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {abierto ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />}
+                  </button>
+
+                  {/* Detalle expandible */}
+                  {abierto && (
+                    <div className="border-t border-gray-100 px-5 pb-5 pt-3">
+                      {/* Info del mensaje */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4 text-xs">
+                        {[
+                          ['Fecha asamblea', h.variables?.v2],
+                          ['Hora',           h.variables?.v3],
+                          ['Lugar',          h.variables?.v4],
+                          ['Inicio post.',   h.variables?.v5],
+                          ['Cierre post.',   h.variables?.v6],
+                          ['Link',           h.variables?.v7],
+                        ].map(([label, val]) => (
+                          <div key={label} className="flex flex-col gap-0.5">
+                            <span className="font-bold text-gray-400 uppercase tracking-wide text-[10px]">{label}</span>
+                            <span className="text-gray-700 truncate">{val || '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Tabla de contactos */}
+                      <div className="border border-gray-100 rounded-xl overflow-hidden">
+                        <div className="max-h-72 overflow-y-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50 sticky top-0">
+                              <tr>
+                                <th className="text-left py-2 px-3 font-bold text-gray-500">#</th>
+                                <th className="text-left py-2 px-3 font-bold text-gray-500">Nombre</th>
+                                <th className="text-left py-2 px-3 font-bold text-gray-500">Teléfono</th>
+                                <th className="text-left py-2 px-3 font-bold text-gray-500">Email</th>
+                                <th className="text-left py-2 px-3 font-bold text-gray-500">Estado</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {contactos.map((c, i) => (
+                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="py-2 px-3 text-gray-400">{i + 1}</td>
+                                  <td className="py-2 px-3 font-semibold text-gray-800">{c.nombre || '—'}</td>
+                                  <td className="py-2 px-3 font-mono text-gray-600">{c.telefono}</td>
+                                  <td className="py-2 px-3 text-gray-500">{c.email || '—'}</td>
+                                  <td className="py-2 px-3">
+                                    {c.ok
+                                      ? <span className="inline-flex items-center gap-1 text-green-700 font-bold"><CheckCircle size={11} /> Enviado</span>
+                                      : <span className="inline-flex items-center gap-1 text-red-600 font-bold"><X size={11} /> Error</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      {/* Botón exportar este envío */}
+                      <button
+                        onClick={async () => {
+                          const { utils, writeFile } = await import('xlsx');
+                          const rows = contactos.map((c, i) => ({
+                            '#':        i + 1,
+                            Nombre:     c.nombre || '',
+                            Teléfono:   c.telefono,
+                            Email:      c.email || '',
+                            Estado:     c.ok ? 'Enviado' : 'Error',
+                            Detalle:    c.ok ? '' : (c.error || ''),
+                          }));
+                          const ws = utils.json_to_sheet(rows);
+                          ws['!cols'] = [{ wch: 5 }, { wch: 28 }, { wch: 16 }, { wch: 30 }, { wch: 12 }, { wch: 40 }];
+                          const wb = utils.book_new();
+                          utils.book_append_sheet(wb, ws, 'Soporte');
+                          writeFile(wb, `soporte_convocatoria_${h.departamento}_${h.enviado_en.slice(0, 10)}.xlsx`);
+                        }}
+                        className="mt-3 flex items-center gap-1.5 text-xs font-bold text-brand border border-brand/30 bg-brand/5 hover:bg-brand/10 rounded-lg px-3 py-1.5 transition-colors">
+                        <Download size={13} /> Exportar soporte en Excel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

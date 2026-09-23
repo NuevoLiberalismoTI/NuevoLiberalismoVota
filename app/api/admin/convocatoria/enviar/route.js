@@ -1,4 +1,5 @@
 import { requireAdmin } from '../../../../lib/session';
+import { createServerClient } from '../../../../lib/supabase-server';
 
 const TWILIO_SID    = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_KEY    = process.env.TWILIO_API_KEY;
@@ -74,7 +75,7 @@ export async function POST(request) {
     const parciales = await Promise.allSettled(
       batch.map(async (c) => {
         const r = await enviarWA(c.telefono, variables);
-        return { nombre: c.nombre, telefono: c.telefono, ...r };
+        return { nombre: c.nombre, telefono: c.telefono, email: c.email || null, ...r };
       })
     );
     resultados.push(
@@ -89,6 +90,18 @@ export async function POST(request) {
 
   const enviados = resultados.filter((r) => r.ok).length;
   const fallidos = resultados.filter((r) => !r.ok).length;
+
+  // Guardar soporte del envío
+  const supabase = createServerClient();
+  await supabase.from('convocatorias_enviadas').insert([{
+    departamento: variables.v1,
+    variables,
+    enviado_por:  session.cedula,
+    total:        contactos.length,
+    enviados,
+    fallidos,
+    contactos:    resultados,
+  }]);
 
   return Response.json({ ok: true, enviados, fallidos, total: contactos.length, resultados });
 }

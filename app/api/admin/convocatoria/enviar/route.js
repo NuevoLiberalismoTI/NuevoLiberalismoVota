@@ -2,7 +2,6 @@ import { requireAdmin } from '../../../../lib/session';
 import { createServerClient } from '../../../../lib/supabase-server';
 
 const TWILIO_SID    = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_KEY    = process.env.TWILIO_API_KEY;
 const TWILIO_AUTH   = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_FROM   = process.env.TWILIO_WHATSAPP_FROM ?? 'whatsapp:+14155238886';
 const CONTENT_SID   = process.env.TWILIO_CONTENT_SID_CONVOCATORIA;
@@ -18,7 +17,7 @@ function normTel(tel) {
 
 async function enviarWA(telefono, vars) {
   const to   = `whatsapp:${normTel(telefono)}`;
-  const auth = TWILIO_KEY || TWILIO_SID;
+  const auth = TWILIO_SID;
 
   const body = new URLSearchParams({
     From:             TWILIO_FROM,

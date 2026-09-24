@@ -73,6 +73,12 @@ export async function POST(request, { params }) {
     return Response.json({ ok: false, error: err.message }, { status: 502 });
   }
 
+  // La API externa hace LIKE '%departamento%', filtrar exacto para evitar que
+  // "Santander" traiga también "Norte de Santander"
+  const normStr = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
+  const targetDep = normStr(asm.departamento);
+  postulaciones = postulaciones.filter((p) => normStr(p.departamento) === targetDep);
+
   if (!postulaciones.length) {
     return Response.json({ ok: true, insertados: 0, mensaje: 'No se encontraron postulantes para este departamento.' });
   }

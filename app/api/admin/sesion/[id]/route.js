@@ -123,8 +123,14 @@ export async function PATCH(request, { params }) {
   const session = await requireSessionAccess(sesionId, supabase);
   if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
 
-  const { estado } = await request.json();
-  const { error } = await supabase.from('asambleas').update({ estado }).eq('id', sesionId);
+  const body = await request.json();
+  const campos = {};
+  if (body.estado !== undefined) campos.estado = body.estado;
+  if (body.lugar  !== undefined) campos.lugar  = body.lugar;
+  if (Object.keys(campos).length === 0)
+    return Response.json({ ok: false, error: 'Nada que actualizar' }, { status: 400 });
+
+  const { error } = await supabase.from('asambleas').update(campos).eq('id', sesionId);
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 400 });
   return Response.json({ ok: true });

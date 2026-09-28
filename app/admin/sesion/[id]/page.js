@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -989,6 +989,25 @@ export default function AdminSesionPage() {
   const [importandoAcred, setImportandoAcred] = useState(false);
   const [importAcredResultado, setImportAcredResultado] = useState(null);
   const importAcredRef = useRef(null);
+  const [editandoLugar, setEditandoLugar]   = useState(false);
+  const [lugarTemp,     setLugarTemp]       = useState('');
+  const [guardandoLugar, setGuardandoLugar] = useState(false);
+  const lugarInputRef = useRef(null);
+
+  const handleGuardarLugar = async () => {
+    const nuevo = lugarTemp.trim();
+    if (!nuevo || nuevo === sesion.lugar) { setEditandoLugar(false); return; }
+    setGuardandoLugar(true);
+    const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ lugar: nuevo }),
+    });
+    const json = await res.json();
+    if (json.ok) setSesion((prev) => ({ ...prev, lugar: nuevo }));
+    setGuardandoLugar(false);
+    setEditandoLugar(false);
+  };
 
   const handleAcreditar = async (cedula, estado) => {
     setCargandoPreins(true);
@@ -1429,7 +1448,37 @@ export default function AdminSesionPage() {
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Calendar size={11} className="flex-shrink-0" /> {sesion.fecha} · {sesion.hora}</span>
-            <span className="flex items-center gap-1"><MapPin size={11} className="flex-shrink-0" /> {sesion.lugar}</span>
+            <span className="flex items-center gap-1 min-w-0">
+              <MapPin size={11} className="flex-shrink-0" />
+              {editandoLugar ? (
+                <span className="flex items-center gap-1 flex-1 min-w-0">
+                  <input
+                    ref={lugarInputRef}
+                    autoFocus
+                    value={lugarTemp}
+                    onChange={(e) => setLugarTemp(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleGuardarLugar(); if (e.key === 'Escape') setEditandoLugar(false); }}
+                    className="flex-1 min-w-0 text-xs border border-brand rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-brand"
+                  />
+                  <button onClick={handleGuardarLugar} disabled={guardandoLugar}
+                    className="flex-shrink-0 text-green-600 hover:text-green-800 disabled:opacity-50">
+                    {guardandoLugar ? <Loader2 size={11} className="animate-spin"/> : <Check size={11}/>}
+                  </button>
+                  <button onClick={() => setEditandoLugar(false)} className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                    <X size={11}/>
+                  </button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 group min-w-0">
+                  <span className="truncate">{sesion.lugar}</span>
+                  <button
+                    onClick={() => { setLugarTemp(sesion.lugar || ''); setEditandoLugar(true); }}
+                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-brand transition-opacity">
+                    <Pencil size={10}/>
+                  </button>
+                </span>
+              )}
+            </span>
             <span className="flex items-center gap-1"><Tag size={11} className="flex-shrink-0" /> {sesion.tipos_asamblea?.nombre} · {sesion.colectivos?.nombre}</span>
             <span className="flex items-center gap-2">
               <Key size={11} className="flex-shrink-0" />

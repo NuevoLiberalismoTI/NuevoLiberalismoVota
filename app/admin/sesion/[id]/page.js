@@ -108,6 +108,7 @@ function TabInvitaciones({ sesion }) {
   const [filtroInvitados,  setFiltroInvitados]  = useState('todos');
   const [sincronizando,    setSincronizando]    = useState(false);
   const [syncResultado,    setSyncResultado]    = useState(null);
+  const [eliminando,       setEliminando]       = useState(null);
   const fileRef = useRef(null);
 
   const colectivoNombre = (sesion.colectivos?.nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
@@ -125,6 +126,21 @@ function TabInvitaciones({ sesion }) {
       setSyncResultado({ ok: false, error: 'Error de red al sincronizar.' });
     } finally {
       setSincronizando(false);
+    }
+  };
+
+  const eliminarInvitado = async (cedula) => {
+    if (!cedula) return;
+    setEliminando(cedula);
+    try {
+      await fetch(`/api/admin/sesion/${encodeURIComponent(sesion.id)}/invitados`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ cedula }),
+      });
+      await cargarInvitados();
+    } finally {
+      setEliminando(null);
     }
   };
 
@@ -344,8 +360,9 @@ function TabInvitaciones({ sesion }) {
                 )
                 .map((inv, i) => {
                   const initials = inv.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+                  const borrando = eliminando === inv.cedula;
                   return (
-                    <div key={i} className={`flex items-center gap-3 px-4 py-3 ${inv.preinscrito ? 'bg-green-50/40' : ''}`}>
+                    <div key={i} className={`group flex items-center gap-3 px-4 py-3 ${inv.preinscrito ? 'bg-green-50/40' : ''}`}>
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                         inv.preinscrito ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
@@ -361,6 +378,13 @@ function TabInvitaciones({ sesion }) {
                         </div>
                         <p className="text-xs text-gray-400 truncate">{inv.email}</p>
                       </div>
+                      <button
+                        onClick={() => eliminarInvitado(inv.cedula)}
+                        disabled={borrando}
+                        title="Eliminar invitado"
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 disabled:opacity-50 transition-opacity">
+                        {borrando ? <Loader2 size={13} className="animate-spin text-red-400"/> : <Trash2 size={13}/>}
+                      </button>
                     </div>
                   );
                 })}

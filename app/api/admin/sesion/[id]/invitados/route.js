@@ -70,3 +70,23 @@ export async function GET(request, { params }) {
 
   return Response.json({ ok: true, data: resultado });
 }
+
+export async function DELETE(request, { params }) {
+  const { id } = await params;
+  const sesionId = decodeURIComponent(id);
+  const supabase = createServerClient();
+  const session = await requireSessionAccess(sesionId, supabase);
+  if (!session) return Response.json({ ok: false, error: 'No autorizado' }, { status: 401 });
+
+  const { cedula } = await request.json();
+  if (!cedula) return Response.json({ ok: false, error: 'Falta cédula' }, { status: 400 });
+
+  const { error } = await supabase
+    .from('invitaciones_enviadas')
+    .delete()
+    .eq('sesion_id', sesionId)
+    .eq('cedula', String(cedula));
+
+  if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}

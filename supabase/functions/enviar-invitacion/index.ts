@@ -198,9 +198,16 @@ Deno.serve(async (req: Request) => {
           },
           body: JSON.stringify({
             personalizations: [{ to: [{ email }] }],
-            from:    { email: FROM_EMAIL, name: 'Nuevo Liberalismo' },
-            subject: `📩 Invitación: ${sesion.nombre}`,
-            content: [{ type: 'text/html', value: htmlInvitacion(nombre, sesion, plataformaUrl) }],
+            from:         { email: FROM_EMAIL, name: 'Nuevo Liberalismo' },
+            reply_to:     { email: FROM_EMAIL, name: 'Nuevo Liberalismo' },
+            subject:      `Invitación: ${sesion.nombre}`,
+            content: [
+              { type: 'text/plain', value: `Hola ${nombre},\n\nEl Partido Nuevo Liberalismo te invita a: ${sesion.nombre}\nFecha: ${sesion.fecha} - Hora: ${sesion.hora}\nLugar: ${sesion.lugar}\n\nIngresa en: ${plataformaUrl}\n\n© Nuevo Liberalismo` },
+              { type: 'text/html',  value: htmlInvitacion(nombre, sesion, plataformaUrl) },
+            ],
+            headers: {
+              'List-Unsubscribe': `<mailto:${FROM_EMAIL}?subject=Unsubscribe>`,
+            },
           }),
         });
 

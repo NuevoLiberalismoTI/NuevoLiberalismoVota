@@ -30,6 +30,13 @@ export async function GET(request, { params }) {
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
 
+  const normC = (c) => {
+    if (c == null) return null;
+    const s = String(c).trim().replace(/[^0-9a-zA-Z]/g, '');
+    const n = parseInt(s, 10);
+    return isNaN(n) ? s.toLowerCase() : String(n);
+  };
+
   const { data: inscAll } = await supabase
     .from('inscripciones')
     .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
@@ -44,6 +51,13 @@ export async function GET(request, { params }) {
     }))
     .filter((i) => i.cedula);
 
+  // Cruce servidor: mapa cédula-normalizada → timestamp asistencia
+  const asistioMap = {};
+  for (const a of (asistenciaRows || [])) {
+    const k = normC(a.usuario_cedula);
+    if (k) asistioMap[k] = a.created_at;
+  }
+
   const cedulas = rawInsc.map((i) => i.cedula);
   let nombresMap = {};
   if (cedulas.length > 0) {
@@ -54,13 +68,19 @@ export async function GET(request, { params }) {
     (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
   }
 
-  const preinscritos = rawInsc.map((i) => ({
-    cedula:              i.cedula,
-    nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
-    email:               nombresMap[i.cedula]?.email  || null,
-    estado_acreditacion: i.estado_acreditacion,
-    created_at:          i.created_at,
-  }));
+  const preinscritos = rawInsc.map((i) => {
+    const k = normC(i.cedula);
+    const asistio_en = k != null ? (asistioMap[k] ?? null) : null;
+    return {
+      cedula:              i.cedula,
+      nombre:              nombresMap[i.cedula]?.nombre || i.cedula,
+      email:               nombresMap[i.cedula]?.email  || null,
+      estado_acreditacion: i.estado_acreditacion,
+      created_at:          i.created_at,
+      ha_asistido:         asistio_en !== null,
+      asistio_en,
+    };
+  });
 
   return Response.json({
     ok: true,

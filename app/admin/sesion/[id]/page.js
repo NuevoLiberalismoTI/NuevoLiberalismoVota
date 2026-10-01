@@ -1857,12 +1857,9 @@ export default function AdminSesionPage() {
 
         {/* Tab: Asistentes */}
         {tab === 'asistentes' && (() => {
-          const normC = (c) => { if (!c) return ''; const s = String(c).trim().replace(/[^0-9a-zA-Z]/g, ''); const n = parseInt(s, 10); return isNaN(n) ? s.toLowerCase() : String(n); };
-          const asistieronSet  = new Set(asistenciaList.map((a) => normC(a.cedula)));
-          const asistieronMap  = Object.fromEntries(asistenciaList.map((a) => [normC(a.cedula), a.asistio_en]));
-          const habilitados    = preinscritos.filter((p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso');
-          const yaAsistieron   = habilitados.filter((p) => asistieronSet.has(normC(p.cedula)));
-          const faltan         = habilitados.filter((p) => !asistieronSet.has(normC(p.cedula)));
+          const habilitados  = preinscritos.filter((p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso');
+          const yaAsistieron = habilitados.filter((p) => p.ha_asistido);
+          const faltan       = habilitados.filter((p) => !p.ha_asistido);
 
           const FilaAsistente = ({ p, i, hora }) => (
             <tr key={p.cedula} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
@@ -1892,7 +1889,7 @@ export default function AdminSesionPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((p, i) => <FilaAsistente key={p.cedula} p={p} i={i} hora={hora ? asistieronMap[normC(p.cedula)] : null} />)}
+                {rows.map((p, i) => <FilaAsistente key={p.cedula} p={p} i={i} hora={hora ? p.asistio_en : null} />)}
               </tbody>
             </table>
           );

@@ -358,6 +358,7 @@ function TabInvitaciones({ sesion }) {
                   filtroInvitados === 'pendientes' ? !inv.preinscrito :
                   true
                 )
+                .sort((a, b) => (b.preinscrito ? 1 : 0) - (a.preinscrito ? 1 : 0))
                 .map((inv, i) => {
                   const initials = inv.nombre.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
                   const borrando = eliminando === inv.cedula;

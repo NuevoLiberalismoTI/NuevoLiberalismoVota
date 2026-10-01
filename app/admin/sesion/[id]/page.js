@@ -1008,6 +1008,7 @@ export default function AdminSesionPage() {
   const [qrTs, setQrTs]                   = useState(() => Math.floor(Date.now() / 30000));
   const [qrSegundos, setQrSegundos]       = useState(30);
   const [preinscritos,    setPreinscritos]    = useState([]);
+  const [invitadosList,   setInvitadosList]   = useState([]);
   const [asistenciaList,  setAsistenciaList]  = useState([]);
   const [cargandoPreins, setCargandoPreins] = useState(false);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
@@ -1113,6 +1114,7 @@ export default function AdminSesionPage() {
     setPreguntasBase(json.preguntasBase);
     setStats(json.stats);
     setPreinscritos(json.preinscritos || []);
+    setInvitadosList(json.invitadosList || []);
     setAsistenciaList(json.asistenciaList || []);
     setResultados(json.resultados || []);
   }, [sesionId]);
@@ -1859,7 +1861,9 @@ export default function AdminSesionPage() {
         {tab === 'asistentes' && (() => {
           const habilitados  = preinscritos.filter((p) => p.estado_acreditacion === 'acreditado_voto' || p.estado_acreditacion === 'acreditado_ingreso');
           const yaAsistieron = habilitados.filter((p) => p.ha_asistido);
-          const faltan       = habilitados.filter((p) => !p.ha_asistido);
+          const faltan       = invitadosList.length > 0
+            ? invitadosList.filter((p) => !p.ha_asistido)
+            : habilitados.filter((p) => !p.ha_asistido);
 
           const FilaAsistente = ({ p, i, hora }) => (
             <tr key={p.cedula} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
@@ -1867,9 +1871,13 @@ export default function AdminSesionPage() {
               <td className="px-5 py-3 font-semibold text-gray-800">{p.nombre}</td>
               <td className="px-5 py-3 font-mono text-xs text-gray-500">{p.cedula}</td>
               <td className="px-5 py-3">
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ACRED_CFG[p.estado_acreditacion]?.color}`}>
-                  {ACRED_CFG[p.estado_acreditacion]?.label}
-                </span>
+                {p.estado_acreditacion ? (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${ACRED_CFG[p.estado_acreditacion]?.color}`}>
+                    {ACRED_CFG[p.estado_acreditacion]?.label}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">Invitado</span>
+                )}
               </td>
               <td className="px-5 py-3 text-xs text-gray-400">
                 {hora ? new Date(hora).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}

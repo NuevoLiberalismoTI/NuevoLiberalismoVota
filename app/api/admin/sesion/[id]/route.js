@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
     supabase.from('asistencia').select('*').eq('asamblea_id', sesionId),
-    supabase.from('invitaciones_enviadas').select('cedula').eq('sesion_id', sesionId),
+    supabase.from('invitaciones_enviadas').select('cedula, nombre').eq('sesion_id', sesionId),
   ]);
 
   if (!asm) return Response.json({ ok: false, error: 'Sesión no encontrada' }, { status: 404 });
@@ -102,6 +102,16 @@ export async function GET(request, { params }) {
       invitados:        new Set((invitData || []).map((i) => String(i.cedula)).filter(Boolean)).size,
     },
     preinscritos,
+    invitadosList: (() => {
+      const seen = new Set();
+      return (invitData || [])
+        .filter((i) => i.cedula)
+        .map((i) => {
+          const k = normC(String(i.cedula));
+          return { cedula: String(i.cedula), nombre: i.nombre || String(i.cedula), ha_asistido: k ? k in asistioMap : false };
+        })
+        .filter((i) => { if (seen.has(i.cedula)) return false; seen.add(i.cedula); return true; });
+    })(),
     asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null })),
     resultados: (() => {
       // Enrich RPC resultados with cupos + es_plancha + miembros from pregs

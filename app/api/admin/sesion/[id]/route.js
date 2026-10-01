@@ -24,7 +24,7 @@ export async function GET(request, { params }) {
     supabase.from('inscripciones').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.from('asistencia').select('*', { count: 'exact', head: true }).eq('asamblea_id', sesionId),
     supabase.rpc('get_resultados_sesion', { p_asamblea_id: sesionId }),
-    supabase.from('asistencia').select('usuario_cedula, created_at').eq('asamblea_id', sesionId).order('created_at', { ascending: true }),
+    supabase.from('asistencia').select('*').eq('asamblea_id', sesionId),
     supabase.from('invitaciones_enviadas').select('cedula').eq('sesion_id', sesionId),
   ]);
 
@@ -52,10 +52,11 @@ export async function GET(request, { params }) {
     .filter((i) => i.cedula);
 
   // Cruce servidor: mapa cédula-normalizada → timestamp asistencia
+  // Usar select('*') porque el nombre del campo timestamp puede variar (created_at, registrado_en, etc.)
   const asistioMap = {};
   for (const a of (asistenciaRows || [])) {
     const k = normC(a.usuario_cedula);
-    if (k) asistioMap[k] = a.created_at;
+    if (k) asistioMap[k] = a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null;
   }
 
   const cedulas = rawInsc.map((i) => i.cedula);
@@ -101,7 +102,7 @@ export async function GET(request, { params }) {
       invitados:        new Set((invitData || []).map((i) => String(i.cedula)).filter(Boolean)).size,
     },
     preinscritos,
-    asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at })),
+    asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null })),
     resultados: (() => {
       // Enrich RPC resultados with cupos + es_plancha + miembros from pregs
       // The RPC only returns vote counts; cupos, tipo, estado come from asamblea_preguntas

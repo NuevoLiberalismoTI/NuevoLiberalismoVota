@@ -205,7 +205,7 @@ export default function NuevaSesionPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Hora</label>
-            <input type="time" name="hora" value={form.hora} onChange={handleChange} className={inp(errores.hora)} />
+            <input type="time" name="hora" value={form.hora} onChange={handleChange} onBlur={handleChange} className={inp(errores.hora)} />
             {errores.hora && <span className="text-xs text-red-500">{errores.hora}</span>}
           </div>
         </div>

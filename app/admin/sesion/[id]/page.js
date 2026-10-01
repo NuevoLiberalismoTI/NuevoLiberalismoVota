@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check, FlaskConical } from 'lucide-react';
 
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
@@ -1017,6 +1017,20 @@ export default function AdminSesionPage() {
   const [lugarTemp,     setLugarTemp]       = useState('');
   const [guardandoLugar, setGuardandoLugar] = useState(false);
   const lugarInputRef = useRef(null);
+  const [marcandoTest, setMarcandoTest] = useState(false);
+
+  const handleToggleTest = async () => {
+    setMarcandoTest(true);
+    const nuevo = !sesion.es_test;
+    const res = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ es_test: nuevo }),
+    });
+    const json = await res.json();
+    if (json.ok) setSesion((prev) => ({ ...prev, es_test: nuevo }));
+    setMarcandoTest(false);
+  };
 
   const handleGuardarLugar = async () => {
     const nuevo = lugarTemp.trim();
@@ -1450,6 +1464,18 @@ export default function AdminSesionPage() {
                   <Zap size={9}/> Modo rápido
                 </span>
               )}
+              <button
+                onClick={handleToggleTest}
+                disabled={marcandoTest}
+                title={sesion.es_test ? 'Marcar como real' : 'Marcar como test'}
+                className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 ${
+                  sesion.es_test
+                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                    : 'bg-gray-100 text-gray-400 hover:bg-amber-50 hover:text-amber-600'
+                }`}>
+                {marcandoTest ? <Loader2 size={9} className="animate-spin"/> : <FlaskConical size={9}/>}
+                {sesion.es_test ? 'TEST' : 'Test'}
+              </button>
             </div>
           </div>
 

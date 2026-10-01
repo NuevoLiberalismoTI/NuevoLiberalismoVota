@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus, PlayCircle, Clock, CheckCircle,
-  BarChart2, FileEdit, Loader2, Settings, SlidersHorizontal, X,
+  BarChart2, FileEdit, Loader2, Settings, SlidersHorizontal, X, FlaskConical,
 } from 'lucide-react';
 
 const ESTADO_CFG = {
@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [sesiones, setSesiones]             = useState([]);
   const [cargando, setCargando]             = useState(true);
   const [estado, setEstado]                 = useState('todas');
+  const [vistaTest, setVistaTest]           = useState(false);
   const [tipos, setTipos]                   = useState([]);
   const [colectivos, setColectivos]         = useState([]);
   const [filtros, setFiltros]               = useState(FILTROS_VACIOS);
@@ -53,8 +54,12 @@ export default function AdminPage() {
   const limpiarFiltros = () => setFiltros(FILTROS_VACIOS);
   const filtrosActivos = Object.values(filtros).filter(Boolean).length;
 
+  const reales = useMemo(() => sesiones.filter((s) => !s.es_test), [sesiones]);
+  const tests  = useMemo(() => sesiones.filter((s) =>  s.es_test), [sesiones]);
+  const base   = vistaTest ? tests : reales;
+
   const filtradas = useMemo(() => {
-    return sesiones.filter((s) => {
+    return base.filter((s) => {
       if (estado !== 'todas' && s.estado !== estado) return false;
       if (filtros.fechaDesde && s.fecha < filtros.fechaDesde) return false;
       if (filtros.fechaHasta && s.fecha > filtros.fechaHasta) return false;
@@ -62,13 +67,13 @@ export default function AdminPage() {
       if (filtros.territorio && s.colectivos?.codigo !== filtros.territorio) return false;
       return true;
     });
-  }, [sesiones, estado, filtros]);
+  }, [base, estado, filtros]);
 
   const stats = {
-    total:      sesiones.length,
-    en_curso:   sesiones.filter((s) => s.estado === 'en_curso').length,
-    proxima:    sesiones.filter((s) => s.estado === 'proxima').length,
-    finalizada: sesiones.filter((s) => s.estado === 'finalizada').length,
+    total:      reales.length,
+    en_curso:   reales.filter((s) => s.estado === 'en_curso').length,
+    proxima:    reales.filter((s) => s.estado === 'proxima').length,
+    finalizada: reales.filter((s) => s.estado === 'finalizada').length,
   };
 
   return (
@@ -109,13 +114,40 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* Vista: Reales / Test */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => { setVistaTest(false); setEstado('todas'); }}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+            !vistaTest ? 'bg-brand text-white border-brand' : 'bg-white text-gray-500 border-gray-200 hover:border-brand'
+          }`}>
+          Asambleas reales
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${!vistaTest ? 'bg-white text-brand' : 'bg-gray-100 text-gray-500'}`}>
+            {reales.length}
+          </span>
+        </button>
+        <button
+          onClick={() => { setVistaTest(true); setEstado('todas'); }}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+            vistaTest ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-500 border-gray-200 hover:border-amber-400'
+          }`}>
+          <FlaskConical size={14}/>
+          Test
+          {tests.length > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-black ${vistaTest ? 'bg-white text-amber-600' : 'bg-amber-100 text-amber-600'}`}>
+              {tests.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Sessions header + filter toggle */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-          Sesiones
+          {vistaTest ? 'Asambleas de prueba' : 'Sesiones'}
           {!cargando && (
             <span className="ml-2 text-brand font-bold normal-case">
-              {filtradas.length} de {sesiones.length}
+              {filtradas.length} de {base.length}
             </span>
           )}
         </h2>
@@ -243,7 +275,14 @@ export default function AdminPage() {
                       <span className="text-xs font-mono text-gray-400">{s.id}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="font-bold text-gray-900 text-sm">{s.nombre}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-sm">{s.nombre}</span>
+                        {s.es_test && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                            <FlaskConical size={9}/> TEST
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex flex-wrap gap-1">

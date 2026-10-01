@@ -125,8 +125,9 @@ export async function PATCH(request, { params }) {
 
   const body = await request.json();
   const campos = {};
-  if (body.estado !== undefined) campos.estado = body.estado;
-  if (body.lugar  !== undefined) campos.lugar  = body.lugar;
+  if (body.estado   !== undefined) campos.estado   = body.estado;
+  if (body.lugar    !== undefined) campos.lugar    = body.lugar;
+  if (body.es_test  !== undefined) campos.es_test  = body.es_test;
   if (Object.keys(campos).length === 0)
     return Response.json({ ok: false, error: 'Nada que actualizar' }, { status: 400 });
 

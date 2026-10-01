@@ -50,9 +50,9 @@ export async function GET(request, { params }) {
   }
 
   const esInscrito = (inv) => {
-    // Primero intentar por cédula normalizada
-    if (inv.cedula && inscritosSet.has(normCedula(inv.cedula))) return true;
-    // Fallback: buscar la cédula del usuario con ese email y verificar si está inscrita
+    // Si tiene cédula, usar solo cédula — nunca hacer fallback a email (emails pueden ser compartidos)
+    if (inv.cedula) return inscritosSet.has(normCedula(inv.cedula));
+    // Solo si no hay cédula, buscar por email
     if (inv.email) return emailInscritoMap[inv.email.toLowerCase()] ?? false;
     return false;
   };

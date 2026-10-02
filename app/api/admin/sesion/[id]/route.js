@@ -133,14 +133,29 @@ export async function GET(request, { params }) {
           tipo:         pregData.tipo         ?? preg.tipo,
           estado:       pregData.estado       ?? preg.estado,
           tipo_mayoria: pregData.tipo_mayoria ?? preg.tipo_mayoria,
-          opciones: (preg.opciones || []).map((op) => {
-            const cand = byNombre[op.respuesta];
-            return {
-              ...op,
-              es_plancha: cand?.es_plancha ?? false,
-              miembros:   (cand?.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
-            };
-          }),
+          opciones: (() => {
+            // Mapa nombre→datos del RPC (solo los que tienen votos)
+            const rpcMap = {};
+            (preg.opciones || []).forEach((op) => { rpcMap[op.respuesta] = op; });
+            // Base: todos los candidatos registrados (incluye los de 0 votos)
+            const allCands = (pregData.candidatos || []).slice().sort((a, b) => a.orden - b.orden);
+            if (allCands.length > 0) {
+              return allCands.map((cand) => {
+                const rpcOp = rpcMap[cand.nombre] || {};
+                return {
+                  respuesta:  cand.nombre,
+                  total:      rpcOp.total ?? 0,
+                  es_plancha: cand.es_plancha ?? false,
+                  miembros:   (cand.miembros_plancha || []).sort((a, b) => a.orden - b.orden),
+                };
+              });
+            }
+            // Fallback: si no hay candidatos en la tabla (pregunta abierta/sin opciones), usar RPC tal cual
+            return (preg.opciones || []).map((op) => {
+              const cand = byNombre[op.respuesta];
+              return { ...op, es_plancha: cand?.es_plancha ?? false, miembros: (cand?.miembros_plancha || []).sort((a, b) => a.orden - b.orden) };
+            });
+          })(),
         };
       });
     })(),

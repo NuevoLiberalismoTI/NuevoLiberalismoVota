@@ -1958,8 +1958,8 @@ export default function AdminSesionPage() {
               const ganador    = preg.ganador;
               const esCerrada  = preg.estado === 'cerrada';
               const maxVotos   = preg.opciones?.length
-                ? Math.max(...preg.opciones.map((o) => Number(o.total)))
-                : 0;
+                ? Math.max(...preg.opciones.map((o) => Number(o.total)), 1)
+                : 1;
 
               const pctParticipacion = baseUmbral > 0 ? Math.min(100, Math.round((total / baseUmbral) * 100)) : 0;
               const pctUmbral        = baseUmbral > 0 ? Math.min(100, Math.round((umbral / baseUmbral) * 100)) : 50;

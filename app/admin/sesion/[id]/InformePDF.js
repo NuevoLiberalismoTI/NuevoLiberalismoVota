@@ -206,7 +206,7 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
 
           {resultados.map((preg, idx) => {
             const total   = (preg.opciones || []).reduce((acc, o) => acc + Number(o.total), 0);
-            const maxVotos = Math.max(...(preg.opciones || []).map((o) => Number(o.total)), 1);
+            const maxVotos = Math.max(...(preg.opciones || []).map((o) => Number(o.total)), 1); // mín 1 para evitar div/0
             const esAbsoluta = preg.tipo_mayoria === 'absoluta';
             const baseAcred  = esAbsoluta
               ? (stats?.invitados ?? stats?.acreditados_voto ?? 0)
@@ -230,11 +230,11 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
                 </Text>
                 <View style={s.divLine} />
 
-                {total === 0 ? (
-                  <Text style={{ fontSize: 8.5, color: GRAY }}>Sin votos registrados</Text>
+                {(preg.opciones || []).length === 0 ? (
+                  <Text style={{ fontSize: 8.5, color: GRAY }}>Sin opciones registradas</Text>
                 ) : (
                   (preg.opciones || []).map((op, oi) => {
-                    const votes    = Number(op.total);
+                    const votes    = Number(op.total || 0);
                     const pct      = total > 0 ? Math.round((votes / total) * 100) : 0;
                     const barWidth = `${Math.round((votes / maxVotos) * 100)}%`;
                     const barColor = op.respuesta === 'SI' ? GREEN

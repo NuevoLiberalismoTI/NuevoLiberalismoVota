@@ -23,27 +23,43 @@ const TWILIO_KEY    = Deno.env.get('TWILIO_API_KEY') ?? '';
 const TWILIO_AUTH   = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
 // @ts-ignore
 const TWILIO_FROM   = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
+// ContentSid de la plantilla de autenticación (categoría AUTHENTICATION) aprobada por Meta
+// @ts-ignore
+const SID_CODIGO    = (Deno.env.get('TWILIO_CONTENT_SID_CODIGO') ?? '').trim().replace(/^["']|["']$/g, '');
 
-async function enviarWhatsApp(telefono: string, codigo: string, tipo: 'creacion' | 'cambio_password'): Promise<void> {
-  if (!TWILIO_SID || !TWILIO_AUTH) return;
+// Meta no permite mensajes libres fuera de la ventana de 24 h: el código solo se puede
+// enviar con una plantilla de autenticación aprobada, cuya única variable es el código.
+async function enviarWhatsApp(telefono: string, codigo: string): Promise<void> {
+  if (!TWILIO_SID || !TWILIO_AUTH || !SID_CODIGO) {
+    console.warn('[WhatsApp] Código no enviado: faltan secrets de Twilio o TWILIO_CONTENT_SID_CODIGO');
+    return;
+  }
   const numero = telefono.startsWith('+') ? telefono : `+57${telefono}`;
-  const cuerpo = tipo === 'creacion'
-    ? `🔐 *Nuevo Liberalismo*\nTu código de verificación es:\n\n*${codigo}*\n\nVálido por 15 minutos. Si no solicitaste crear una cuenta, ignora este mensaje.`
-    : `🔑 *Nuevo Liberalismo*\nCódigo para recuperar tu contraseña:\n\n*${codigo}*\n\nVálido por 15 minutos. Si no solicitaste este cambio, ignora este mensaje.`;
 
   const authUser = TWILIO_KEY || TWILIO_SID;
-  const body = new URLSearchParams({ From: TWILIO_FROM, To: `whatsapp:${numero}`, Body: cuerpo });
-  await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
-    {
-      method:  'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${authUser}:${TWILIO_AUTH}`)}`,
-        'Content-Type':  'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    }
-  ).catch(() => { /* silencioso — el correo ya fue enviado */ });
+  const body = new URLSearchParams({
+    From:             TWILIO_FROM,
+    To:               `whatsapp:${numero}`,
+    ContentSid:       SID_CODIGO,
+    ContentVariables: JSON.stringify({ '1': codigo }),
+  });
+  try {
+    const res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+      {
+        method:  'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(`${authUser}:${TWILIO_AUTH}`)}`,
+          'Content-Type':  'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      }
+    );
+    if (!res.ok) console.error(`[WhatsApp] Twilio error ${res.status}:`, await res.text(), '| From:', TWILIO_FROM, '| ContentSid:', SID_CODIGO);
+  } catch (err) {
+    // El correo ya fue enviado; el fallo de WhatsApp no bloquea el flujo
+    console.error('[WhatsApp] Excepción al llamar Twilio:', err);
+  }
 }
 
 function htmlCorreo(codigo: string, tipo: 'creacion' | 'cambio_password'): string {
@@ -193,7 +209,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (invData?.telefono) {
-      await enviarWhatsApp(invData.telefono, codigo, tipo);
+      await enviarWhatsApp(invData.telefono, codigo);
     }
 
     return Response.json({ ok: true, email }, { headers: CORS });

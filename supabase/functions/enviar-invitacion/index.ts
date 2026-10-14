@@ -17,40 +17,49 @@ const TWILIO_AUTH  = Deno.env.get('TWILIO_AUTH_TOKEN') ?? '';
 // @ts-ignore
 const TWILIO_FROM  = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+14155238886';
 
-// ContentSid plantilla sin tutorial (usuario ya creado)
+// ContentSid plantilla sin tutorial (respaldo mientras no esté aprobada la de tutorial)
 const SID_INVITACION          = 'HX0aa70c50e4134b94f3f05389af656a0f';
-// ContentSid plantilla con tutorial (usuario aún sin crear) — reemplaza con el SID aprobado
+// ContentSid plantilla con link del video tutorial — se envía a todos los invitados
 // @ts-ignore
-const SID_INVITACION_TUTORIAL = Deno.env.get('TWILIO_CONTENT_SID_INVITACION_TUTORIAL') ?? SID_INVITACION;
+const SID_TUTORIAL_RAW        = (Deno.env.get('TWILIO_CONTENT_SID_INVITACION_TUTORIAL') ?? '').trim().replace(/^["']|["']$/g, '');
+const SID_INVITACION_TUTORIAL = /^HX[0-9a-f]{32}$/i.test(SID_TUTORIAL_RAW) ? SID_TUTORIAL_RAW : '';
+if (SID_TUTORIAL_RAW && !SID_INVITACION_TUTORIAL) {
+  console.error(`[WhatsApp] TWILIO_CONTENT_SID_INVITACION_TUTORIAL inválido ("${SID_TUTORIAL_RAW}"): debe ser HX + 32 caracteres`);
+}
 
-const TUTORIAL_URL = 'https://drive.google.com/file/d/1MRVTrz8E2AK2SyWBZVTEAnIzl_fI_kQc/view?usp=sharing';
+// WhatsApp rechaza variables vacías o con saltos de línea / tabulaciones
+const limpiarVar = (v: unknown) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim() || '-';
+
+// Link del video tutorial (WhatsApp y correo). Se cambia con el secret TUTORIAL_URL sin tocar código.
+// @ts-ignore
+const TUTORIAL_URL = Deno.env.get('TUTORIAL_URL') || 'https://drive.google.com/file/d/1MRVTrz8E2AK2SyWBZVTEAnIzl_fI_kQc/view?usp=sharing';
 
 async function enviarWhatsApp(
   telefono: string,
   nombre: string,
   sesion: { nombre: string; fecha: string; hora: string; lugar: string },
   plataformaUrl: string,
-  tieneUsuario: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!TWILIO_SID || !TWILIO_AUTH) {
     console.error('[WhatsApp] Secrets de Twilio no configurados');
     return { ok: false, error: 'secrets_no_configurados' };
   }
   const to = `whatsapp:${telefono.startsWith('+') ? telefono : `+57${telefono}`}`;
-  const contentSid = tieneUsuario ? SID_INVITACION : SID_INVITACION_TUTORIAL;
+  const conTutorial = Boolean(SID_INVITACION_TUTORIAL);
+  const contentSid  = conTutorial ? SID_INVITACION_TUTORIAL : SID_INVITACION;
 
-  console.log(`[WhatsApp] Enviando a ${to} (plantilla: ${tieneUsuario ? 'sin tutorial' : 'con tutorial'})`);
+  console.log(`[WhatsApp] Enviando a ${to} (plantilla: ${conTutorial ? 'con tutorial' : 'sin tutorial'})`);
   try {
     const authUser = TWILIO_KEY || TWILIO_SID;
     const variables: Record<string, string> = {
-      '1': nombre,
-      '2': sesion.nombre,
-      '3': sesion.fecha,
-      '4': sesion.hora,
-      '5': sesion.lugar,
-      '6': plataformaUrl,
+      '1': limpiarVar(nombre),
+      '2': limpiarVar(sesion.nombre),
+      '3': limpiarVar(sesion.fecha),
+      '4': limpiarVar(sesion.hora),
+      '5': limpiarVar(sesion.lugar),
+      '6': limpiarVar(plataformaUrl),
     };
-    if (!tieneUsuario) variables['7'] = TUTORIAL_URL;
+    if (conTutorial) variables['7'] = limpiarVar(TUTORIAL_URL);
 
     const body = new URLSearchParams({
       From:             TWILIO_FROM,
@@ -71,7 +80,7 @@ async function enviarWhatsApp(
     );
     const resBody = await res.text();
     if (!res.ok) {
-      console.error(`[WhatsApp] Twilio error ${res.status}:`, resBody);
+      console.error(`[WhatsApp] Twilio error ${res.status}:`, resBody, '| From:', TWILIO_FROM, '| ContentSid:', contentSid, '| Variables:', JSON.stringify(variables));
       return { ok: false, error: `twilio_${res.status}: ${resBody}` };
     }
     console.log(`[WhatsApp] Enviado OK a ${to}:`, resBody.slice(0, 120));
@@ -143,7 +152,7 @@ function htmlInvitacion(nombre: string, sesion: {
               </p>
               <table cellpadding="0" cellspacing="0">
                 <tr><td align="center">
-                  <a href="https://drive.google.com/file/d/1MRVTrz8E2AK2SyWBZVTEAnIzl_fI_kQc/view?usp=sharing" target="_blank"
+                  <a href="${TUTORIAL_URL}" target="_blank"
                     style="display:inline-block;background:#16a34a;color:#fff;font-size:13px;font-weight:800;padding:10px 24px;border-radius:8px;text-decoration:none;">
                     Ver tutorial de registro →
                   </a>
@@ -188,7 +197,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const resultados = await Promise.allSettled(
-      militantes.map(async ({ email, nombre, telefono, tieneUsuario }) => {
+      militantes.map(async ({ email, nombre, telefono }) => {
         // Correo
         const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
           method: 'POST',
@@ -220,7 +229,7 @@ Deno.serve(async (req: Request) => {
         // WhatsApp (si hay teléfono)
         let whatsapp: { ok: boolean; error?: string } | null = null;
         if (telefono) {
-          whatsapp = await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl, tieneUsuario ?? true);
+          whatsapp = await enviarWhatsApp(telefono, nombre, sesion, plataformaUrl);
         }
 
         return { email, ok: true, whatsapp };

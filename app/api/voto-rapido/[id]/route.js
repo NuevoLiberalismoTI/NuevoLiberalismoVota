@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '../../../lib/supabase-server';
 import { cookies } from 'next/headers';
+import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '../../../lib/cookie-sesion';
 
 const normCedula = (c) => {
   if (!c) return null;
@@ -139,17 +140,11 @@ export async function POST(request, { params }) {
 
   // Establecer sesión (misma estructura que login normal)
   const cookieStore = await cookies();
-  cookieStore.set('session', JSON.stringify({
+  cookieStore.set(SESSION_COOKIE, JSON.stringify({
     cedula:  usuario.cedula,
     rol:     usuario.rol || 'votante',
     nombre:  usuario.nombre,
-  }), {
-    httpOnly: true,
-    secure:   process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path:     '/',
-    maxAge:   60 * 60 * 24,
-  });
+  }), SESSION_COOKIE_OPTIONS);
 
   return Response.json({
     ok: true,

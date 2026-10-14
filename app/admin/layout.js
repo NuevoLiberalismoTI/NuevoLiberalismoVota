@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { LayoutDashboard, Plus, ShieldCheck, LogOut, ChevronRight, SlidersHorizontal, Users, Shield, Megaphone } from 'lucide-react';
+import { getUsuario, cerrarSesion } from '../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -53,12 +54,11 @@ export default function AdminLayout({ children }) {
   const [cargandoAuth, setCargandoAuth] = useState(true);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (!stored) {
+    const u = getUsuario();
+    if (!u) {
       router.replace('/');
       return;
     }
-    const u = JSON.parse(stored);
     if (u.rol !== 'admin' && u.rol !== 'coordinador') {
       router.replace('/');
       return;
@@ -75,8 +75,8 @@ export default function AdminLayout({ children }) {
     }
   }, [usuario, pathname, router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('usuario');
+  const handleLogout = async () => {
+    await cerrarSesion();
     router.push('/');
   };
 

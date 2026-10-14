@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, LogIn, ShieldCheck, AlertTriangle, Calendar, MapPin } from 'lucide-react';
+import { setUsuario } from '../../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -42,7 +43,7 @@ export default function VotoRapidoPage() {
       });
       const json = await res.json();
       if (!json.ok) { setError(json.error || 'No tienes acceso a esta sesión'); return; }
-      sessionStorage.setItem('usuario', JSON.stringify(json.usuario));
+      setUsuario(json.usuario);
       router.push(`/sesion/${encodeURIComponent(sesionId)}`);
     } catch {
       setError('Error al conectar. Intenta de nuevo.');

@@ -6,6 +6,7 @@ import {
   UserPlus, Eye, EyeOff, Loader2, Trash2, ShieldCheck, Shield,
   AlertCircle, CheckCircle, ChevronDown, ChevronUp, Lock, Unlock,
 } from 'lucide-react';
+import { getUsuario } from '../../lib/usuario';
 
 const ESTADO_BADGE = {
   en_curso:   { label: 'En curso',   cls: 'bg-green-100 text-green-700' },
@@ -58,8 +59,8 @@ export default function AdminUsuariosPage() {
   };
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (stored) setUsuario(JSON.parse(stored));
+    const stored = getUsuario();
+    if (stored) setUsuario(stored);
     cargar();
   }, []);
 

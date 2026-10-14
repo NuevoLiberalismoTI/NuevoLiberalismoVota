@@ -6,6 +6,7 @@ import {
   Plus, PlayCircle, Clock, CheckCircle,
   BarChart2, FileEdit, Loader2, Settings, SlidersHorizontal, X, FlaskConical,
 } from 'lucide-react';
+import { getUsuario } from '../lib/usuario';
 
 const ESTADO_CFG = {
   en_curso:   { label: 'En curso',   bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500',  Icon: PlayCircle  },
@@ -38,8 +39,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (stored) setUsuario(JSON.parse(stored));
+    const stored = getUsuario();
+    if (stored) setUsuario(stored);
     cargar();
 
     fetch('/api/admin/parametricas').then((r) => r.json()).then((json) => {

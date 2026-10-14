@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '../../../lib/supabase-server';
 import { randomUUID } from 'crypto';
+import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '../../../lib/cookie-sesion';
 
 export async function POST(request) {
   try {
@@ -59,13 +60,7 @@ export async function POST(request) {
 
     const response = NextResponse.json({ ok: true, user, tokenDispositivo });
 
-    response.cookies.set('session', JSON.stringify({ cedula: user.cedula, rol: user.rol, nombre: user.nombre }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/',
-      maxAge: 60 * 60 * 24,
-    });
+    response.cookies.set(SESSION_COOKIE, JSON.stringify({ cedula: user.cedula, rol: user.rol, nombre: user.nombre }), SESSION_COOKIE_OPTIONS);
 
     return response;
   } catch (err) {

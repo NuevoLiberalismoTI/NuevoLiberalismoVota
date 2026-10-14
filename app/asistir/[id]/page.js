@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { getUsuario } from '../../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -32,13 +33,12 @@ function AsistirContent() {
       return;
     }
 
-    const usuarioStr = sessionStorage.getItem('usuario');
-    if (!usuarioStr) {
+    const usuario = getUsuario();
+    if (!usuario) {
       router.replace(`/?retorno=${encodeURIComponent(`/asistir/${sesionId}?c=${codigo}&ts=${ts}`)}`);
       return;
     }
 
-    const usuario = JSON.parse(usuarioStr);
     registrar(usuario.cedula);
   }, [sesionId, codigo]);
 

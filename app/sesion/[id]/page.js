@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, ShieldCheck, ThumbsUp, ThumbsDown, User, Users, CheckCircle, Clock, UserX, Loader2, Zap, Camera, X, AlertTriangle, Timer, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getUsuario, clearUsuario } from '../../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -56,8 +57,7 @@ export default function SesionPage() {
   const verificarCodigoRef = useRef(null);
 
   const cargarEstado = useCallback(async (cedula) => {
-    const stored = sessionStorage.getItem('usuario');
-    const token  = stored ? (JSON.parse(stored).tokenDispositivo ?? '') : '';
+    const token  = getUsuario()?.tokenDispositivo ?? '';
     const res = await fetch(
       `/api/sesion/${encodeURIComponent(sesionId)}/estado?cedula=${encodeURIComponent(cedula)}`,
       { headers: { 'x-device-token': token } },
@@ -65,7 +65,7 @@ export default function SesionPage() {
     if (res.status === 401) {
       const err = await res.json();
       if (err.error === 'dispositivo_invalido') {
-        sessionStorage.removeItem('usuario');
+        clearUsuario();
         router.replace('/?kicked=1');
         return;
       }
@@ -84,9 +84,8 @@ export default function SesionPage() {
   }, [sesionId, router]);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (!stored) { router.replace('/'); return; }
-    const u = JSON.parse(stored);
+    const u = getUsuario();
+    if (!u) { router.replace(`/?retorno=${encodeURIComponent(`/sesion/${sesionId}`)}`); return; }
     setUsuario(u);
     cargarEstado(u.cedula);
 

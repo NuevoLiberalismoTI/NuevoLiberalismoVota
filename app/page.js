@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LogIn, UserPlus, Loader2, AlertTriangle } from 'lucide-react';
+import { getUsuario, setUsuario, clearUsuario } from './lib/usuario';
+
+// Destino tras iniciar sesión: el enlace de retorno (QR, link) o el panel según el rol
+function destino(user, retorno) {
+  const esAdmin = user.rol === 'admin' || user.rol === 'coordinador';
+  if (retorno && retorno.startsWith('/') && !retorno.startsWith('//') && !esAdmin) return retorno;
+  return esAdmin ? '/admin' : '/dashboard';
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -16,8 +25,20 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('kicked') === '1') {
       setKickedMsg('Tu sesión fue iniciada en otro dispositivo. Inicia sesión nuevamente.');
+      return;
     }
-  }, []);
+    // Si ya hay sesión iniciada en este navegador, no pedir login otra vez.
+    // Se confirma con el servidor que la cookie siga vigente; si no, se limpia y se muestra el login.
+    const user = getUsuario();
+    if (!user) return;
+    fetch('/api/auth/sesion')
+      .then((r) => r.json())
+      .then((s) => {
+        if (s.ok && String(s.cedula) === String(user.cedula)) router.replace(destino(user, params.get('retorno')));
+        else clearUsuario();
+      })
+      .catch(() => {});
+  }, [router]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -52,15 +73,9 @@ export default function HomePage() {
         return;
       }
       const user = { ...json.user, tokenDispositivo: json.tokenDispositivo ?? null };
-      sessionStorage.setItem('usuario', JSON.stringify(user));
+      setUsuario(user);
       const params = new URLSearchParams(window.location.search);
-      const retorno = params.get('retorno');
-      const esAdmin = user.rol === 'admin' || user.rol === 'coordinador';
-      if (retorno && !esAdmin) {
-        router.push(retorno);
-      } else {
-        router.push(esAdmin ? '/admin' : '/dashboard');
-      }
+      router.push(destino(user, params.get('retorno')));
     } catch {
       setError('Error al conectar. Intenta de nuevo.');
     } finally {

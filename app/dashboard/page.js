@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar, Radio, Shield, ShieldCheck, ShieldX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getUsuario, cerrarSesion } from '../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -57,9 +58,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('usuario');
-    if (!stored) { router.replace('/'); return; }
-    const u = JSON.parse(stored);
+    const u = getUsuario();
+    if (!u) { router.replace('/'); return; }
     setUsuario(u);
     cargar(u.cedula, u.email);
 
@@ -96,7 +96,7 @@ export default function DashboardPage() {
       <header className="w-full bg-brand shadow-md sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <Image src={LOGO} alt="Nuevo Liberalismo" width={140} height={46} className="object-contain" priority />
-          <button onClick={() => { sessionStorage.removeItem('usuario'); router.push('/'); }}
+          <button onClick={async () => { await cerrarSesion(); router.push('/'); }}
             className="flex items-center gap-1.5 text-white text-xs font-semibold hover:text-brand-200 transition-colors">
             <LogOut size={16} /> Salir
           </button>

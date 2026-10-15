@@ -5,8 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, ArrowLeft, ShieldCheck, CheckCircle, UserX, Loader2, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { setUsuario } from '../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
+
+// Ofrece guardar usuario y contraseña en el gestor del navegador (Chrome, Edge, Android).
+// Safari/Firefox no soportan esta API; ahí el formulario con autocomplete permite que el navegador lo ofrezca.
+async function guardarCredencialesEnNavegador(id, password, nombre) {
+  try {
+    if (typeof window === 'undefined' || !('PasswordCredential' in window) || !navigator.credentials?.store) return;
+    const cred = new window.PasswordCredential({ id, password, name: nombre || id });
+    await navigator.credentials.store(cred);
+  } catch { /* el usuario rechazó o el navegador no lo permite */ }
+}
 
 function enmascararEmail(email) {
   if (!email) return '***@***.com';
@@ -47,6 +58,7 @@ function CrearUsuarioContent() {
   const [codigoIngresado, setCodigoIngresado] = useState('');
   const [errCodigo, setErrCodigo]             = useState('');
   const [reenviando, setReenviando]           = useState(false);
+  const [iniciandoSesion, setIniciandoSesion] = useState(false);
 
   // ── PASO 1: Validar cédula contra Supabase ───────────────────────────────
   const handleValidarCedula = async () => {
@@ -140,10 +152,34 @@ function CrearUsuarioContent() {
       }
 
       setStep(4);
+      await iniciarSesionAutomatica();
     } catch {
       setErrCodigo('Error al verificar. Intenta de nuevo.');
     } finally {
       setCargando(false);
+    }
+  };
+
+  // Tras crear la cuenta, iniciar sesión con la cédula y la contraseña recién creadas.
+  // Si falla, se queda en la pantalla de éxito con el botón para ir al login.
+  const iniciarSesionAutomatica = async () => {
+    setIniciandoSesion(true);
+    try {
+      const res  = await fetch('/api/auth/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ cedula: cedula.trim(), contrasena: password }),
+      });
+      const json = await res.json();
+      if (!json.ok) return;
+
+      setUsuario({ ...json.user, tokenDispositivo: json.tokenDispositivo ?? null });
+      await guardarCredencialesEnNavegador(cedula.trim(), password, json.user?.nombre);
+      router.replace('/dashboard');
+    } catch {
+      /* se muestra la pantalla de éxito con el botón de login */
+    } finally {
+      setIniciandoSesion(false);
     }
   };
 
@@ -268,11 +304,15 @@ function CrearUsuarioContent() {
             Tu usuario será tu número de identificación: <span className="font-bold text-gray-800">{cedula}</span>
           </p>
 
-          <div className="flex flex-col gap-4">
+          <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleAsignarPassword(); }}>
+            {/* Usuario oculto: permite que el gestor de contraseñas asocie la contraseña a la cédula */}
+            <input type="text" name="username" autoComplete="username" value={cedula} readOnly
+              className="sr-only" tabIndex={-1} aria-hidden="true"/>
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Contraseña</label>
+              <label htmlFor="new-password" className="text-sm font-semibold text-gray-700">Contraseña</label>
               <div className="relative">
-                <input type={showPass ? 'text' : 'password'} value={password}
+                <input id="new-password" name="new-password" autoComplete="new-password"
+                  type={showPass ? 'text' : 'password'} value={password}
                   onChange={(e) => { setPassword(e.target.value); setErrPass({...errPass, password:''}); }}
                   placeholder="Mínimo 8 caracteres"
                   className={`w-full border ${errPass.password ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`}
@@ -285,9 +325,10 @@ function CrearUsuarioContent() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-sm font-semibold text-gray-700">Confirmar contraseña</label>
+              <label htmlFor="confirm-password" className="text-sm font-semibold text-gray-700">Confirmar contraseña</label>
               <div className="relative">
-                <input type={showConf ? 'text' : 'password'} value={confirmar}
+                <input id="confirm-password" name="confirm-password" autoComplete="new-password"
+                  type={showConf ? 'text' : 'password'} value={confirmar}
                   onChange={(e) => { setConfirmar(e.target.value); setErrPass({...errPass, confirmar:''}); }}
                   placeholder="Repite la contraseña"
                   className={`w-full border ${errPass.confirmar ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`}
@@ -299,11 +340,12 @@ function CrearUsuarioContent() {
               {errPass.confirmar && <span className="text-xs text-red-500">{errPass.confirmar}</span>}
             </div>
 
-            <button onClick={handleAsignarPassword}
-              className="w-full bg-brand hover:bg-brand-hover text-white font-bold py-3 rounded-xl transition-colors mt-1">
-              Continuar
+            <button type="submit" disabled={cargando}
+              className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors mt-1">
+              {cargando && <Loader2 size={17} className="animate-spin"/>}
+              {cargando ? 'Enviando código...' : 'Continuar'}
             </button>
-          </div>
+          </form>
         </div>
       </div>
       <Footer/>
@@ -356,6 +398,20 @@ function CrearUsuarioContent() {
   );
 
   // ══ PASO 4: Éxito ════════════════════════════════════════════════════════
+  if (iniciandoSesion) return (
+    <main className="min-h-screen bg-gray-50 flex flex-col">
+      <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">
+        <Image src={LOGO} alt="Nuevo Liberalismo" width={160} height={54} className="object-contain" priority/>
+      </header>
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-10 text-center gap-3">
+        <CheckCircle size={56} className="text-brand"/>
+        <h2 className="text-2xl font-bold text-gray-900">¡Usuario creado!</h2>
+        <p className="text-sm text-gray-500 flex items-center gap-2"><Loader2 size={16} className="animate-spin"/> Iniciando tu sesión...</p>
+      </div>
+      <Footer/>
+    </main>
+  );
+
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
       <header className="w-full bg-brand py-5 px-4 flex flex-col items-center shadow-md">

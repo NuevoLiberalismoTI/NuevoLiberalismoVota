@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Loader2, Zap } from 'lucide-react';
 import { DEPARTAMENTOS_CON_CODIGO, generarConsecutivo } from '../../lib/data';
+import SelectorHora from '../../components/SelectorHora';
 
 const INIT  = { tipo: '', colectivo: '', departamento: '', zona: '', fecha: '', hora: '', lugar: '', modo_rapido: false };
 
@@ -205,7 +206,7 @@ export default function NuevaSesionPage() {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-sm font-semibold text-gray-700">Hora</label>
-            <input type="time" name="hora" value={form.hora} onChange={handleChange} onBlur={handleChange} className={inp(errores.hora)} />
+            <SelectorHora name="hora" value={form.hora} onChange={handleChange} error={errores.hora} />
             {errores.hora && <span className="text-xs text-red-500">{errores.hora}</span>}
           </div>
         </div>

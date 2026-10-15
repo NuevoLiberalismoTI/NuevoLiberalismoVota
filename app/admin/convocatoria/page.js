@@ -7,6 +7,7 @@ import {
   MessageSquare, ArrowLeft, ArrowRight, RefreshCw, Download,
   History, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import SelectorHora from '../../components/SelectorHora';
 
 const PASOS = ['Datos de la convocatoria', 'Cargar contactos', 'Revisar y enviar'];
 
@@ -239,7 +240,7 @@ ${vars.v7 || '[LINK FORMULARIO]'}
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-gray-600">Hora de la asamblea <span className="text-red-500">*</span></label>
-                <input type="time" name="horaAsamblea" value={form.horaAsamblea} onChange={handleChange} className={inp(errores.horaAsamblea)} />
+                <SelectorHora name="horaAsamblea" value={form.horaAsamblea} onChange={handleChange} error={errores.horaAsamblea} />
                 {errores.horaAsamblea && <span className="text-xs text-red-500">{errores.horaAsamblea}</span>}
               </div>
             </div>
@@ -261,7 +262,7 @@ ${vars.v7 || '[LINK FORMULARIO]'}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-gray-600">Hora inicio</label>
-                  <input type="time" name="inicioPostHora" value={form.inicioPostHora} onChange={handleChange} className={inp(false)} />
+                  <SelectorHora name="inicioPostHora" value={form.inicioPostHora} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -272,7 +273,7 @@ ${vars.v7 || '[LINK FORMULARIO]'}
                 </div>
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-gray-600">Hora cierre</label>
-                  <input type="time" name="cierrePostHora" value={form.cierrePostHora} onChange={handleChange} className={inp(false)} />
+                  <SelectorHora name="cierrePostHora" value={form.cierrePostHora} onChange={handleChange} />
                 </div>
               </div>
             </div>

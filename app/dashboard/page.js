@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { LogOut, Clock, CheckCircle, PlayCircle, UserPlus, UserMinus, Loader2, MapPin, Calendar, Radio, Shield, ShieldCheck, ShieldX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getUsuario, cerrarSesion } from '../lib/usuario';
+import ModalModalidad from '../components/ModalModalidad';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -22,6 +23,7 @@ export default function DashboardPage() {
   const [cargando, setCargando]     = useState(true);
   const [accionId, setAccionId]     = useState(null);
   const [tab, setTab]               = useState('activas');
+  const [modalKey, setModalKey]     = useState(0);
 
   const cargar = async (cedula, email) => {
     const params = new URLSearchParams({ cedula });
@@ -77,6 +79,7 @@ export default function DashboardPage() {
     });
     const data = await res.json();
     if (!data.ok) alert(data.error || 'Error al inscribirse');
+    else setModalKey((k) => k + 1); // vuelve a consultar: pedir modalidad de la nueva inscripción
     await cargar(usuario.cedula, usuario.email);
     setAccionId(null);
   };
@@ -93,6 +96,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col">
+      <ModalModalidad key={modalKey} />
       <header className="w-full bg-brand shadow-md sticky top-0 z-10">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <Image src={LOGO} alt="Nuevo Liberalismo" width={140} height={46} className="object-contain" priority />

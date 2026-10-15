@@ -6,6 +6,8 @@ import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check, FlaskConical } from 'lucide-react';
 
+const MODALIDAD_LABEL = { presencial: 'Presencial', virtual: 'Virtual' };
+
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   acreditado_voto:    { label: 'Ingreso + Voto', color: 'bg-green-100 text-green-700 border-green-200'   },
@@ -1321,10 +1323,11 @@ export default function AdminSesionPage() {
       'Cédula':               p.cedula,
       'Email':                p.email ?? '',
       'Estado':               ESTADO_LABEL[p.estado_acreditacion] ?? p.estado_acreditacion,
+      'Modalidad':            MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder',
       'Fecha inscripción':    p.created_at ? new Date(p.created_at).toLocaleString('es-CO') : '',
     }));
     const ws = utils.json_to_sheet(filas);
-    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 22 }];
+    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 14 }, { wch: 22 }];
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Inscritos');
     writeFile(wb, `inscritos-${sesion.id}.xlsx`);
@@ -1746,6 +1749,16 @@ export default function AdminSesionPage() {
               ))}
             </div>
 
+            {/* Modalidad de asistencia */}
+            {preinscritos.length > 0 && (
+              <div className="flex items-center gap-4 flex-wrap text-xs font-semibold bg-white border border-gray-100 rounded-xl px-4 py-2.5">
+                <span className="text-gray-500">Modalidad:</span>
+                <span className="text-purple-700">Presencial {preinscritos.filter((p) => p.modalidad === 'presencial').length}</span>
+                <span className="text-cyan-700">Virtual {preinscritos.filter((p) => p.modalidad === 'virtual').length}</span>
+                <span className="text-gray-400">Sin responder {preinscritos.filter((p) => !p.modalidad).length}</span>
+              </div>
+            )}
+
             {/* Acciones bulk */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-500 font-semibold">
@@ -1829,6 +1842,12 @@ export default function AdminSesionPage() {
                         <p className="text-sm font-semibold text-gray-900 truncate">{nombreStr}</p>
                         <p className="text-xs text-gray-400 font-mono">{p.cedula}</p>
                       </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${
+                        p.modalidad === 'presencial' ? 'bg-purple-50 text-purple-700 border-purple-200'
+                        : p.modalidad === 'virtual' ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                        : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                        {MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder'}
+                      </span>
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${aCredCfg.color}`}>
                         {aCredCfg.label}
                       </span>

@@ -39,7 +39,8 @@ export async function GET(request, { params }) {
 
   const { data: inscAll } = await supabase
     .from('inscripciones')
-    .select('usuario_cedula, estado_acreditacion, fecha_inscripcion')
+    // select('*') para no fallar si la columna modalidad_asistencia aún no existe
+    .select('*')
     .eq('asamblea_id', sesionId)
     .order('fecha_inscripcion', { ascending: true });
 
@@ -48,6 +49,7 @@ export async function GET(request, { params }) {
       cedula:              i.usuario_cedula != null ? String(i.usuario_cedula) : null,
       estado_acreditacion: i.estado_acreditacion || 'preinscrito',
       created_at:          i.fecha_inscripcion || null,
+      modalidad:           i.modalidad_asistencia || null,
     }))
     .filter((i) => i.cedula);
 
@@ -78,6 +80,7 @@ export async function GET(request, { params }) {
       email:               nombresMap[i.cedula]?.email  || null,
       estado_acreditacion: i.estado_acreditacion,
       created_at:          i.created_at,
+      modalidad:           i.modalidad,
       ha_asistido:         asistio_en !== null,
       asistio_en,
     };

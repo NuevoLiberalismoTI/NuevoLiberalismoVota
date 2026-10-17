@@ -88,6 +88,15 @@ export default function NuevaSesionPage() {
     return Object.keys(e).length === 0;
   };
 
+  // Asamblea de un colectivo (Mujeres, Jóvenes…) sin departamento → "Asamblea Nacional de <colectivo>".
+  // Este nombre es el que se usa en el título y en las invitaciones (correo y WhatsApp).
+  const sinDepartamento = form.tipo === 'NACIONAL' || !form.departamento || form.departamento === 'N/A';
+  const esColectivo     = !!form.colectivo && form.colectivo.toUpperCase() !== 'GENERAL';
+  const nombreAsamblea  = (esColectivo && sinDepartamento
+    ? `Asamblea Nacional de ${form.colectivo}`
+    : `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento === 'N/A' ? '' : form.departamento} ${form.zona}`
+  ).replace(/\s{2,}/g, ' ').trim().toUpperCase();
+
   const handleCrear = async () => {
     if (!validar()) return;
     setGuardando(true); setErrServidor('');
@@ -100,7 +109,7 @@ export default function NuevaSesionPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         base_id:          consecutivoBase,
-        nombre:           `Asamblea ${form.tipo} ${form.colectivo} ${form.departamento === 'N/A' ? '' : form.departamento} ${form.zona}`.replace(/\s{2,}/g, ' ').trim().toUpperCase(),
+        nombre:           nombreAsamblea,
         tipo_asamblea_id: tipoObj?.id,
         colectivo_id:     colectivoObj?.id,
         departamento:     (form.tipo === 'NACIONAL' || form.departamento === 'N/A') ? null : form.departamento,
@@ -146,6 +155,8 @@ export default function NuevaSesionPage() {
             ) : (
               <p className="text-xl font-extrabold text-brand tracking-widest font-mono">{consecutivo}</p>
             )}
+            <p className="text-xs text-brand font-semibold uppercase tracking-wide mt-3">Nombre de la asamblea</p>
+            <p className="text-sm font-bold text-gray-900">{nombreAsamblea}</p>
           </div>
         </div>
       )}

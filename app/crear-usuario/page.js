@@ -54,6 +54,7 @@ function CrearUsuarioContent() {
   const [password, setPassword]     = useState('');
   const [confirmar, setConfirmar]   = useState('');
   const [errPass, setErrPass]       = useState({});
+  const [emailManual, setEmailManual] = useState('');
 
   const [codigoIngresado, setCodigoIngresado] = useState('');
   const [errCodigo, setErrCodigo]             = useState('');
@@ -90,6 +91,12 @@ function CrearUsuarioContent() {
     if (!password) e.password = 'Campo requerido';
     else if (password.length < 8) e.password = 'Mínimo 8 caracteres';
     if (password !== confirmar) e.confirmar = 'Las contraseñas no coinciden';
+    // Militantes sin correo en la base del partido: deben escribir uno para recibir el código
+    const email = (militante.email || emailManual).trim();
+    if (!militante.email) {
+      if (!email) e.email = 'Ingresa tu correo para recibir el código';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Correo no válido';
+    }
     setErrPass(e);
     if (Object.keys(e).length > 0) return;
 
@@ -97,14 +104,16 @@ function CrearUsuarioContent() {
     try {
       const nombreCompleto = [militante.nombres, militante.apellidos].filter(Boolean).join(' ');
       const { data, error } = await supabase.functions.invoke('enviar-codigo', {
-        body: { cedula: cedula.trim(), tipo: 'creacion', email: militante.email, nombre: nombreCompleto },
+        body: { cedula: cedula.trim(), tipo: 'creacion', email, nombre: nombreCompleto },
       });
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || 'Error al enviar código');
+      // El correo escrito queda como correo de la cuenta (se usa al crear el usuario y al reenviar)
+      if (!militante.email) setMilitante({ ...militante, email });
       setCodigoIngresado('');
       setStep(3);
     } catch (err) {
-      setErrPass({ ...errPass, password: err.message || 'Error al enviar código. Intenta de nuevo.' });
+      setErrPass({ ...e, general: err.message || 'Error al enviar código. Intenta de nuevo.' });
     } finally {
       setCargando(false);
     }
@@ -188,7 +197,7 @@ function CrearUsuarioContent() {
     setErrCodigo('');
     try {
       const { data, error } = await supabase.functions.invoke('enviar-codigo', {
-        body: { cedula: cedula.trim(), tipo: 'creacion' },
+        body: { cedula: cedula.trim(), tipo: 'creacion', email: militante?.email || undefined },
       });
       if (error) throw error;
       if (!data?.ok) setErrCodigo(data?.error || 'Error al reenviar');
@@ -308,6 +317,18 @@ function CrearUsuarioContent() {
             {/* Usuario oculto: permite que el gestor de contraseñas asocie la contraseña a la cédula */}
             <input type="text" name="username" autoComplete="username" value={cedula} readOnly
               className="sr-only" tabIndex={-1} aria-hidden="true"/>
+            {!militante?.email && (
+              <div className="flex flex-col gap-1">
+                <label htmlFor="email" className="text-sm font-semibold text-gray-700">Correo electrónico</label>
+                <p className="text-xs text-gray-500 -mt-0.5 mb-1">No tienes un correo registrado. Escribe uno para enviarte el código de verificación.</p>
+                <input id="email" name="email" type="email" autoComplete="email" inputMode="email" value={emailManual}
+                  onChange={(e) => { setEmailManual(e.target.value); setErrPass({...errPass, email:'', general:''}); }}
+                  placeholder="tucorreo@ejemplo.com"
+                  className={`w-full border ${errPass.email ? 'border-red-400' : 'border-gray-300'} rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition`}
+                />
+                {errPass.email && <span className="text-xs text-red-500">{errPass.email}</span>}
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <label htmlFor="new-password" className="text-sm font-semibold text-gray-700">Contraseña</label>
               <div className="relative">
@@ -340,6 +361,7 @@ function CrearUsuarioContent() {
               {errPass.confirmar && <span className="text-xs text-red-500">{errPass.confirmar}</span>}
             </div>
 
+            {errPass.general && <p className="text-xs text-red-500 text-center">{errPass.general}</p>}
             <button type="submit" disabled={cargando}
               className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors mt-1">
               {cargando && <Loader2 size={17} className="animate-spin"/>}

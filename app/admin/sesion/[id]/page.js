@@ -8,6 +8,11 @@ import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader
 
 const MODALIDAD_LABEL = { presencial: 'Presencial', virtual: 'Virtual' };
 
+const TIPO_USUARIO_CFG = {
+  normal: { label: 'Usuario normal', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  rapido: { label: 'Usuario rápido', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+};
+
 const ACRED_CFG = {
   preinscrito:        { label: 'Pendiente',      color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   acreditado_voto:    { label: 'Ingreso + Voto', color: 'bg-green-100 text-green-700 border-green-200'   },
@@ -1324,13 +1329,57 @@ export default function AdminSesionPage() {
       'Email':                p.email ?? '',
       'Estado':               ESTADO_LABEL[p.estado_acreditacion] ?? p.estado_acreditacion,
       'Modalidad':            MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder',
+      'Tipo de usuario':      TIPO_USUARIO_CFG[p.tipo_usuario]?.label ?? 'Sin usuario',
+      'Marcó asistencia':     p.ha_asistido ? 'Sí' : 'No',
+      'Hora asistencia':      p.asistio_en ? new Date(p.asistio_en).toLocaleString('es-CO') : '',
       'Fecha inscripción':    p.created_at ? new Date(p.created_at).toLocaleString('es-CO') : '',
     }));
     const ws = utils.json_to_sheet(filas);
-    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 14 }, { wch: 22 }];
+    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }];
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Inscritos');
     writeFile(wb, `inscritos-${sesion.id}.xlsx`);
+  };
+
+  // Asistencia frente a todos los invitados: hoja con todos, hojas separadas de asistentes y no asistentes,
+  // y (si los hay) quienes marcaron asistencia sin estar en la lista de invitados.
+  const handleExportAsistenciaInvitados = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const fila = (p) => ({
+      'Nombre':           p.nombre,
+      'Cédula':           p.cedula,
+      'Asistió':          p.ha_asistido ? 'Sí' : 'No',
+      'Hora asistencia':  p.asistio_en ? new Date(p.asistio_en).toLocaleString('es-CO') : '',
+      'Inscrito':         p.inscrito ? 'Sí' : 'No',
+      'Acreditación':     ACRED_CFG[p.estado_acreditacion]?.label ?? '',
+      'Modalidad':        MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder',
+      'Tipo de usuario':  TIPO_USUARIO_CFG[p.tipo_usuario]?.label ?? 'Sin usuario',
+    });
+    const cols = [{ wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 22 }, { wch: 9 }, { wch: 18 }, { wch: 14 }, { wch: 16 }];
+    const hoja = (wb, nombre, rows) => {
+      const ws = utils.json_to_sheet(rows.length ? rows : [{ 'Nombre': 'Sin registros' }]);
+      ws['!cols'] = cols;
+      utils.book_append_sheet(wb, ws, nombre);
+    };
+
+    const ordenados = [...invitadosList].sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es'));
+    const wb = utils.book_new();
+    hoja(wb, 'Todos los invitados', ordenados.map(fila));
+    hoja(wb, 'Asistieron', ordenados.filter((p) => p.ha_asistido).map(fila));
+    hoja(wb, 'No asistieron', ordenados.filter((p) => !p.ha_asistido).map(fila));
+
+    const normC = (c) => { const s = String(c ?? '').trim().replace(/[^0-9a-zA-Z]/g, ''); const n = parseInt(s, 10); return isNaN(n) ? s.toLowerCase() : String(n); };
+    const invitadas = new Set(invitadosList.map((p) => normC(p.cedula)));
+    const preinsPorCedula = Object.fromEntries(preinscritos.map((p) => [normC(p.cedula), p]));
+    const noInvitados = asistenciaList
+      .filter((a) => !invitadas.has(normC(a.cedula)))
+      .map((a) => {
+        const p = preinsPorCedula[normC(a.cedula)];
+        return fila({ ...p, cedula: a.cedula, nombre: p?.nombre || a.cedula, ha_asistido: true, asistio_en: a.asistio_en, inscrito: !!p });
+      });
+    if (noInvitados.length) hoja(wb, 'Asistieron sin invitación', noInvitados);
+
+    writeFile(wb, `asistencia-invitados-${sesion.id}.xlsx`);
   };
 
   const descargarPlantillaAcred = async () => {
@@ -1756,6 +1805,10 @@ export default function AdminSesionPage() {
                 <span className="text-purple-700">Presencial {preinscritos.filter((p) => p.modalidad === 'presencial').length}</span>
                 <span className="text-cyan-700">Virtual {preinscritos.filter((p) => p.modalidad === 'virtual').length}</span>
                 <span className="text-gray-400">Sin responder {preinscritos.filter((p) => !p.modalidad).length}</span>
+                <span className="text-gray-200">|</span>
+                <span className="text-gray-500">Usuario:</span>
+                <span className="text-emerald-700">Normal {preinscritos.filter((p) => p.tipo_usuario === 'normal').length}</span>
+                <span className="text-amber-700">Rápido {preinscritos.filter((p) => p.tipo_usuario === 'rapido').length}</span>
               </div>
             )}
 
@@ -1842,6 +1895,11 @@ export default function AdminSesionPage() {
                         <p className="text-sm font-semibold text-gray-900 truncate">{nombreStr}</p>
                         <p className="text-xs text-gray-400 font-mono">{p.cedula}</p>
                       </div>
+                      {TIPO_USUARIO_CFG[p.tipo_usuario] && (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${TIPO_USUARIO_CFG[p.tipo_usuario].color}`}>
+                          {TIPO_USUARIO_CFG[p.tipo_usuario].label}
+                        </span>
+                      )}
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${
                         p.modalidad === 'presencial' ? 'bg-purple-50 text-purple-700 border-purple-200'
                         : p.modalidad === 'virtual' ? 'bg-cyan-50 text-cyan-700 border-cyan-200'
@@ -1923,6 +1981,17 @@ export default function AdminSesionPage() {
 
           return (
             <div className="flex flex-col gap-4">
+              {/* Descargable: asistentes y no asistentes sobre el total de invitados */}
+              <div className="flex items-center gap-3 flex-wrap bg-white border border-gray-100 rounded-xl px-4 py-3">
+                <span className="text-xs text-gray-500 font-semibold">
+                  Invitados: {invitadosList.length} · Asistieron: {invitadosList.filter((p) => p.ha_asistido).length} · No asistieron: {invitadosList.filter((p) => !p.ha_asistido).length}
+                </span>
+                <button onClick={handleExportAsistenciaInvitados} disabled={invitadosList.length === 0}
+                  className="ml-auto flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-green-300 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-40 transition-colors">
+                  <FileSpreadsheet size={13}/> Descargar asistencia de invitados
+                </button>
+              </div>
+
               {/* Ya asistieron */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100 bg-green-50">

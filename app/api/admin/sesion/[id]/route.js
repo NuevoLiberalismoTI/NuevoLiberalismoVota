@@ -66,7 +66,7 @@ export async function GET(request, { params }) {
   if (cedulas.length > 0) {
     const { data: usuarios } = await supabase
       .from('usuarios')
-      .select('cedula, nombre, email')
+      .select('cedula, nombre, email, es_rapido')
       .in('cedula', cedulas);
     (usuarios || []).forEach((u) => { nombresMap[u.cedula] = u; });
   }
@@ -81,6 +81,8 @@ export async function GET(request, { params }) {
       estado_acreditacion: i.estado_acreditacion,
       created_at:          i.created_at,
       modalidad:           i.modalidad,
+      // 'rapido' | 'normal' | null (sin usuario creado)
+      tipo_usuario:        nombresMap[i.cedula] ? (nombresMap[i.cedula].es_rapido ? 'rapido' : 'normal') : null,
       ha_asistido:         asistio_en !== null,
       asistio_en,
     };
@@ -107,11 +109,23 @@ export async function GET(request, { params }) {
     preinscritos,
     invitadosList: (() => {
       const seen = new Set();
+      const preinsPorCedula = {};
+      preinscritos.forEach((p) => { const k = normC(p.cedula); if (k) preinsPorCedula[k] = p; });
       return (invitData || [])
         .filter((i) => i.cedula)
         .map((i) => {
           const k = normC(String(i.cedula));
-          return { cedula: String(i.cedula), nombre: i.nombre || String(i.cedula), ha_asistido: k ? k in asistioMap : false };
+          const p = k ? preinsPorCedula[k] : null;
+          return {
+            cedula:              String(i.cedula),
+            nombre:              i.nombre || p?.nombre || String(i.cedula),
+            ha_asistido:         k ? k in asistioMap : false,
+            asistio_en:          k ? (asistioMap[k] ?? null) : null,
+            inscrito:            !!p,
+            estado_acreditacion: p?.estado_acreditacion ?? null,
+            modalidad:           p?.modalidad ?? null,
+            tipo_usuario:        p?.tipo_usuario ?? null,
+          };
         })
         .filter((i) => { if (seen.has(i.cedula)) return false; seen.add(i.cedula); return true; });
     })(),

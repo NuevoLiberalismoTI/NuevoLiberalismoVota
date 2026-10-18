@@ -2288,8 +2288,7 @@ export default function AdminSesionPage() {
               <div className="flex gap-2">
                 {enCurso && (
                   <button onClick={() => { setMostrarVivo(!mostrarVivo); setMostrarForm(false); }}
-                    disabled={!quorumAlcanzado}
-                    title={!quorumAlcanzado ? `Sin quorum — faltan ${faltanParaQuorum} asistentes` : ''}
+                    title={!quorumAlcanzado ? `Sin quorum — faltan ${faltanParaQuorum} asistentes. Puedes crearla y publicarla igual; quedará registrado en el informe.` : ''}
                     className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors">
                     <Zap size={12}/> En vivo
                   </button>
@@ -2370,8 +2369,18 @@ export default function AdminSesionPage() {
                       <div className="mt-2">
                         {p.estado === 'pendiente' && (
                           !quorumAlcanzado ? (
-                            <div className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-200 text-orange-500 font-semibold py-2.5 rounded-xl text-xs">
-                              <AlertTriangle size={13}/> Sin quorum — faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''}
+                            <div className="flex flex-col gap-2">
+                              <div className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-200 text-orange-500 font-semibold py-2 rounded-xl text-xs">
+                                <AlertTriangle size={13}/> Sin quorum — faltan {faltanParaQuorum} asistente{faltanParaQuorum !== 1 ? 's' : ''}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`No hay quórum (faltan ${faltanParaQuorum} asistentes).\n\nLa votación se realizará igualmente y en el informe quedará registrado que se votó sin quórum.\n\n¿Publicar la pregunta?`)) handlePublicar(p.id);
+                                }}
+                                disabled={hayActiva || cargando}
+                                className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                                <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar sin quórum'}
+                              </button>
                             </div>
                           ) : (
                             <button onClick={() => handlePublicar(p.id)} disabled={hayActiva || cargando}
@@ -2379,6 +2388,12 @@ export default function AdminSesionPage() {
                               <Radio size={13}/> {hayActiva ? 'Cierra la pregunta activa primero' : 'Publicar esta pregunta'}
                             </button>
                           )
+                        )}
+                        {p.sin_quorum && p.estado !== 'pendiente' && (
+                          <p className="text-[11px] font-semibold text-orange-600 flex items-center gap-1 mb-1.5">
+                            <AlertTriangle size={11}/> Votación publicada sin quórum
+                            {p.asistentes_al_publicar != null && ` (${p.asistentes_al_publicar} de ${p.quorum_requerido} asistentes requeridos)`}
+                          </p>
                         )}
                         {p.estado === 'activa' && (
                           <div className="flex items-center gap-2">

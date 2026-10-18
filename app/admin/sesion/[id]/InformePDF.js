@@ -105,6 +105,7 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
   const quorumReq      = baseQuorum > 0 ? Math.floor(baseQuorum / 2) + 1 : 0;
   const pctAsist       = baseQuorum > 0 ? Math.min(100, Math.round((stats.asistentes / baseQuorum) * 100)) : 0;
   const quorumAlcanzado = stats ? stats.asistentes >= quorumReq : false;
+  const votacionesSinQuorum = (resultados || []).filter((p) => p.sin_quorum).length;
   const hoy            = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
@@ -192,6 +193,11 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
               <View style={s.barBg}>
                 <View style={{ ...s.barFill, width: `${pctAsist}%`, backgroundColor: quorumAlcanzado ? GREEN : '#f97316' }} />
               </View>
+              {votacionesSinQuorum > 0 && (
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: RED, marginTop: 6 }}>
+                  Constancia: {votacionesSinQuorum} votación{votacionesSinQuorum !== 1 ? 'es se realizaron' : ' se realizó'} sin quórum.
+                </Text>
+              )}
             </>
           )}
 
@@ -228,6 +234,14 @@ export function InformePDF({ sesion, stats, resultados, logoData }) {
                   · Mayoria {preg.tipo_mayoria}
                   {preg.estado !== 'cerrada' ? ' · Pendiente de cierre' : ''}
                 </Text>
+                {preg.sin_quorum && (
+                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: RED, marginTop: 3 }}>
+                    VOTACIÓN REALIZADA SIN QUÓRUM
+                    {preg.asistentes_al_publicar != null
+                      ? ` — al publicarse había ${preg.asistentes_al_publicar} asistentes de ${preg.quorum_requerido} requeridos`
+                      : ''}
+                  </Text>
+                )}
                 <View style={s.divLine} />
 
                 {(preg.opciones || []).length === 0 ? (

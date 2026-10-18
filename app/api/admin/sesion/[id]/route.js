@@ -150,6 +150,9 @@ export async function GET(request, { params }) {
           tipo:         pregData.tipo         ?? preg.tipo,
           estado:       pregData.estado       ?? preg.estado,
           tipo_mayoria: pregData.tipo_mayoria ?? preg.tipo_mayoria,
+          sin_quorum:             pregData.sin_quorum ?? false,
+          asistentes_al_publicar: pregData.asistentes_al_publicar ?? null,
+          quorum_requerido:       pregData.quorum_requerido ?? null,
           opciones: (() => {
             // Mapa nombre→datos del RPC (solo los que tienen votos)
             const rpcMap = {};

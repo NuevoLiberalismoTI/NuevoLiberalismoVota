@@ -1,5 +1,6 @@
 import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
+import { preinscribirInvitadosConUsuario } from '../../../../../lib/preinscripcion';
 
 const API_TOKEN = process.env.MILITANTES_API_TOKEN || '7TvcetUYWs0zuLMy5bX4Fx0cfYvrg2WCfbMpIOWVhCFwOQXB2WfMyWBB3kqSKIMo';
 const BASE_URL  = 'https://nuevoliberalismo.org/wp-json/nl/v1/formularios/postulaciones';
@@ -109,8 +110,11 @@ export async function POST(request, { params }) {
         .insert([fila]);
       if (!e) insertados++;
     }
-    return Response.json({ ok: true, insertados, total: filas.length });
+    const preinscripcion = await preinscribirInvitadosConUsuario(supabase, sesionId);
+    return Response.json({ ok: true, insertados, total: filas.length, preinscripcion });
   }
 
-  return Response.json({ ok: true, insertados: filas.length, total: filas.length });
+  // Los postulantes que ya tienen usuario quedan preinscritos
+  const preinscripcion = await preinscribirInvitadosConUsuario(supabase, sesionId);
+  return Response.json({ ok: true, insertados: filas.length, total: filas.length, preinscripcion });
 }

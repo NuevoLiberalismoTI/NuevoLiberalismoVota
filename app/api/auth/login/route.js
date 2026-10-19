@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '../../../lib/supabase-server';
 import { randomUUID } from 'crypto';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '../../../lib/cookie-sesion';
+import { preinscribirUsuarioEnInvitaciones } from '../../../lib/preinscripcion';
 
 export async function POST(request) {
   try {
@@ -41,6 +42,9 @@ export async function POST(request) {
     }
 
     const user = data[0];
+
+    // Si fue invitado a asambleas activas y aún no está preinscrito, preinscribirlo
+    await preinscribirUsuarioEnInvitaciones(supabase, user.cedula).catch((e) => console.error('preinscripción en login:', e));
 
     let tokenDispositivo = null;
     if (user.rol !== 'admin' && user.rol !== 'coordinador') {

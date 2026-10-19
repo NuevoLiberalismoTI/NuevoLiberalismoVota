@@ -1018,6 +1018,8 @@ export default function AdminSesionPage() {
   const [invitadosList,   setInvitadosList]   = useState([]);
   const [asistenciaList,  setAsistenciaList]  = useState([]);
   const [cargandoPreins, setCargandoPreins] = useState(false);
+  const [sincronizandoPreins, setSincronizandoPreins] = useState(false);
+  const [syncPreinsResultado, setSyncPreinsResultado] = useState(null);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
   const [importandoAcred, setImportandoAcred] = useState(false);
   const [importAcredResultado, setImportAcredResultado] = useState(null);
@@ -1131,6 +1133,23 @@ export default function AdminSesionPage() {
     const interval = setInterval(cargar, 10000);
     return () => clearInterval(interval);
   }, [sesionId, cargar]);
+
+  // Invitados que ya tienen usuario → preinscritos. Se corre al abrir la sesión y con el botón del panel.
+  const sincronizarPreinscritos = useCallback(async () => {
+    setSincronizandoPreins(true);
+    try {
+      const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/preinscribir-invitados`, { method: 'POST' });
+      const json = await res.json();
+      setSyncPreinsResultado(json);
+      if (json.inscritos > 0) await cargar();
+    } catch {
+      setSyncPreinsResultado({ ok: false, error: 'Error de conexión' });
+    } finally {
+      setSincronizandoPreins(false);
+    }
+  }, [sesionId, cargar]);
+
+  useEffect(() => { sincronizarPreinscritos(); }, [sincronizarPreinscritos]);
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -1796,6 +1815,27 @@ export default function AdminSesionPage() {
                   <p className="text-[10px] font-bold uppercase tracking-wide mt-0.5">{label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Invitados con usuario → preinscritos */}
+            <div className="flex items-center gap-3 flex-wrap bg-white border border-gray-100 rounded-xl px-4 py-2.5">
+              <span className="text-xs text-gray-500 flex-1 min-w-0">
+                {sincronizandoPreins
+                  ? 'Revisando invitados con usuario creado...'
+                  : !syncPreinsResultado ? 'Los invitados que ya tienen usuario se preinscriben automáticamente.'
+                  : !syncPreinsResultado.ok ? `No se pudo sincronizar: ${syncPreinsResultado.error}`
+                  : syncPreinsResultado.inscritos > 0 ? `Se preinscribieron ${syncPreinsResultado.inscritos} invitado${syncPreinsResultado.inscritos !== 1 ? 's' : ''} que ya tenían usuario.`
+                  : 'Todos los invitados con usuario están preinscritos.'}
+                {syncPreinsResultado?.pendientes > 0 && (
+                  <span className="block text-red-600 font-semibold mt-0.5">
+                    {syncPreinsResultado.pendientes} no se pudieron preinscribir: {Object.entries(syncPreinsResultado.errores || {}).map(([m, n]) => `${m} (${n})`).join(' · ')}
+                  </span>
+                )}
+              </span>
+              <button onClick={sincronizarPreinscritos} disabled={sincronizandoPreins}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-brand text-brand hover:bg-brand-50 disabled:opacity-50 transition-colors flex-shrink-0">
+                <RefreshCw size={12} className={sincronizandoPreins ? 'animate-spin' : ''}/> Preinscribir invitados con usuario
+              </button>
             </div>
 
             {/* Modalidad de asistencia */}

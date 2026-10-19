@@ -1,4 +1,5 @@
 import { createServerClient } from '../../../lib/supabase-server';
+import { preinscribirUsuarioEnInvitaciones } from '../../../lib/preinscripcion';
 
 export async function POST(request) {
   const { cedula, codigo, password, nombre, email } = await request.json();
@@ -43,12 +44,9 @@ export async function POST(request) {
     return Response.json({ ok: false, error: data?.error || 'Código incorrecto o expirado' });
   }
 
-  // Auto-inscribir en sesiones pendientes
-  await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/auto-inscribir`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ cedula }),
-  }).catch(() => {});
+  // Preinscribir en las asambleas activas a las que fue invitado
+  // (al borrar el usuario rápido se pueden perder sus inscripciones)
+  await preinscribirUsuarioEnInvitaciones(supabase, cedula).catch((e) => console.error('preinscripción al completar usuario:', e));
 
   return Response.json({ ok: true });
 }

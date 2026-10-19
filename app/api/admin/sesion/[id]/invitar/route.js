@@ -1,5 +1,6 @@
 import { requireSessionAccess } from '../../../../../lib/session';
 import { createServerClient } from '../../../../../lib/supabase-server';
+import { preinscribirInvitadosConUsuario } from '../../../../../lib/preinscripcion';
 
 export async function POST(request, { params }) {
   const { id }   = await params;
@@ -76,38 +77,8 @@ export async function POST(request, { params }) {
     if (filas.length > 0) {
       await supabase.from('invitaciones_enviadas').insert(filas);
 
-      // Auto-preinscribir a quienes ya tienen usuario creado
-      const cedulasInvitadas = filas.map((f) => f.cedula).filter(Boolean);
-      if (cedulasInvitadas.length > 0) {
-        const { data: usuariosExistentes } = await supabase
-          .from('usuarios')
-          .select('cedula')
-          .in('cedula', cedulasInvitadas);
-
-        const cedulasConUsuario = (usuariosExistentes || []).map((u) => String(u.cedula));
-
-        if (cedulasConUsuario.length > 0) {
-          // Evitar duplicar inscripciones existentes
-          const { data: yaInscritos } = await supabase
-            .from('inscripciones')
-            .select('usuario_cedula')
-            .eq('asamblea_id', sesionId)
-            .in('usuario_cedula', cedulasConUsuario);
-
-          const yaInscritosSet = new Set((yaInscritos || []).map((i) => String(i.usuario_cedula)));
-
-          await Promise.allSettled(
-            cedulasConUsuario
-              .filter((c) => !yaInscritosSet.has(c))
-              .map((cedula) =>
-                supabase.rpc('inscribir_usuario', {
-                  p_asamblea_id: sesionId,
-                  p_cedula:      cedula,
-                })
-              )
-          );
-        }
-      }
+      // Preinscribir a los invitados que ya tienen usuario creado
+      json.preinscripcion = await preinscribirInvitadosConUsuario(supabase, sesionId);
     }
   }
 

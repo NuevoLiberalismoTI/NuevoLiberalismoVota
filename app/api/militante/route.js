@@ -47,15 +47,19 @@ export async function GET(request) {
     .maybeSingle();
 
   if (usuarioRapido) {
-    const emailReal = usuarioRapido.email?.endsWith('@rapido.nliberal.co') ? '' : (usuarioRapido.email || '');
+    // El código de verificación va al correo registrado en la militancia.
+    // Solo si la militancia no tiene correo se usa el del usuario rápido (si es real).
+    const emailRapido = usuarioRapido.email?.endsWith('@rapido.nliberal.co') ? '' : (usuarioRapido.email || '');
+    const nombresApi  = [militante.primer_nombre, militante.segundo_nombre].filter(Boolean).join(' ');
+    const apellidosApi = [militante.primer_apellido, militante.segundo_apellido].filter(Boolean).join(' ');
     return Response.json({
       ok:   true,
       tipo: 'usuario_rapido',
       militante: {
         cedula:    cedula,
-        nombres:   usuarioRapido.nombre || '',
-        apellidos: '',
-        email:     emailReal,
+        nombres:   nombresApi || usuarioRapido.nombre || '',
+        apellidos: nombresApi ? apellidosApi : '',
+        email:     (militante.email || '').trim() || emailRapido,
       },
     });
   }

@@ -19,7 +19,25 @@ export async function POST(request) {
     .maybeSingle();
 
   if (!usr) {
-    return Response.json({ ok: false, error: 'No aplica para este usuario' }, { status: 400 });
+    // Ya no es usuario rápido: o ya completó su registro (p. ej. un intento anterior sí se guardó),
+    // o no tiene usuario. En el primer caso debe iniciar sesión; en el segundo, crear el usuario normal.
+    const { data: existente } = await supabase.from('usuarios').select('cedula').eq('cedula', cedula).maybeSingle();
+    if (existente) {
+      return Response.json({ ok: false, tipo: 'ya_existe', error: 'Tu usuario ya fue creado. Inicia sesión con tu número de identificación y contraseña.' });
+    }
+
+    const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {
+      p_cedula:   cedula,
+      p_codigo:   codigo,
+      p_password: password,
+      p_nombre:   nombre || '',
+      p_email:    email  || '',
+    });
+    if (error || !data?.ok) {
+      return Response.json({ ok: false, error: data?.error || 'Código incorrecto o expirado' });
+    }
+    await preinscribirUsuarioEnInvitaciones(supabase, cedula).catch((e) => console.error('preinscripción al crear usuario:', e));
+    return Response.json({ ok: true });
   }
 
   // Eliminar el usuario rápido para que el RPC pueda crear uno nuevo verificado

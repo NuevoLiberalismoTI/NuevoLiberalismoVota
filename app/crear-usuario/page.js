@@ -75,7 +75,8 @@ function CrearUsuarioContent() {
         return;
       }
 
-      if (json.tipo === 'usuario_rapido') setEsUsuarioRapido(true);
+      // El servidor es quien sabe si hoy es usuario rápido (el parámetro ?rapido=1 de la URL puede estar desactualizado)
+      setEsUsuarioRapido(json.tipo === 'usuario_rapido');
       setMilitante(json.militante);
       setStep(2);
     } catch {
@@ -141,6 +142,12 @@ function CrearUsuarioContent() {
           }),
         });
         const json = await res.json();
+        if (!json.ok && json.tipo === 'ya_existe') {
+          // Un intento anterior sí creó el usuario: entrar con la contraseña que acaba de escribir
+          setStep(4);
+          await iniciarSesionAutomatica();
+          return;
+        }
         if (!json.ok) { setErrCodigo(json.error || 'Código incorrecto o expirado'); return; }
       } else {
         const { data, error } = await supabase.rpc('verificar_y_crear_usuario', {

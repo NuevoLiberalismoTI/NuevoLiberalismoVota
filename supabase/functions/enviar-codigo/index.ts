@@ -27,6 +27,30 @@ const TWILIO_FROM   = Deno.env.get('TWILIO_WHATSAPP_FROM') ?? 'whatsapp:+1415523
 // @ts-ignore
 const SID_CODIGO    = (Deno.env.get('TWILIO_CONTENT_SID_CODIGO') ?? '').trim().replace(/^["']|["']$/g, '');
 
+// Token de la API de militantes (secret MILITANTES_API_TOKEN en Supabase)
+// @ts-ignore
+const MILITANTES_TOKEN = Deno.env.get('MILITANTES_API_TOKEN') ?? '';
+
+// El código siempre se envía al correo registrado en la militancia (no al de la cuenta,
+// que en usuarios rápidos puede ser otro). Devuelve '' si no se pudo consultar o no tiene correo.
+async function emailMilitancia(cedula: string): Promise<string> {
+  if (!MILITANTES_TOKEN) {
+    console.warn('[enviar-codigo] MILITANTES_API_TOKEN no configurado: no se consulta el correo de la militancia');
+    return '';
+  }
+  try {
+    const res = await fetch(
+      `https://www.nuevoliberalismo.org/wp-json/nl/v1/militantes/cedula/${encodeURIComponent(cedula)}?token=${MILITANTES_TOKEN}`,
+    );
+    if (!res.ok) return '';
+    const m = await res.json();
+    return String(m?.email ?? '').trim();
+  } catch (err) {
+    console.error('[enviar-codigo] Error consultando militancia:', err);
+    return '';
+  }
+}
+
 // Meta no permite mensajes libres fuera de la ventana de 24 h: el código solo se puede
 // enviar con una plantilla de autenticación aprobada, cuya única variable es el código.
 async function enviarWhatsApp(telefono: string, codigo: string): Promise<void> {
@@ -170,6 +194,16 @@ Deno.serve(async (req: Request) => {
 
       codigo = (data as { codigo: string; email: string }).codigo;
       email  = (data as { codigo: string; email: string }).email;
+    }
+
+    // Prioridad: correo de la militancia. Si no tiene, el que llegó en la petición o el de la cuenta.
+    const correoMilitancia = await emailMilitancia(cedula);
+    if (correoMilitancia) email = correoMilitancia;
+    if (!email || email.endsWith('@rapido.nliberal.co')) {
+      return Response.json(
+        { ok: false, error: 'No tienes un correo registrado en la militancia. Actualiza tus datos con el partido.' },
+        { headers: CORS }
+      );
     }
 
     // Enviar correo vía SendGrid

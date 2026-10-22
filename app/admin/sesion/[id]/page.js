@@ -1019,6 +1019,7 @@ export default function AdminSesionPage() {
   const [asistenciaList,  setAsistenciaList]  = useState([]);
   const [cargandoPreins, setCargandoPreins] = useState(false);
   const [sincronizandoPreins, setSincronizandoPreins] = useState(false);
+  const [enlaceVirtualEstado, setEnlaceVirtualEstado] = useState(null); // null | 'cargando' | 'copiado' | { error }
   const [syncPreinsResultado, setSyncPreinsResultado] = useState(null);
   const [filtroAcred, setFiltroAcred]     = useState('todos');
   const [importandoAcred, setImportandoAcred] = useState(false);
@@ -1133,6 +1134,47 @@ export default function AdminSesionPage() {
     const interval = setInterval(cargar, 10000);
     return () => clearInterval(interval);
   }, [sesionId, cargar]);
+
+  // Enlace de asistencia virtual: al abrirlo, la persona (con sesión iniciada) queda con asistencia virtual
+  const obtenerEnlaceVirtual = async (regenerar = false) => {
+    const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}/enlace-virtual`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ regenerar }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'No se pudo generar el enlace');
+    setSesion((prev) => ({ ...prev, codigo_virtual: json.codigo }));
+    return `${window.location.origin}/asistir/${encodeURIComponent(sesionId)}?k=${json.codigo}`;
+  };
+
+  const copiarTexto = async (texto) => {
+    try { await navigator.clipboard.writeText(texto); }
+    catch { window.prompt('Copia el enlace virtual:', texto); }
+  };
+
+  const handleCopiarEnlaceVirtual = async () => {
+    setEnlaceVirtualEstado('cargando');
+    try {
+      await copiarTexto(await obtenerEnlaceVirtual(false));
+      setEnlaceVirtualEstado('copiado');
+      setTimeout(() => setEnlaceVirtualEstado(null), 2500);
+    } catch (e) {
+      setEnlaceVirtualEstado({ error: e.message });
+    }
+  };
+
+  const handleRegenerarEnlaceVirtual = async () => {
+    if (!window.confirm('Se creará un enlace virtual nuevo y el anterior dejará de funcionar. ¿Continuar?')) return;
+    setEnlaceVirtualEstado('cargando');
+    try {
+      await copiarTexto(await obtenerEnlaceVirtual(true));
+      setEnlaceVirtualEstado('copiado');
+      setTimeout(() => setEnlaceVirtualEstado(null), 2500);
+    } catch (e) {
+      setEnlaceVirtualEstado({ error: e.message });
+    }
+  };
 
   // Invitados que ya tienen usuario → preinscritos. Se corre al abrir la sesión y con el botón del panel.
   const sincronizarPreinscritos = useCallback(async () => {
@@ -1350,11 +1392,12 @@ export default function AdminSesionPage() {
       'Modalidad':            MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder',
       'Tipo de usuario':      TIPO_USUARIO_CFG[p.tipo_usuario]?.label ?? 'Sin usuario',
       'Marcó asistencia':     p.ha_asistido ? 'Sí' : 'No',
+      'Asistió por':          p.ha_asistido ? (p.asistio_modalidad === 'virtual' ? 'Virtual' : 'Presencial') : '',
       'Hora asistencia':      p.asistio_en ? new Date(p.asistio_en).toLocaleString('es-CO') : '',
       'Fecha inscripción':    p.created_at ? new Date(p.created_at).toLocaleString('es-CO') : '',
     }));
     const ws = utils.json_to_sheet(filas);
-    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }];
+    ws['!cols'] = [{ wch: 40 }, { wch: 16 }, { wch: 36 }, { wch: 18 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 22 }, { wch: 22 }];
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, 'Inscritos');
     writeFile(wb, `inscritos-${sesion.id}.xlsx`);
@@ -1368,13 +1411,14 @@ export default function AdminSesionPage() {
       'Nombre':           p.nombre,
       'Cédula':           p.cedula,
       'Asistió':          p.ha_asistido ? 'Sí' : 'No',
+      'Asistió por':      p.ha_asistido ? (p.asistio_modalidad === 'virtual' ? 'Virtual' : 'Presencial') : '',
       'Hora asistencia':  p.asistio_en ? new Date(p.asistio_en).toLocaleString('es-CO') : '',
       'Inscrito':         p.inscrito ? 'Sí' : 'No',
       'Acreditación':     ACRED_CFG[p.estado_acreditacion]?.label ?? '',
       'Modalidad':        MODALIDAD_LABEL[p.modalidad] ?? 'Sin responder',
       'Tipo de usuario':  TIPO_USUARIO_CFG[p.tipo_usuario]?.label ?? 'Sin usuario',
     });
-    const cols = [{ wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 22 }, { wch: 9 }, { wch: 18 }, { wch: 14 }, { wch: 16 }];
+    const cols = [{ wch: 40 }, { wch: 16 }, { wch: 9 }, { wch: 12 }, { wch: 22 }, { wch: 9 }, { wch: 18 }, { wch: 14 }, { wch: 16 }];
     const hoja = (wb, nombre, rows) => {
       const ws = utils.json_to_sheet(rows.length ? rows : [{ 'Nombre': 'Sin registros' }]);
       ws['!cols'] = cols;
@@ -1394,7 +1438,7 @@ export default function AdminSesionPage() {
       .filter((a) => !invitadas.has(normC(a.cedula)))
       .map((a) => {
         const p = preinsPorCedula[normC(a.cedula)];
-        return fila({ ...p, cedula: a.cedula, nombre: p?.nombre || a.cedula, ha_asistido: true, asistio_en: a.asistio_en, inscrito: !!p });
+        return fila({ ...p, cedula: a.cedula, nombre: p?.nombre || a.cedula, ha_asistido: true, asistio_en: a.asistio_en, asistio_modalidad: a.asistio_modalidad, inscrito: !!p });
       });
     if (noInvitados.length) hoja(wb, 'Asistieron sin invitación', noInvitados);
 
@@ -1618,6 +1662,25 @@ export default function AdminSesionPage() {
                 <Monitor size={10} /> Proyectar QR
               </button>
             </span>
+            {!sesion.modo_rapido && (
+              <span className="flex items-center gap-2 flex-wrap">
+                <Monitor size={11} className="flex-shrink-0" />
+                <span className="font-semibold text-gray-600">Enlace virtual</span>
+                <button onClick={handleCopiarEnlaceVirtual} disabled={enlaceVirtualEstado === 'cargando'}
+                  className="flex items-center gap-1 text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-300 px-2 py-0.5 rounded-full hover:bg-cyan-600 hover:text-white transition-colors disabled:opacity-50">
+                  {enlaceVirtualEstado === 'cargando' ? <Loader2 size={10} className="animate-spin"/> : enlaceVirtualEstado === 'copiado' ? <CheckCircle size={10}/> : <Copy size={10}/>}
+                  {enlaceVirtualEstado === 'copiado' ? 'Copiado' : 'Copiar enlace'}
+                </button>
+                {sesion.codigo_virtual && (
+                  <button onClick={handleRegenerarEnlaceVirtual} disabled={enlaceVirtualEstado === 'cargando'}
+                    title="Crear un enlace nuevo: el anterior deja de funcionar"
+                    className="flex items-center gap-1 text-[10px] font-bold text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-50">
+                    <RefreshCw size={10}/> Regenerar
+                  </button>
+                )}
+                {enlaceVirtualEstado?.error && <span className="text-[10px] text-red-500">{enlaceVirtualEstado.error}</span>}
+              </span>
+            )}
           </div>
 
           {/* Botón proyección pública — fila propia */}
@@ -1998,6 +2061,9 @@ export default function AdminSesionPage() {
               </td>
               <td className="px-5 py-3 text-xs text-gray-400">
                 {hora ? new Date(hora).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                {hora && p.asistio_modalidad === 'virtual' && (
+                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">Virtual</span>
+                )}
               </td>
             </tr>
           );

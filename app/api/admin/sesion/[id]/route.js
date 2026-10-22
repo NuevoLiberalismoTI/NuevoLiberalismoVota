@@ -56,9 +56,13 @@ export async function GET(request, { params }) {
   // Cruce servidor: mapa cédula-normalizada → timestamp asistencia
   // Usar select('*') porque el nombre del campo timestamp puede variar (created_at, registrado_en, etc.)
   const asistioMap = {};
+  const asistioModalidadMap = {}; // 'presencial' (QR) | 'virtual' (enlace virtual)
   for (const a of (asistenciaRows || [])) {
     const k = normC(a.usuario_cedula);
-    if (k) asistioMap[k] = a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null;
+    if (k) {
+      asistioMap[k] = a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null;
+      asistioModalidadMap[k] = a.modalidad || 'presencial';
+    }
   }
 
   const cedulas = rawInsc.map((i) => i.cedula);
@@ -85,6 +89,7 @@ export async function GET(request, { params }) {
       tipo_usuario:        nombresMap[i.cedula] ? (nombresMap[i.cedula].es_rapido ? 'rapido' : 'normal') : null,
       ha_asistido:         asistio_en !== null,
       asistio_en,
+      asistio_modalidad:   k != null ? (asistioModalidadMap[k] ?? null) : null,
     };
   });
 
@@ -121,6 +126,7 @@ export async function GET(request, { params }) {
             nombre:              i.nombre || p?.nombre || String(i.cedula),
             ha_asistido:         k ? k in asistioMap : false,
             asistio_en:          k ? (asistioMap[k] ?? null) : null,
+            asistio_modalidad:   k ? (asistioModalidadMap[k] ?? null) : null,
             inscrito:            !!p,
             estado_acreditacion: p?.estado_acreditacion ?? null,
             modalidad:           p?.modalidad ?? null,
@@ -129,7 +135,7 @@ export async function GET(request, { params }) {
         })
         .filter((i) => { if (seen.has(i.cedula)) return false; seen.add(i.cedula); return true; });
     })(),
-    asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null })),
+    asistenciaList: (asistenciaRows || []).map((a) => ({ cedula: String(a.usuario_cedula), asistio_en: a.created_at ?? a.registrado_en ?? a.fecha ?? a.timestamp ?? null, asistio_modalidad: a.modalidad || 'presencial' })),
     resultados: (() => {
       // Enrich RPC resultados with cupos + es_plancha + miembros from pregs
       // The RPC only returns vote counts; cupos, tipo, estado come from asamblea_preguntas

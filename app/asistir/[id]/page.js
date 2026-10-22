@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { CheckCircle, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
-import { getUsuario } from '../../lib/usuario';
+import { getUsuario, clearUsuario } from '../../lib/usuario';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -22,34 +22,46 @@ function AsistirContent() {
   const searchParams = useSearchParams();
   const codigo = searchParams.get('c');
   const ts     = searchParams.get('ts');
+  const clave  = searchParams.get('k'); // enlace virtual (asistencia remota)
 
   const [estado, setEstado]   = useState('cargando');
   const [mensaje, setMensaje] = useState('');
 
+  const retorno = clave
+    ? `/asistir/${sesionId}?k=${encodeURIComponent(clave)}`
+    : `/asistir/${sesionId}?c=${codigo}&ts=${ts}`;
+  const irALogin = () => router.replace(`/?retorno=${encodeURIComponent(retorno)}`);
+
   useEffect(() => {
-    if (!codigo || !sesionId) {
+    if ((!codigo && !clave) || !sesionId) {
       setEstado('error');
-      setMensaje('El enlace no es válido. Escanea el código QR nuevamente.');
+      setMensaje(clave === null ? 'El enlace no es válido. Escanea el código QR nuevamente.' : 'El enlace virtual no es válido.');
       return;
     }
 
     const usuario = getUsuario();
-    if (!usuario) {
-      router.replace(`/?retorno=${encodeURIComponent(`/asistir/${sesionId}?c=${codigo}&ts=${ts}`)}`);
-      return;
-    }
+    if (!usuario) { irALogin(); return; }
 
     registrar(usuario.cedula);
-  }, [sesionId, codigo]);
+  }, [sesionId, codigo, clave]);
 
   const registrar = async (cedula) => {
     try {
-      const res = await fetch('/api/asistencia', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sesionId, cedula, codigo, ts: ts ? Number(ts) : Math.floor(Date.now() / 30000) }),
-      });
+      const res = clave
+        ? await fetch('/api/asistencia/virtual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sesionId, clave }),
+          })
+        : await fetch('/api/asistencia', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sesionId, cedula, codigo, ts: ts ? Number(ts) : Math.floor(Date.now() / 30000) }),
+          });
       const data = await res.json();
+
+      // Enlace virtual sin cookie de sesión vigente: iniciar sesión y volver al enlace
+      if (data.requiereLogin) { clearUsuario(); irALogin(); return; }
 
       if (!data.ok) {
         setEstado(data.expirado ? 'expirado' : 'error');
@@ -79,7 +91,7 @@ function AsistirContent() {
       <div className="flex-1 flex flex-col items-center justify-center px-4">
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8 text-center">
           <CheckCircle size={72} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Asistencia registrada!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Asistencia registrada{clave ? ' (virtual)' : ''}!</h2>
           <p className="text-gray-500 text-sm mb-8">Ingresando a la asamblea...</p>
           {/* Redirige automáticamente a la sesión */}
           <AutoRedirect destino={`/sesion/${sesionId}`} />

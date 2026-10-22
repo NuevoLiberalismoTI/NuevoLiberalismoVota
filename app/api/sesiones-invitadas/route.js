@@ -31,7 +31,8 @@ export async function GET(request) {
 
   if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
 
-  const result = (data || []).map((s) => ({
+  // Nunca enviar al navegador los códigos de asistencia (QR presencial y enlace virtual)
+  const result = (data || []).map(({ codigo_asistencia, codigo_virtual, ...s }) => ({
     ...s,
     tipo_nombre:      s.tipos_asamblea?.nombre ?? '',
     colectivo_nombre: s.colectivos?.nombre ?? '',

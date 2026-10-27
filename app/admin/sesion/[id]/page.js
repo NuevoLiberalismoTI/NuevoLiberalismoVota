@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { useRouter, useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check, FlaskConical } from 'lucide-react';
+import { Plus, Trash2, PlayCircle, Square, CheckCircle, Zap, Radio, Lock, Loader2, BarChart2, Users, User, AlertTriangle, Monitor, X, Shield, ShieldCheck, ShieldX, RefreshCw, Send, MapPin, ChevronLeft, ChevronRight, Search, Eye, EyeOff, FileSpreadsheet, Timer, Award, UsersRound, Calendar, Clock, Tag, Key, SpellCheck, Copy, Download, Pencil, Check, FlaskConical, Maximize2, PanelLeft } from 'lucide-react';
 
 const MODALIDAD_LABEL = { presencial: 'Presencial', virtual: 'Virtual' };
 
@@ -1044,6 +1044,25 @@ export default function AdminSesionPage() {
     setMarcandoTest(false);
   };
 
+  // Cómo se muestra el quórum en la proyección al público: oculto, panel o pantalla completa
+  const [modoQuorumEstado, setModoQuorumEstado] = useState(null);
+  const handleModoQuorum = async (modo) => {
+    if (modo === (sesion.proyeccion_quorum ?? 'oculto')) return;
+    setModoQuorumEstado('cargando');
+    const res  = await fetch(`/api/admin/sesion/${encodeURIComponent(sesionId)}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ proyeccion_quorum: modo }),
+    });
+    const json = await res.json().catch(() => ({ ok: false }));
+    if (json.ok) {
+      setSesion((prev) => ({ ...prev, proyeccion_quorum: modo }));
+      setModoQuorumEstado(null);
+    } else {
+      setModoQuorumEstado({ error: json.error || 'No se pudo cambiar' });
+    }
+  };
+
   const handleGuardarLugar = async () => {
     const nuevo = lugarTemp.trim();
     if (!nuevo || nuevo === sesion.lugar) { setEditandoLugar(false); return; }
@@ -1689,6 +1708,36 @@ export default function AdminSesionPage() {
             className="w-full flex items-center justify-center gap-2 text-sm font-bold text-purple-700 bg-purple-50 border border-purple-300 px-3 py-2 rounded-xl hover:bg-purple-600 hover:text-white transition-colors">
             <Monitor size={14} /> Proyección al público
           </button>
+
+          {/* Quórum en la proyección: el moderador decide si se muestra y en qué momento */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Quórum en la proyección</span>
+              {modoQuorumEstado === 'cargando' && <Loader2 size={11} className="animate-spin text-gray-400" />}
+            </div>
+            <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1">
+              {[
+                { modo: 'oculto',   label: 'Oculto',   Icon: EyeOff },
+                { modo: 'panel',    label: 'Panel',    Icon: PanelLeft },
+                { modo: 'pantalla', label: 'Pantalla', Icon: Maximize2 },
+              ].map(({ modo, label, Icon }) => {
+                const activo = (sesion.proyeccion_quorum ?? 'oculto') === modo;
+                return (
+                  <button key={modo} onClick={() => handleModoQuorum(modo)} disabled={modoQuorumEstado === 'cargando'}
+                    className={`flex items-center justify-center gap-1 text-[11px] font-bold py-1.5 rounded-lg transition-colors disabled:opacity-60 ${
+                      activo ? 'bg-white text-brand shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}>
+                    <Icon size={11} /> {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-gray-400 leading-snug">
+              {(sesion.proyeccion_quorum ?? 'oculto') === 'oculto' && 'El público no ve el quórum.'}
+              {sesion.proyeccion_quorum === 'panel' && 'Indicador de quórum junto al QR, con su evolución.'}
+              {sesion.proyeccion_quorum === 'pantalla' && 'Vista completa del quórum con su evolución. Cede el paso a las votaciones en vivo.'}
+            </p>
+            {modoQuorumEstado?.error && <p className="text-[10px] text-red-500">{modoQuorumEstado.error}</p>}
+          </div>
 
           {/* Stats */}
           {stats && (

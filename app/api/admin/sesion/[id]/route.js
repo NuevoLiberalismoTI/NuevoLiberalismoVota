@@ -200,6 +200,11 @@ export async function PATCH(request, { params }) {
   if (body.estado   !== undefined) campos.estado   = body.estado;
   if (body.lugar    !== undefined) campos.lugar    = body.lugar;
   if (body.es_test  !== undefined) campos.es_test  = body.es_test;
+  if (body.proyeccion_quorum !== undefined) {
+    if (!['oculto', 'panel', 'pantalla'].includes(body.proyeccion_quorum))
+      return Response.json({ ok: false, error: 'Valor de proyección de quórum inválido' }, { status: 400 });
+    campos.proyeccion_quorum = body.proyeccion_quorum;
+  }
   if (Object.keys(campos).length === 0)
     return Response.json({ ok: false, error: 'Nada que actualizar' }, { status: 400 });
 

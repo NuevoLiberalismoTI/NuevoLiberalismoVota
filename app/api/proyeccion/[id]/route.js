@@ -14,10 +14,12 @@ export async function GET(request, { params }) {
     { data: resultados },
     { data: inscData },
     { data: invitData },
+    { data: asistRows },
   ] = await Promise.all([
+    // '*' para no fallar si aún no se aplicó la migración de proyeccion_quorum
     supabase
       .from('asambleas')
-      .select('id, nombre, estado, fecha, hora, lugar, codigo_asistencia, asistencias_cerradas, modo_rapido')
+      .select('*')
       .eq('id', sesionId)
       .single(),
     supabase
@@ -38,6 +40,12 @@ export async function GET(request, { params }) {
       .from('invitaciones_enviadas')
       .select('cedula')
       .eq('sesion_id', sesionId),
+    supabase
+      .from('asistencia')
+      .select('registrado_en, modalidad')
+      .eq('asamblea_id', sesionId)
+      .order('registrado_en')
+      .range(0, 4999),
   ]);
 
   if (!asm || asm.estado === 'borrador') {
@@ -50,8 +58,31 @@ export async function GET(request, { params }) {
   const acreditadosIngreso = insc.filter((i) => i.estado_acreditacion === 'acreditado_ingreso').length;
   const totalInscritos     = insc.length;
 
-  // Invitados únicos por cédula (deduplicados)
+  // Invitados únicos por cédula (deduplicados). Son la base del quórum; en pantalla se muestran como "acreditados".
   const invitadosUnicos = new Set((invitData || []).map((i) => String(i.cedula)).filter(Boolean)).size;
+
+  // Evolución de la asistencia: acumulado por minuto (máx. 120 puntos) para la gráfica de quórum
+  const proyeccionQuorum = asm?.proyeccion_quorum ?? 'oculto';
+  const rows      = asistRows || [];
+  const virtuales = rows.filter((r) => r.modalidad === 'virtual').length;
+  let evolucion   = [];
+  if (proyeccionQuorum !== 'oculto' && rows.length > 0) {
+    const tiempos = rows.map((r) => new Date(r.registrado_en).getTime()).filter((t) => !isNaN(t));
+    const inicio  = tiempos[0];
+    const ultimo  = tiempos[tiempos.length - 1];
+    // Mientras el registro está abierto la línea llega hasta "ahora" (con tope de 6 h)
+    const abierto = asm.estado !== 'finalizada' && !asm.asistencias_cerradas;
+    const fin     = abierto ? Math.max(ultimo, Math.min(Date.now(), ultimo + 6 * 3600e3)) : ultimo;
+    const paso    = Math.max(60e3, Math.ceil((fin - inicio) / 120 / 60e3) * 60e3);
+    evolucion.push([inicio - 60e3, 0]);
+    let i = 0;
+    for (let t = inicio; ; t += paso) {
+      const tt = Math.min(t, fin);
+      while (i < tiempos.length && tiempos[i] <= tt) i++;
+      evolucion.push([tt, i]);
+      if (tt >= fin) break;
+    }
+  }
 
   // Pregunta activa
   const preguntaActiva = (pregs || []).find((p) => p.estado === 'activa') ?? null;
@@ -145,6 +176,7 @@ export async function GET(request, { params }) {
       codigo_asistencia:     asm.codigo_asistencia,
       asistencias_cerradas:  asm.asistencias_cerradas ?? false,
       modo_rapido:           asm.modo_rapido ?? false,
+      proyeccion_quorum:     proyeccionQuorum,
     },
     quorum: {
       inscritos:           totalInscritos,
@@ -152,6 +184,8 @@ export async function GET(request, { params }) {
       acreditados_ingreso: acreditadosIngreso,
       asistentes:          asistentes ?? 0,
       invitados:           invitadosUnicos,
+      virtuales,
+      evolucion,
     },
     preguntaActiva: preguntaActiva
       ? {

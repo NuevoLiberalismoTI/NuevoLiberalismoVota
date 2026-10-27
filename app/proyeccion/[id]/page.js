@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
 import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award, X, Maximize2 } from 'lucide-react';
+import { QuorumPanel, QuorumPantalla } from './QuorumProgreso';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
 
@@ -78,10 +79,22 @@ export default function ProyeccionPage() {
     ? `${origin}/v/${sesion.id}`
     : `${origin}/asistir/${sesion.id}?c=${sesion.codigo_asistencia}`;
 
-  const quorumPct       = quorum.invitados > 0
-    ? Math.round((quorum.asistentes / quorum.invitados) * 100)
-    : 0;
-  const quorumAlcanzado = quorumPct >= 50;
+  // El moderador decide desde el panel si el quórum se muestra y cómo: oculto, panel o pantalla completa
+  const modoQuorum     = sesion.proyeccion_quorum ?? 'oculto';
+  const verQuorum      = modoQuorum !== 'oculto';
+  const quorumPantalla = modoQuorum === 'pantalla' && !preguntaActiva && !splash;
+  const pantallaQuorum = quorumPantalla && (
+    <QuorumPantalla
+      quorum={quorum}
+      sesion={sesion}
+      Logo={LogoNL}
+      qr={!sesion.asistencias_cerradas && (
+        <div className="bg-white rounded-xl border border-gray-200 p-2 shadow-sm">
+          <QRCode value={qrValue} size={96} level="M" />
+        </div>
+      )}
+    />
+  );
 
   // Which historical question to display
   const histLen       = historial.length;
@@ -92,6 +105,7 @@ export default function ProyeccionPage() {
 
   // Pantalla completa QR cuando aún no han iniciado preguntas
   if (!preguntaActiva && histLen === 0 && sesion.estado !== 'finalizada') {
+    if (pantallaQuorum) return pantallaQuorum;
     return (
       <div className="h-screen w-screen flex flex-col bg-brand select-none overflow-hidden">
         {/* Header compacto */}
@@ -115,7 +129,7 @@ export default function ProyeccionPage() {
               <p className="text-white/60 text-sm font-semibold shrink-0">
                 {sesion.modo_rapido ? 'Escanea el QR para acceder con tu cédula' : 'Escanea el QR para registrar tu asistencia'}
               </p>
-              <div className="bg-white rounded-3xl shadow-2xl shrink-0" style={{ padding: 'clamp(12px, 1.5vw, 24px)', width: 'min(68vh, 68vw)', height: 'min(68vh, 68vw)' }}>
+              <div className="bg-white rounded-3xl shadow-2xl shrink-0" style={{ padding: 'clamp(12px, 1.5vw, 24px)', width: verQuorum ? 'min(50vh, 50vw)' : 'min(68vh, 68vw)', height: verQuorum ? 'min(50vh, 50vw)' : 'min(68vh, 68vw)' }}>
                 <QRCode value={qrValue} size={512} level="M" style={{ width: '100%', height: '100%' }} />
               </div>
               {!sesion.modo_rapido && (
@@ -128,18 +142,12 @@ export default function ProyeccionPage() {
           )}
         </div>
 
-        {/* Footer compacto: stats */}
-        <div className="px-10 pb-4 grid grid-cols-2 gap-3 shrink-0">
-          {[
-            { label: 'Invitados',  value: quorum.invitados  },
-            { label: 'Asistentes', value: quorum.asistentes },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 flex flex-col items-center">
-              <span className="text-white text-2xl font-extrabold">{value}</span>
-              <span className="text-white/50 text-[11px] font-semibold uppercase tracking-wide">{label}</span>
-            </div>
-          ))}
-        </div>
+        {/* Footer compacto: quórum (solo si el moderador lo habilitó) */}
+        {verQuorum && (
+          <div className="px-10 pb-4 shrink-0 w-full max-w-3xl mx-auto">
+            <QuorumPanel quorum={quorum} oscuro />
+          </div>
+        )}
       </div>
     );
   }
@@ -179,29 +187,9 @@ export default function ProyeccionPage() {
           )}
         </div>
 
-        {/* Stats + quórum */}
-        <div className="w-full flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
-            <StatLeft icon={<Users size={13}/>} label="Invitados"  value={quorum.invitados}  />
-            <StatLeft icon={<Users size={13}/>} label="Asistentes" value={quorum.asistentes} bold />
-          </div>
-          <div className="bg-white/10 border border-white/20 rounded-2xl px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white/70 text-xs font-bold uppercase tracking-wide">Quórum</span>
-              <span className={`text-sm font-extrabold ${quorumAlcanzado ? 'text-green-300' : 'text-yellow-300'}`}>
-                {quorum.asistentes}/{quorum.acreditados_voto} · {quorumPct}%
-              </span>
-            </div>
-            <div className="h-2.5 bg-white/15 rounded-full overflow-hidden">
-              <div className={`h-2.5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-400' : 'bg-yellow-400'}`}
-                style={{ width: `${Math.min(100, quorumPct)}%` }} />
-            </div>
-            <p className={`text-[11px] font-bold mt-1.5 ${quorumAlcanzado ? 'text-green-300' : 'text-yellow-300'}`}>
-              {quorumAlcanzado
-                ? '✓ Quórum alcanzado'
-                : `Faltan ${Math.max(0, Math.ceil(quorum.invitados * 0.5) - quorum.asistentes)} para quórum (50%)`}
-            </p>
-          </div>
+        {/* Quórum (solo si el moderador lo habilitó) */}
+        <div className="w-full">
+          {verQuorum && <QuorumPanel quorum={quorum} oscuro />}
         </div>
       </div>
 
@@ -254,26 +242,7 @@ export default function ProyeccionPage() {
                 </div>
                 <p className="text-gray-400 text-sm">El moderador publicará la primera pregunta en breve</p>
               </div>
-              <div className="grid grid-cols-3 gap-4 w-full">
-                <BigStatRight value={quorum.invitados}        label="Invitados"              accent="text-gray-500"  />
-                <BigStatRight value={quorum.acreditados_voto} label="Habilitados para votar" accent="text-green-600" />
-                <BigStatRight value={quorum.asistentes}       label="Asistentes presentes"   accent="text-brand"     />
-              </div>
-              <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-500 text-sm font-bold uppercase tracking-wide">Quórum deliberativo</span>
-                  <span className={`text-3xl font-extrabold tabular-nums ${quorumAlcanzado ? 'text-green-600' : 'text-orange-500'}`}>{quorumPct}%</span>
-                </div>
-                <div className="h-5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-5 rounded-full transition-all duration-700 ${quorumAlcanzado ? 'bg-green-500' : 'bg-orange-400'}`}
-                    style={{ width: `${Math.min(100, quorumPct)}%` }} />
-                </div>
-                <p className={`text-sm font-semibold mt-2 ${quorumAlcanzado ? 'text-green-600' : 'text-orange-500'}`}>
-                  {quorumAlcanzado
-                    ? `✓ Quórum alcanzado — ${quorum.asistentes} de ${quorum.invitados} invitados presentes`
-                    : `Faltan ${Math.max(0, Math.ceil(quorum.invitados * 0.5) - quorum.asistentes)} asistentes para alcanzar quórum (50%)`}
-                </p>
-              </div>
+              {verQuorum && <QuorumPanel quorum={quorum} />}
             </div>
           )}
 
@@ -307,7 +276,7 @@ export default function ProyeccionPage() {
             const maxVotos      = Math.max(...opciones.map((o) => Number(o.total)), 1);
             const tipoMayoria   = preguntaActiva.tipo_mayoria ?? 'simple';
             const baseM         = tipoMayoria === 'simple' ? quorum.asistentes : quorum.invitados;
-            const baseLabel     = tipoMayoria === 'simple' ? 'asistentes' : 'invitados';
+            const baseLabel     = tipoMayoria === 'simple' ? 'asistentes' : 'acreditados';
             const umbral        = Math.floor(baseM / 2) + 1;
             const mayorPct      = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
             const mayorAlcanzada = totalVotos >= umbral && umbral > 0;
@@ -417,6 +386,9 @@ export default function ProyeccionPage() {
       </div>
     </div>
 
+    {/* ── Quórum en pantalla completa (cuando el moderador lo proyecta) ── */}
+    {pantallaQuorum}
+
     {/* ── Overlay pantalla completa: pregunta activa ── */}
     {modoFullscreen && preguntaActiva && (
       <FullscreenPregunta
@@ -445,7 +417,7 @@ export default function ProyeccionPage() {
 function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
   const opciones     = pregunta.opciones ?? [];
   const tipoM        = pregunta.tipo_mayoria ?? 'simple';
-  const baseLabel    = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const baseLabel    = tipoM === 'simple' ? 'asistentes' : 'acreditados';
   const baseM        = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
   const umbral       = Math.floor(baseM / 2) + 1;
   const hayPlanchas  = opciones.some((o) => o.es_plancha);
@@ -589,7 +561,7 @@ function SplashResultado({ preg, quorum, onCerrar, inicioFase = 1 }) {
 
   // Validez por mayoría — igual que el panel admin: total votos >= umbral
   const tipoM     = preg.tipo_mayoria ?? 'simple';
-  const baseLabel = tipoM === 'simple' ? 'asistentes' : 'invitados';
+  const baseLabel = tipoM === 'simple' ? 'asistentes' : 'acreditados';
   const baseM     = tipoM === 'simple' ? quorum.asistentes : quorum.invitados;
   const umbral    = baseM > 0 ? Math.floor(baseM / 2) + 1 : 0;
   const esValida  = umbral > 0 && totalVotos >= umbral;
@@ -1149,27 +1121,6 @@ function LogoNL() {
           onError={() => setFailed(true)}
         />
       )}
-    </div>
-  );
-}
-
-function StatLeft({ icon, label, value, bold }) {
-  return (
-    <div className="bg-white/10 border border-white/15 rounded-xl px-3 py-2 flex items-center gap-2">
-      <span className="text-white/50 flex-shrink-0">{icon}</span>
-      <div>
-        <p className={`text-white leading-none tabular-nums ${bold ? 'text-xl font-extrabold' : 'text-lg font-bold'}`}>{value}</p>
-        <p className="text-white/40 text-[10px] font-semibold mt-0.5">{label}</p>
-      </div>
-    </div>
-  );
-}
-
-function BigStatRight({ value, label, accent }) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex flex-col items-center gap-2">
-      <p className={`text-6xl font-extrabold tabular-nums ${accent}`}>{value}</p>
-      <p className="text-gray-400 text-xs font-semibold text-center leading-tight">{label}</p>
     </div>
   );
 }

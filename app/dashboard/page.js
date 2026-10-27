@@ -25,9 +25,8 @@ export default function DashboardPage() {
   const [tab, setTab]               = useState('activas');
   const [modalKey, setModalKey]     = useState(0);
 
-  const cargar = async (cedula, email) => {
+  const cargar = async (cedula) => {
     const params = new URLSearchParams({ cedula });
-    if (email) params.set('email', email);
 
     const [{ data: rpcData, error }, { data: acredData }, invJson] = await Promise.all([
       supabase.rpc('get_asambleas_usuario', { p_cedula: cedula }),
@@ -63,10 +62,10 @@ export default function DashboardPage() {
     const u = getUsuario();
     if (!u) { router.replace('/'); return; }
     setUsuario(u);
-    cargar(u.cedula, u.email);
+    cargar(u.cedula);
 
     // Polling cada 5 segundos para detectar cambios de estado en asambleas
-    const interval = setInterval(() => cargar(u.cedula, u.email), 5000);
+    const interval = setInterval(() => cargar(u.cedula), 5000);
     return () => clearInterval(interval);
   }, [router]);
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'react-qr-code';
-import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award, X, Maximize2 } from 'lucide-react';
+import { Users, MapPin, Calendar, ThumbsUp, ThumbsDown, Zap, CheckCircle, Lock, UserCheck, Vote, Radio, ChevronLeft, ChevronRight, Award, X, Maximize2, Flag } from 'lucide-react';
 import { QuorumPanel, QuorumPantalla } from './QuorumProgreso';
 
 const LOGO = 'https://nuevoliberalismo.org/wp-content/uploads/2026/02/logo_web_2024.png';
@@ -356,7 +356,7 @@ export default function ProyeccionPage() {
 
                 {/* Indicador de mayoría — votos totales visibles, desglose por opción oculto */}
                 {opciones.length > 0 && (
-                  <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                  <div className={`rounded-2xl border shadow-sm px-5 py-3 ${mayorAlcanzada ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tipoMayoria === 'absoluta' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'}`}>
@@ -364,17 +364,18 @@ export default function ProyeccionPage() {
                         </span>
                         <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
                       </div>
-                      <span className={`text-xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-green-600' : 'text-gray-700'}`}>
+                      <span className={`text-xl font-extrabold tabular-nums ${mayorAlcanzada ? 'text-blue-700' : 'text-gray-700'}`}>
                         {totalVotos}<span className="text-sm font-semibold text-gray-400">/{umbral}</span>
                       </span>
                     </div>
                     <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                      <div className={`h-3 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-green-500' : 'bg-brand'}`}
+                      <div className={`h-3 rounded-full transition-all duration-700 ${mayorAlcanzada ? 'bg-blue-600' : 'bg-blue-400'}`}
                         style={{ width: `${mayorPct}%` }} />
                     </div>
-                    <p className={`text-xs font-semibold mt-1.5 ${mayorAlcanzada ? 'text-green-600' : 'text-gray-500'}`}>
+                    <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1.5 ${mayorAlcanzada ? 'text-blue-700' : 'text-gray-500'}`}>
+                      {mayorAlcanzada && <Flag size={13} className="flex-shrink-0" />}
                       {mayorAlcanzada
-                        ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                        ? `Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
                         : `Faltan ${umbral - totalVotos} votos para mayoría (${mayorPct}% del objetivo)`}
                     </p>
                   </div>
@@ -510,7 +511,7 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
           const mayorPct   = umbral > 0 ? Math.min(100, Math.round((totalVotos / umbral) * 100)) : 0;
           const mayorOk    = totalVotos >= umbral && umbral > 0;
           return (
-            <div className={`w-full rounded-2xl border shadow-sm px-6 py-4 shrink-0 ${mayorOk ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}
+            <div className={`w-full rounded-2xl border shadow-sm px-6 py-4 shrink-0 ${mayorOk ? 'bg-blue-50 border-blue-300' : 'bg-white border-gray-200'}`}
               style={{ maxWidth: '1000px' }}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -519,17 +520,18 @@ function FullscreenPregunta({ pregunta, sesion, quorum, timer, onCerrar }) {
                   </span>
                   <span className="text-gray-400 text-xs">50%+1 de {baseLabel} · umbral: {umbral} votos</span>
                 </div>
-                <span className={`text-2xl font-extrabold tabular-nums ${mayorOk ? 'text-green-600' : 'text-gray-700'}`}>
+                <span className={`text-2xl font-extrabold tabular-nums ${mayorOk ? 'text-blue-700' : 'text-gray-700'}`}>
                   {totalVotos}<span className="text-base font-semibold text-gray-300">/{umbral}</span>
                 </span>
               </div>
               <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-                <div className={`h-4 rounded-full transition-all duration-700 ${mayorOk ? 'bg-green-500' : 'bg-brand'}`}
+                <div className={`h-4 rounded-full transition-all duration-700 ${mayorOk ? 'bg-blue-600' : 'bg-blue-400'}`}
                   style={{ width: `${mayorPct}%` }} />
               </div>
-              <p className={`text-xs font-semibold mt-1.5 ${mayorOk ? 'text-green-600' : 'text-gray-500'}`}>
+              <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1.5 ${mayorOk ? 'text-blue-700' : 'text-gray-500'}`}>
+                {mayorOk && <Flag size={13} className="flex-shrink-0" />}
                 {mayorOk
-                  ? `✓ Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
+                  ? `Mayoría alcanzada — ${totalVotos} de ${umbral} votos requeridos`
                   : `Faltan ${Math.max(0, umbral - totalVotos)} votos para mayoría (${mayorPct}% del objetivo)`}
               </p>
             </div>
